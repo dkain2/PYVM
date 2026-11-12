@@ -12,7 +12,8 @@ WHO SEES WHAT
     organizer, whoever typed the word, and is a PRIVATE NOTE that only they see (Slack cannot show a button
     to one person inside a public message):
 
-        the setup card    Everyone in this channel / I will pick the players / Anyone who wants to play
+        the setup card    dropdowns for Game size, Board style and Ticket layout; Everyone in this channel / I will
+                          pick the players / Anyone who wants to play
         lobby controls    Start game, Cancel; for "I will pick the players" also a menu of people
         game controls     Next number, Review, Show my card, End game, and what was last called
         while paused      Resume, Show my card, End game
@@ -44,11 +45,13 @@ HOW A GAME GOES
     2  The channel gets a LOBBY: three short rules, the prizes, who is in and, for an open game, a Join
        button. The organizer gets the lobby controls. "I will pick the players" gives them a menu of people
        and the lobby follows it. Each player is a row in the data table, name included.
-    3  Start (the organizer) posts the BOARD and sends every player a TICKET by private message.
-    4  The board is a grid of 90 white squares. Each Next number turns one into its number (two keycap
-       digits) in the same message and says it in words, with the caller's name for it where there is one:
-       "47: Forty-seven", "22: Twenty-two, two little ducks" (CALLS).
-    5  A ticket is 3 rows of numbers (5 to a row in a large game), each a button. When a number is called the
+    3  Start (the organizer) posts the BOARD and sends every player a TICKET by private message. The lobby
+       shrinks to one line and who is in (the board below it has the title and the prizes: nothing is said twice).
+    4  The board is a grid of 90 white squares (in the default emoji style, see BOARD STYLE). Each Next number
+       turns one into its number (two keycap digits) in the same message and says it in words, with the caller's
+       name for it where there is one: "47: Forty-seven", "22: Twenty-two, two little ducks" (CALLS).
+    5  A ticket is 3 rows of numbers, each a button, laid out like a printed ticket (see TICKET LAYOUT). When a
+       number is called the
        player taps it on their ticket and it turns green. A number that has NOT been called is refused on the
        ticket ("47 has not been called yet"). Any number that HAS been called can be tapped later: nobody loses
        one by being slow.
@@ -57,9 +60,23 @@ HOW A GAME GOES
        time) and the channel hears about it (`announce`: channel, thread or off). Full House ends the game,
        as does the 90th number or End game. The board shows who holds each prize.
 
-    A printed ticket has blanks (9 columns, 1 to 3 numbers each). Here each row keeps just its five numbers,
-    in ascending order, because Slack shows only 5 buttons in a row; they are dealt as on a printed ticket
-    (column 1 holds 1-9, column 2 10-19 ... column 9 80-90).
+    Tickets are dealt as a printed one is: 9 columns (column 1 holds 1-9, column 2 10-19 ... column 9 80-90),
+    1 to 3 numbers in each, 5 in every row, in ascending order down a column and along a row (a smaller game has
+    fewer columns, see GAME SIZE).
+
+TICKET LAYOUT  (printed, compact: LAYOUTS)
+    How those numbers sit on the buttons, chosen on a third dropdown of the setup card:
+
+        printed  every number in its own column, as on paper: a cell for each column (9 for a large game), the
+                 numbers where their tens put them and a quiet blank button where the ticket has a blank, so a
+                 number is found by its tens (the default; the ticket says which tens its columns are)
+        compact  just the numbers, in rows of five (four, three), no blanks: the ticket this step dealt before
+
+    A blank is a button that does nothing (Slack has no inert one). A row of printed cells is a row of buttons, 9 for a
+    large game, and a long row may be folded by Slack on a narrow screen: if so, compact is one choice away. A small
+    game's three columns are full either way, so its layouts look alike. The layout is chosen like the size (read from
+    the press's `state`, the card redrawn when it is used), starts on the recipe's `ticket_layout` input (printed when
+    blank) and is kept with the game. A game saved before layouts existed keeps compact tickets, as it was dealt them.
 
 GAME SIZE  (small, medium, large: SIZES)
     One setting sets both how many numbers are called and how big a ticket is, so a quick game is quick:
@@ -68,11 +85,29 @@ GAME SIZE  (small, medium, large: SIZES)
         medium  numbers 1 to 60, 12 on a ticket (3 rows of 4)
         small   numbers 1 to 30,  9 on a ticket (3 rows of 3)    a quick game
 
-    Choose it when you type the word, `itambola small` (also medium, large; quick, mini and short mean small, full
-    means large), or give the recipe a default with the `size` input; what is typed wins. The setup card says what
-    size the game is and how to choose another, the lobby says it when it is not a large game, and the board, the
-    tickets and the review all follow it. The size is kept with the game. A game made before sizes existed is a large
-    one and plays exactly as it did. The tickets keep the printed layout, one column for each ten numbers.
+    The organizer chooses it on a DROPDOWN of the setup card, above the three ways of joining ("Game size": small,
+    medium, large, each with its numbers and ticket in its name). The size in the dropdown when a way of joining is
+    pressed is the game's: Slack reports what every dropdown shows with each press (the interaction's `state`), and
+    this reads it from there, so it holds even if the card was never redrawn for the choice. Choosing in a dropdown
+    also redraws the card in place (the dropdown standing on it, each way of joining carrying it); without
+    `response_url` a new card is sent instead. The card opens on the recipe's `size` input (large when it is blank),
+    so a channel that mostly plays quick games can start there. The lobby (its rules and a note) says the size, and
+    the board, the tickets and the review all follow it. The size is kept with the game. A game made before sizes
+    existed is a large one and plays exactly as it did. The tickets keep the printed layout, one column for each ten
+    numbers.
+
+BOARD STYLE  (emoji, numbers, list: BOARD_STYLES)
+    How the numbers called are shown on the board, chosen on a second dropdown of the setup card, beside the size's:
+
+        emoji    a square for every number, a number emoji where it was called, the number just called in emoji
+                 too (the original board, and the default)
+        numbers  every number in a plain grid, in a code block so the columns line up, the ones called in
+                 [brackets]; the number just called in bold. board_columns sets how many to a row
+        list     no grid: just the numbers called so far, smallest first, a line of fifteen at a time
+
+    It is chosen the way the size is (read from the press's `state`, and the card redrawn when it is used), starts on
+    the recipe's `board_style` input (emoji when blank) and is kept with the game. A game made before board styles
+    existed has the emoji board.
 
 REVIEW AND RESUME  (the organizer's controls)
     Review pauses the game and puts a summary in the board's place, for everyone: the numbers called (in
@@ -86,11 +121,12 @@ REVIEW AND RESUME  (the organizer's controls)
     player figures out.
 
 THE CARDS (kept short, as iMath's rules card is)
-    Lobby      header, host, 3 bullets, prizes, players, [ Join game ] on an open game and nothing else
-    Board      header, the number just called, the grid (a block per row), the prizes, a line on getting
-               a lost ticket back. No button.
+    Lobby      header (the one place the title and :tickets: are said, with the board's), host, 3 bullets,
+               prizes, players, [ Join game ] on an open game and nothing else
+    Board      header, the number just called, the grid in its style, the prizes, a line on getting a lost
+               ticket back. No button.
     Review     header, counts, the numbers called, prizes, the top of the ranking as one table, the spread
-    Ticket     a private message to each player: 3 rows of 5 buttons and a line of progress
+    Ticket     a private message to each player: 3 rows of buttons in the game's layout and a line of progress
 
 TWO PRESSES AT ONCE
     Next number is the organizer's alone, and what it reveals is fixed in advance: the order of the numbers
@@ -98,7 +134,9 @@ TWO PRESSES AT ONCE
     taken as one press made twice and ignored, and two jobs that read the same count both write the same new
     one, so the board never skips a number. Start is claimed in the table before anything is posted, so a
     double press starts one game. Setting a game up is claimed the same way. Two players finishing the same
-    prize in the same second are told apart by Slack's click time.
+    prize in the same second are told apart by Slack's click time. A prize is a row that carries a token of its
+    own, and only the press whose row is the earliest announces it, so one player's click handled twice (a double
+    tap, a number tapped again, the click delivered twice) is announced once.
 
 THE ROWS  (workato_governance_unified; none of the types ends in _users, and none uses a person as `id`,
     which spotter reads in one unpaged query; EVERY row carries `slack_channel_id`, because the same step
@@ -131,14 +169,23 @@ THE TWO RECIPES
              this step. Map text, user_id, channel, message_ts, thread_ts (and bot_id, subtype if you like)
              plus slack_bot_token and workato_api_token (the token lets the word find the game the person
              already runs or plays in). Optional settings: testing, skip_post, announce, prizes,
-             board_columns, max_players, size, top_n.
-    Click    Slack interactivity trigger, filtered to action_id CONTAINING `tambola_click_` -> this step:
+             board_columns, max_players, top_n, and size / board_style / ticket_layout (what the setup card's
+             three dropdowns open on).
+    Click    Slack interactivity trigger, filtered to action_id CONTAINING `tambola_click_` -> this step.
+             Simplest: map `payload`, the whole interaction as JSON (the trigger's block_actions object, in
+             formula mode its `.to_json`; the trigger's own {"block_actions:button": {...}} wrapper is fine), plus
+             slack_bot_token and workato_api_token. Everything below is read out of it, and the size dropdown's
+             choice with it. Fields mapped by hand are kept and the payload only fills what is blank, so the old way
+             still works, field by field:
                  action_value   <- actions[0].value
                  action_id      <- actions[0].action_id        (the player menu has no value)
                  selected_users <- actions[0].selected_users   (the player menu's pick, when it is the
                                                                people picker)
                  selected_options <- actions[0].selected_options  (the player menu's pick, when it is the
                                                                channel's list: map both, one stays empty)
+                 state          <- state                       (every dropdown's current choice: without it
+                                                               or `payload` the dropdowns' settings are the
+                                                               ones the button was drawn with)
                  user_id        <- user.id
                  channel        <- container.channel_id
                  source_ts      <- container.message_ts
@@ -151,6 +198,9 @@ SLACK SCOPES   chat:write, users:read; channels:read (groups:read) for "Everyone
                channels:history (groups:history) only for test games; im:write is a fallback for DMs.
 
 BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<kind>|<game>|<arg>)
+    size | board | layout            the setup card's dropdowns of game size, board style and ticket layout
+                                     (selects: no value, the choice is the selected_option, and in `state` on
+                                     every later press)
     set_all | set_pick | set_open    the three choices on the setup card (private)
     pick_<game>                      the organizer's menu of people (a select: no value): a list of the
                                      channel's members, the organizer in it, or Slack's people picker when
@@ -161,6 +211,7 @@ BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<ki
     myticket                         Show my card / Hide my card, on the organizer's note (private)
     hmark_<number>                   a number on the organizer's card, in their note (private)
     mark_<number>                    a number on a ticket (private message to the player)
+    blank_<row>_<column>             a blank square of a printed ticket: does nothing
     test games use  tbt|<kind>|<json>  for all of these.
 
 Input / output schema: tambola_input_schema.json / tambola_output_schema.json
@@ -176,6 +227,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 import zlib
 from datetime import datetime, timezone
 
@@ -247,17 +299,45 @@ EARLY_COUNT = 5                   # numbers marked for Early Five
 # holds (3 rows of `row`). Large is the full game and the default. A smaller one is a quick game: fewer numbers to
 # call, a smaller ticket to fill. `row` is also the buttons in a row of a ticket (Slack folds past 5). The printed
 # ticket's layout follows from N: one column for each ten numbers (1-9, 10-19 ... the last one up to N), holding 1 to
-# 3 numbers, so a row needs no more numbers than there are columns. Add or change a size here; nothing else holds
-# these figures. The first key is the default.
+# 3 numbers, so a row needs no more numbers than there are columns. `tag` is a word or two in the dropdown. Add or
+# change a size here; nothing else holds these figures. The first key is the default. The organizer chooses the size
+# on a dropdown of the setup card, in the order of their numbers.
 SIZES = {
-    "large": {"label": "Large", "numbers": 90, "row": 5},       # the classic game: 15 numbers on a ticket
-    "medium": {"label": "Medium", "numbers": 60, "row": 4},     # 12 numbers on a ticket
-    "small": {"label": "Small", "numbers": 30, "row": 3},       # 9 numbers on a ticket: a quick game
+    "large": {"label": "Large", "numbers": 90, "row": 5, "tag": "classic"},     # 15 numbers on a ticket
+    "medium": {"label": "Medium", "numbers": 60, "row": 4, "tag": ""},          # 12 numbers on a ticket
+    "small": {"label": "Small", "numbers": 30, "row": 3, "tag": "quick"},       # 9 numbers on a ticket
 }
 DEFAULT_SIZE = next(iter(SIZES))
 SIZE_ALIASES = {"l": "large", "full": "large", "big": "large", "classic": "large", "normal": "large",
                 "m": "medium", "med": "medium", "mid": "medium", "regular": "medium",
                 "s": "small", "quick": "small", "mini": "small", "short": "small", "fast": "small"}
+OPTION_VALUE_MAX = 150            # Slack's limit on the value of a menu's option
+
+# BOARD STYLES: how the numbers called are shown on the board, chosen on a second dropdown of the setup card. Emoji
+# is the original look (a square for every number, a number emoji where it was called); the others are plainer, for
+# people who find that too much. The first key is the default. `text` finishes the dropdown's line.
+BOARD_STYLES = {
+    "emoji": {"label": "Emoji grid", "text": "squares fill in with number emojis"},
+    "numbers": {"label": "Number grid", "text": "every number, called ones in [brackets]"},
+    "list": {"label": "Called list", "text": "just the numbers called so far"},
+}
+DEFAULT_BOARD_STYLE = next(iter(BOARD_STYLES))
+
+# TICKET LAYOUTS: how the numbers sit on a player's ticket, chosen on a third dropdown of the setup card. Printed is the
+# paper ticket: a cell for every column (1-9, 10s, 20s ... 80s), each number in its own column and the rest blank, so a
+# number is found by its tens. Compact keeps just the numbers, in ascending rows (the ticket this step always dealt).
+# A blank is a quiet button that does nothing. A row of cells is a row of buttons, and Slack may fold a long one on a
+# narrow screen, which is why the plainer layout stays on offer. The first key is the default.
+LAYOUTS = {
+    "printed": {"label": "Printed ticket", "text": "numbers in their column (1-9, 10s, 20s ...), blanks between"},
+    "compact": {"label": "Compact ticket", "text": "just the numbers, in short rows"},
+}
+DEFAULT_LAYOUT = next(iter(LAYOUTS))
+LEGACY_LAYOUT = "compact"         # a game saved before layouts existed was dealt compact tickets, and keeps them
+LAYOUT_ALIASES = {"paper": "printed", "physical": "printed", "columns": "printed", "real": "printed",
+                  "short": "compact", "rows": "compact", "plain": "compact", "simple": "compact"}
+BOARD_ALIASES = {"emojis": "emoji", "tiles": "emoji", "plain": "numbers", "number": "numbers", "normal": "numbers",
+                 "text": "numbers", "called": "list", "calls": "list", "compact": "list"}
 
 BOARD_COLUMNS = 10                # squares to a row of the board: 10 gives the traditional 9 rows
 MAX_PLAYERS = 60                  # most players in a game: the step has 90 seconds to deal them all in
@@ -332,11 +412,19 @@ MODE_BUTTONS = {
 }
 MODES = tuple(MODE_BUTTONS)
 
-SETUP_TEXT = ":tickets: *{word}*: how should people join? Only you can see this."
+SETUP_TEXT = ":tickets: *{word}*: set the game up below, then choose how people join. Only you can see this."
 SETUP_NOTE = ("The lobby opens in the channel. Your controls, Start game included, stay here in a note only you "
               "can see. Tickets go out as private messages when you press Start.")
-SETUP_SIZE = ("Game size: *{label}*, numbers 1 to {numbers}, {ticket} on a ticket. For a different size type "
-              "{others} in the channel.")
+SETUP_SIZE = "*Game size*\nA smaller game has fewer numbers and a smaller ticket, so it is quicker."
+SETUP_BOARD = "*Board style*\nHow the numbers called are shown on the board."
+SETUP_LAYOUT = "*Ticket layout*\nHow the numbers sit on each player's ticket."
+SETUP_MENU = {"size": SETUP_SIZE, "board": SETUP_BOARD, "layout": SETUP_LAYOUT}
+MENU_PLACEHOLDER = {"size": "Game size", "board": "Board style", "layout": "Ticket layout"}
+SIZE_OPTION = "{label}{tag}: numbers 1 to {numbers}, {ticket} on a ticket"
+BOARD_OPTION = "{label}: {text}"
+LAYOUT_OPTION = "{label}: {text}"
+BLANK_TEXT = "\u00b7"             # a blank square of a printed ticket: a button that does nothing
+TICKET_COLUMNS = "Each number sits in its column, as on a printed ticket: {columns}."
 RULES = ("• Every player gets a ticket in a private message: {ticket} numbers in 3 rows.\n"
          "• Numbers from 1 to {numbers} are called on the board in this channel. Tap yours on your ticket when "
          "they come up.\n"
@@ -347,9 +435,9 @@ LOBBY_MODE_LINE = {
     "pick": "{host} is choosing the players.",
     "open": "Press *Join game* to play.",
 }
-LOBBY_HOST = ":tickets: *{host}* is hosting {word}{size}."
+LOBBY_HOST = "Hosted by *{host}*{size}"
 LOBBY_PLAYERS = "*Players ({count}):* {names}"
-LOBBY_STARTED = ":tickets: *{word}* has started with {count} {players}. The board is below :point_down:"
+LOBBY_STARTED = ":arrow_forward: *Game on* with {count} {players}. Numbers are called on the board below :point_down:"
 LOBBY_CANCELLED = ":no_entry_sign: {host} cancelled this game."
 PICK_PLACEHOLDER = "Choose players"
 TEST_NOTE = ":test_tube: Test game: nothing is saved."
@@ -390,7 +478,9 @@ REVIEW_MORE = "+{count} more {playerword}, none with more than {best} marked"
 REVIEW_TEST = ":test_tube: Test game: each player's progress is only shown in a real game."
 
 BOARD_READY = ":game_die: *Ready.* Press *Next number* to call the first one."
-BOARD_FOOT = "Hosted by {host}  ·  {count} {players}  ·  Lost your ticket? Type `{word}` in this channel."
+BOARD_CALLED = "*Called so far*\n"
+BOARD_FOOT = "Hosted by {host}  ·  {count} {players}"
+BOARD_FOOT_LOST = "  ·  Playing and lost your ticket? Type `{word}` here and it is sent to you again."
 OVER_FULL = ":trophy: *Game over.* {name} completed the Full House."
 OVER_NUMBERS = ":checkered_flag: *Game over.* All {numbers} numbers have been called."
 OVER_ENDED = ":checkered_flag: *Game over.* {host} ended the game."
@@ -405,7 +495,7 @@ JOIN_TEXT = "Join game :raised_hand:"
 START_TEXT = "Start game :arrow_forward:"
 CANCEL_TEXT = "Cancel"
 
-TICKET_HEAD = ":tickets: *Your {word} ticket*"
+TICKET_HEAD = ":tickets: *Your ticket*"
 TICKET_WHERE = "Game in <#{channel}>  ·  hosted by {host}. Tap a number when it is called on the board."
 TICKET_OVER = ":checkered_flag: This game has finished."
 
@@ -516,14 +606,18 @@ def parse_size(value, default=DEFAULT_SIZE):
     return word if word in SIZES else default
 
 
-def typed_size(text):
-    """The size asked for when the word is typed, `itambola small`: the word right after it. None when there is none."""
-    found = re.search(r"\b(?:itambola|ihousie)\b[\s,:;-]*([A-Za-z]+)", str(text or ""), re.I)
-    if not found:
-        return None
-    word = found.group(1).lower()
-    word = SIZE_ALIASES.get(word, word)
-    return word if word in SIZES else None
+def parse_board_style(value, default=DEFAULT_BOARD_STYLE):
+    """A board style key from its name or an alias (plain, normal, called ...); `default` when it is none of them."""
+    word = re.sub(r"[^a-z]", "", str(value or "").lower())
+    word = BOARD_ALIASES.get(word, word)
+    return word if word in BOARD_STYLES else default
+
+
+def parse_layout(value, default=DEFAULT_LAYOUT):
+    """A ticket layout key from its name or an alias (paper, rows ...); `default` when it is none of them."""
+    word = re.sub(r"[^a-z]", "", str(value or "").lower())
+    word = LAYOUT_ALIASES.get(word, word)
+    return word if word in LAYOUTS else default
 
 
 def size_of(g):
@@ -564,12 +658,6 @@ def size_note(g):
     if parse_size(g["cfg"].get("size")) == DEFAULT_SIZE:
         return ""
     return SIZE_NOTE.format(label=size_of(g)["label"].lower(), numbers=numbers_of(g))
-
-
-def other_sizes(g):
-    """The words that choose another size, as the setup card shows them: `itambola small`, `itambola medium`."""
-    current = parse_size(g["cfg"].get("size"))
-    return " or ".join("`{} {}`".format(typed_word(g), key) for key in SIZES if key != current)
 
 
 def rules_text(g):
@@ -620,10 +708,12 @@ def tiles(number):
     return DIGITS[number // 10] + DIGITS[number % 10]
 
 
-def call_lines(number):
-    """What the board says for the number just called: the number in words, then the caller's name for it."""
+def call_lines(number, style=DEFAULT_BOARD_STYLE):
+    """What the board says for the number just called: the number in words, then the caller's name for it. The emoji
+    board says it with number emojis, the others in plain bold."""
     words = number_words(number)
-    line = "{}  *{}*".format(tiles(number), words[0].upper() + words[1:])
+    line = "{}  *{}*".format(tiles(number), words[0].upper() + words[1:]) if style == "emoji" else \
+        "*{}*  \u00b7  {}".format(number, words[0].upper() + words[1:])
     if number in CALLS:
         line += "\n_{}_".format(CALLS[number])
     return line
@@ -637,6 +727,28 @@ def board_rows(called, columns=BOARD_COLUMNS, numbers=NUMBERS):
         cells = [tiles(n) if n in called else EMPTY_TILE for n in range(start, min(start + columns, numbers + 1))]
         rows.append(" ".join(cells))
     return rows
+
+
+def number_grid(called, columns=BOARD_COLUMNS, numbers=NUMBERS):
+    """The plain board: every number in a grid, in a code block so the columns line up, the ones called in
+    [brackets]. A row of ten is forty characters."""
+    called = set(called)
+    width = len(str(numbers))
+    lines = []
+    for start in range(1, numbers + 1, columns):
+        cells = []
+        for n in range(start, min(start + columns, numbers + 1)):
+            text = "{:0{w}d}".format(n, w=width)
+            cells.append("[{}]".format(text) if n in called else " {} ".format(text))
+        lines.append("".join(cells).rstrip())
+    return "```\n" + "\n".join(lines) + "\n```"
+
+
+def called_lines(called, per_line=15):
+    """The numbers called, smallest first, a line of `per_line` at a time."""
+    ordered = sorted(called)
+    rows = [ordered[i:i + per_line] for i in range(0, len(ordered), per_line)]
+    return "\n".join("  \u00b7  ".join(str(n) for n in row) for row in rows)
 
 
 # ---- the numbers and the tickets: fixed by a seed, so the same game can always be worked out again
@@ -716,6 +828,38 @@ def ticket_numbers(ticket):
     return [n for row in ticket for n in row]
 
 
+def number_column(number, numbers):
+    """The column of a printed ticket a number belongs to: 1-9 the first, then each ten, the last up to `numbers`."""
+    return min(number // 10, layout_columns(numbers) - 1)
+
+
+def ticket_cells(g, ticket):
+    """The rows of a ticket as its layout draws them, [[number or None, ...], ...]: printed gives a cell for each column
+    of the printed ticket, a number in its own column and the rest None (blank); compact gives just the numbers. A
+    ticket that does not fit the printed layout (two numbers in one column: not one this step deals) is drawn compact
+    rather than lose a number."""
+    compact = [list(row) for row in ticket]
+    if parse_layout(g["cfg"].get("layout")) == "compact":
+        return compact
+    columns, numbers = layout_columns(numbers_of(g)), numbers_of(g)
+    rows = []
+    for row in ticket:
+        cells = [None] * columns
+        for number in row:
+            column = number_column(number, numbers)
+            if cells[column] is not None:
+                return compact
+            cells[column] = number
+        rows.append(cells)
+    return rows
+
+
+def column_names(numbers):
+    """The tens a printed ticket's columns stand for, as a short line: 1-9, 10s, 20s ... 80s."""
+    names = ["1-9"] + ["{}s".format(c * 10) for c in range(1, layout_columns(numbers))]
+    return ", ".join(names) if len(names) <= 4 else "{}, {}, {} ... {}".format(*names[:3], names[-1])
+
+
 def mask_of(ticket, marks):
     """The numbers marked as one integer, a bit for each place on the ticket (reading row by row)."""
     marks = set(marks)
@@ -781,6 +925,14 @@ VALUE_PREFIX = "tb"               # tb|<kind>|<game>|<arg>      a real game: the
 TEST_PREFIX = "tbt"               # tbt|<kind>|<json>           a test game: points at the message that holds it
 ACTION_PREFIX = "tambola_click_"
 PICK_ACTION = ACTION_PREFIX + "pick_"
+SIZE_ACTION = ACTION_PREFIX + "size"
+BOARD_ACTION = ACTION_PREFIX + "board"
+LAYOUT_ACTION = ACTION_PREFIX + "layout"
+BLANK_ACTION = ACTION_PREFIX + "blank_"
+MENUS = ("size", "board", "layout")   # the setup card's dropdowns in the order they are drawn, named for their setting
+MENU_ACTION = {"size": SIZE_ACTION, "board": BOARD_ACTION, "layout": LAYOUT_ACTION}
+MENU_OF_ACTION = {action: kind for kind, action in MENU_ACTION.items()}
+MENU_PARSE = {"size": parse_size, "board": parse_board_style, "layout": parse_layout}
 HARD_MAX_PLAYERS = 100
 LOBBY_KINDS = ("join", "start", "cancel", "pick")      # these belong to the lobby message; the rest, to the board
 LIVE = (RUNNING, PAUSED)          # numbers are being called: a ticket can be marked
@@ -790,35 +942,44 @@ CARRIER_CHUNK = 240               # characters of the game in one block id (Slac
 
 
 def game_config(input):
-    """The settings a game keeps for its whole life, read from the typed-word recipe's inputs. The size is the
-    recipe's `size` unless the person typed one, `itambola small`: what they typed is what they get."""
+    """The settings a game keeps for its whole life, read from the typed-word recipe's inputs. `size` is only the
+    size the setup card's dropdown starts on: the organizer chooses on the card."""
     announce = str(input.get("announce") or "").strip().lower()
     return {
         "prizes": parse_prizes(input.get("prizes")),
         "announce": announce if announce in ANNOUNCE else ANNOUNCE[0],
         "cols": _int(input.get("board_columns"), BOARD_COLUMNS, 3, 10),
         "max": _int(input.get("max_players"), MAX_PLAYERS, 1, HARD_MAX_PLAYERS),
-        "size": typed_size(input.get("text")) or parse_size(input.get("size")),
+        "size": parse_size(input.get("size")),
         "top": _int(input.get("top_n"), REVIEW_PLAYERS, 1, REVIEW_PLAYERS_MAX),
+        "board": parse_board_style(input.get("board_style")),
+        "layout": parse_layout(input.get("ticket_layout")),
     }
 
 
 def cfg_list(cfg):
-    return [",".join(cfg["prizes"]), cfg["announce"], cfg["cols"], cfg["max"],
-            parse_size(cfg.get("size")), cfg.get("top", REVIEW_PLAYERS)]
+    """The settings as the short list a game saves and a button carries. All five prizes, the usual, is left blank (a
+    blank means all), which keeps what a dropdown's option carries well inside Slack's 150 characters."""
+    prizes = list(cfg["prizes"])
+    return [",".join(prizes) if prizes != list(PRIZE_KEYS) else "", cfg["announce"], cfg["cols"], cfg["max"],
+            parse_size(cfg.get("size")), cfg.get("top", REVIEW_PLAYERS), parse_board_style(cfg.get("board")),
+            parse_layout(cfg.get("layout"))]
 
 
 def cfg_from(raw):
-    """The settings back from what a game saved. A game saved before sizes and top_n existed has four, and plays as
-    it always did: a large game, ten players on the review."""
+    """The settings back from what a game saved. A game saved before sizes, top_n, board styles or layouts existed has
+    fewer, and plays as it always did: a large game, ten players on the review, the emoji board and compact tickets
+    (the layout of the tickets it has already dealt)."""
     raw = list(raw) if isinstance(raw, (list, tuple)) else []
-    raw += [""] * (6 - len(raw))
+    raw += [""] * (8 - len(raw))
     return {"prizes": parse_prizes(raw[0]),
             "announce": raw[1] if raw[1] in ANNOUNCE else ANNOUNCE[0],
             "cols": _int(raw[2], BOARD_COLUMNS, 3, 10),
             "max": _int(raw[3], MAX_PLAYERS, 1, HARD_MAX_PLAYERS),
             "size": parse_size(raw[4]),
-            "top": _int(raw[5], REVIEW_PLAYERS, 1, REVIEW_PLAYERS_MAX)}
+            "top": _int(raw[5], REVIEW_PLAYERS, 1, REVIEW_PLAYERS_MAX),
+            "board": parse_board_style(raw[6]),
+            "layout": parse_layout(raw[7], LEGACY_LAYOUT)}
 
 
 def game_id_for(channel, message_ts):
@@ -951,6 +1112,8 @@ def mark_value(g, ticket, marks, number):
 def parse_value(value, action_id=""):
     """What a press is: {kind, test, game, arg, state}, or None when it is not this game's."""
     action_id = str(action_id or "").strip()
+    if action_id in MENU_ACTION.values():                  # a setup dropdown: no value, its choice carries the rest
+        return {"kind": "menu", "test": False, "game": "", "arg": action_id, "state": None}
     if action_id.startswith(PICK_ACTION):                  # the player menu has no value: the game is in its id
         rest = action_id[len(PICK_ACTION):]
         if rest.startswith("t:"):
@@ -1019,6 +1182,21 @@ def _actions(buttons):
     return {"type": "actions", "elements": buttons}
 
 
+def blank_button(row, column):
+    """A blank square of a printed ticket. Slack has no inert button, so it is a quiet one: its press is read as a test
+    game's (no table, no game to look up) and does nothing."""
+    return _button(BLANK_TEXT, "{}{}_{}".format(BLANK_ACTION, row, column), TEST_PREFIX + "|blank|{}")
+
+
+def ticket_rows(g, ticket, marks, make):
+    """A ticket as rows of buttons, in the game's layout: `make(number, marked)` is a number's button, a blank square
+    is a quiet one."""
+    marks = set(marks)
+    return [_actions([make(number, number in marks) if number else blank_button(r, c)
+                      for c, number in enumerate(cells)])
+            for r, cells in enumerate(ticket_cells(g, ticket))]
+
+
 def host_name_of(g):
     return esc(g["host_name"] or ANONYMOUS)
 
@@ -1032,15 +1210,53 @@ def prizes_line(g):
     return "*Prizes:*  " + "  ·  ".join(PRIZE_NAME[k] for k in PRIZE_KEYS if k in g["cfg"]["prizes"])
 
 
+def choice_value(g, key):
+    """What the option for `key` carries back when it is chosen on a setup dropdown. A dropdown has no button value,
+    and nothing exists to look the setup up in yet (the card is a private note, and the game is only made when the
+    organizer chooses how people join), so each option holds what is needed to draw the card again: the game's id (its
+    channel is the press's), the word, the settings, and whether it is a test game. Kept short: Slack allows 150
+    characters."""
+    value = {"s": key, "m": g["id"].rsplit("_", 1)[-1], "w": g["word"], "f": cfg_list(g["cfg"])}
+    if g["test"]:
+        value["t"] = 1
+    return json.dumps(value, separators=(",", ":"))
+
+
+def menu_choices(kind):
+    """[(key, what its option says)] of the setup dropdown `kind`, in the order it lists them: sizes smallest first."""
+    if kind == "size":
+        return [(key, SIZE_OPTION.format(label=SIZES[key]["label"],
+                                         tag=" ({})".format(SIZES[key]["tag"]) if SIZES[key]["tag"] else "",
+                                         numbers=SIZES[key]["numbers"], ticket=TICKET_ROWS * SIZES[key]["row"]))
+                for key in sorted(SIZES, key=lambda k: SIZES[k]["numbers"])]
+    if kind == "board":
+        return [(key, BOARD_OPTION.format(label=spec["label"], text=spec["text"]))
+                for key, spec in BOARD_STYLES.items()]
+    return [(key, LAYOUT_OPTION.format(label=spec["label"], text=spec["text"])) for key, spec in LAYOUTS.items()]
+
+
+def setting_menu(g, kind):
+    """A dropdown of the setup card, standing on the game's current setting. Choosing one draws the card again with it
+    (click_menu), and from then on every choice of how people join carries it."""
+    choices = menu_choices(kind)
+    keys = [key for key, _text in choices]
+    options = [{"text": {"type": "plain_text", "text": text[:75]}, "value": choice_value(g, key)}
+               for key, text in choices]
+    current = MENU_PARSE[kind](g["cfg"].get(kind))
+    return {"type": "static_select", "action_id": MENU_ACTION[kind],
+            "placeholder": {"type": "plain_text", "text": MENU_PLACEHOLDER[kind]}, "options": options,
+            "initial_option": options[keys.index(current)]}
+
+
 def setup_blocks(g):
-    """The card only the person who typed the word sees."""
-    blocks = [
-        _section(SETUP_TEXT.format(word=g["word"])),
+    """The card only the person who typed the word sees: the game's size, the board's style and the tickets' layout on
+    dropdowns, then how people join."""
+    blocks = [_section(SETUP_TEXT.format(word=g["word"]))]
+    blocks += [dict(_section(SETUP_MENU[kind]), accessory=setting_menu(g, kind)) for kind in MENUS]
+    blocks += [
         _actions([_button(MODE_BUTTONS[m], ACTION_PREFIX + "set_" + m, set_value(g, m),
                           "primary" if m == "all" else None) for m in MODES]),
         _context(SETUP_NOTE),
-        _context(SETUP_SIZE.format(label=size_of(g)["label"], numbers=numbers_of(g), ticket=ticket_size_of(g),
-                                   others=other_sizes(g))),
     ]
     if g["test"]:
         blocks.append(_context(TEST_NOTE))
@@ -1061,7 +1277,7 @@ def lobby_blocks(g):
         count = " (about {} people)".format(g["total"]) if g["total"] > 1 else " (just {})".format(host)
     blocks = [
         _header(":tickets: " + g["word"]),
-        _section(LOBBY_HOST.format(host=host, word=g["word"], size=size_note(g)) + "\n"
+        _section(LOBBY_HOST.format(host=host, size=size_note(g)) + "\n"
                  + LOBBY_MODE_LINE[g["mode"]].format(host=host, count=count)),
         _section(rules_text(g)),
         _context(prizes_line(g)),
@@ -1075,12 +1291,13 @@ def lobby_blocks(g):
     return carry(blocks, g)
 
 
-def lobby_closed_blocks(g, text):
-    """The lobby once the game has started or been cancelled: the same card, no button."""
-    blocks = [_header(":tickets: " + g["word"]), _section(text)]
+def lobby_closed_blocks(g, text, title=True):
+    """The lobby once the game has started or been cancelled: no button, and nothing the board says again (the board
+    below has the title and the prizes). A started game's lobby is just a line and who is in: the title, :tickets:
+    and the word, belong to the board that follows it; a cancelled game has no board, so it keeps its own."""
+    blocks = ([_header(":tickets: " + g["word"])] if title else []) + [_section(text)]
     if g["roster"]:
         blocks.append(_context(players_line(g)))
-    blocks.append(_context(prizes_line(g)))
     if g["test"]:
         blocks.append(_context(TEST_NOTE))
     return carry(blocks, g)
@@ -1130,14 +1347,9 @@ def card_blocks(g, ticket, marks):
     marks = set(marks)
     mask = mask_of(ticket, marks)
     blocks = [_context(CARD_HEAD)]
-    for row in ticket:
-        buttons = []
-        for number in row:
-            marked = number in marks
-            buttons.append(_button((":white_check_mark: " if marked else "") + str(number),
-                                   ACTION_PREFIX + "hmark_{}".format(number), value_for("hmark", g, number, mask),
-                                   "primary" if marked else None))
-        blocks.append(_actions(buttons))
+    blocks += ticket_rows(g, ticket, marks, lambda number, marked: _button(
+        (":white_check_mark: " if marked else "") + str(number), ACTION_PREFIX + "hmark_{}".format(number),
+        value_for("hmark", g, number, mask), "primary" if marked else None))
     blocks.append(_context(progress_line(ticket, marks)))
     return blocks
 
@@ -1231,20 +1443,26 @@ def prize_fields(g, closest=None):
     return fields
 
 
-def board_foot(g):
-    return BOARD_FOOT.format(host=host_name_of(g), count=len(g["roster"]), players=plural(len(g["roster"]), "player"),
-                             word=typed_word(g))
+def board_foot(g, over=False):
+    """The board's last line. While the game is on it says how a player gets a lost ticket back (typing the word
+    sends it again to someone who is playing; to anyone else it opens a new game, which is why a game that is over
+    does not say it)."""
+    line = BOARD_FOOT.format(host=host_name_of(g), count=len(g["roster"]), players=plural(len(g["roster"]), "player"))
+    if not over and g["status"] in LIVE:
+        line += BOARD_FOOT_LOST.format(word=typed_word(g))
+    return line
 
 
 def board_blocks(g, over=""):
     """The board everyone sees: the number just called, the grid, the prizes. No button on it. `over` is the
     closing line of a game that has ended."""
     called = called_list(g)
+    style = parse_board_style(g["cfg"].get("board"))
     blocks = [_header(":tickets: " + g["word"])]
     if over:
         blocks.append(_section(over))
     elif called:
-        blocks.append(_section(call_lines(called[-1])))
+        blocks.append(_section(call_lines(called[-1], style)))
     else:
         blocks.append(_section(BOARD_READY))
     earlier = (called if over else called[:-1])[-RECENT_CALLS:][::-1]
@@ -1252,11 +1470,17 @@ def board_blocks(g, over=""):
     if earlier:
         bits.append("Earlier: " + "  ·  ".join(str(n) for n in earlier))
     blocks.append(_context("  ·  ".join(bits)))
-    blocks += [_section(row) for row in board_rows(called, g["cfg"]["cols"], numbers_of(g))]
+    if style == "numbers":
+        blocks.append(_section(number_grid(called, g["cfg"]["cols"], numbers_of(g))))
+    elif style == "list":
+        if called:
+            blocks.append(_section(BOARD_CALLED + called_lines(called)))
+    else:
+        blocks += [_section(row) for row in board_rows(called, g["cfg"]["cols"], numbers_of(g))]
     fields = prize_fields(g)
     if fields:
         blocks.append(_section(fields=fields))
-    blocks.append(_context(board_foot(g) + ("  ·  " + TEST_NOTE if g["test"] else "")))
+    blocks.append(_context(board_foot(g, bool(over)) + ("  ·  " + TEST_NOTE if g["test"] else "")))
     return carry(blocks, g)
 
 
@@ -1373,18 +1597,16 @@ def review_blocks(g, stats):
 
 
 def ticket_blocks(g, ticket, marks, note="", over=False):
-    """A player's ticket: three rows of five numbers, each a button; a marked one is green with a tick."""
+    """A player's ticket: three rows, each number a button, laid out as the game's ticket layout says; a marked one is
+    green with a tick."""
     marks = set(marks)
-    blocks = [_section(TICKET_HEAD.format(word=g["word"])),
-              _context(TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g)))]
-    for row in ticket:
-        buttons = []
-        for number in row:
-            marked = number in marks
-            buttons.append(_button((":white_check_mark: " if marked else "") + str(number),
-                                   ACTION_PREFIX + "mark_{}".format(number),
-                                   mark_value(g, ticket, marks, number), "primary" if marked else None))
-        blocks.append(_actions(buttons))
+    where = TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g))
+    if parse_layout(g["cfg"].get("layout")) == "printed" and layout_columns(numbers_of(g)) > row_size_of(g):
+        where += "\n" + TICKET_COLUMNS.format(columns=column_names(numbers_of(g)))
+    blocks = [_section(TICKET_HEAD.format(word=g["word"])), _context(where)]
+    blocks += ticket_rows(g, ticket, marks, lambda number, marked: _button(
+        (":white_check_mark: " if marked else "") + str(number), ACTION_PREFIX + "mark_{}".format(number),
+        mark_value(g, ticket, marks, number), "primary" if marked else None))
     lines = [note] if note else []
     lines.append(TICKET_OVER if over else progress_line(ticket, marks))
     blocks.append(_context("\n".join(lines)))
@@ -1768,9 +1990,10 @@ def wins_from_rows(rows):
         if key not in PRIZE_KEYS or not row.get("group_id"):
             continue
         entry = {"uid": row["group_id"], "name": row.get("member_name") or "",
-                 "ts": row.get("last_processed_ts") or ""}
+                 "ts": row.get("last_processed_ts") or "", "ref": str(row.get("source_ref") or "")}
         held = best.get(key)
-        if held is None or (as_ts(entry["ts"]), entry["uid"]) < (as_ts(held["ts"]), held["uid"]):
+        if held is None or (as_ts(entry["ts"]), entry["uid"], entry["ref"]) < \
+                (as_ts(held["ts"]), held["uid"], held["ref"]):
             best[key] = entry
     return best
 
@@ -1849,20 +2072,29 @@ def lobby_people(table, g):
 
 def claim_prizes(table, g, keys, user_id, name, stamp, result):
     """(won, lost): the prizes in `keys` that this press holds, and those another click had first as
-    [(prize, their name)]. A prize is a row; the earliest click time holds it, whoever reads."""
+    [(prize, their name)]. A prize is a row; the earliest click time holds it, whoever reads.
+
+    Every attempt writes a token of its own in its row, and wins only if its own row is the earliest. Who holds a
+    prize is not enough to say: when one player's click is handled twice (a double tap, a number tapped again, the
+    interaction delivered twice) both attempts would find that player holding it and both announce it. Now only the
+    attempt that holds it announces; the other is neither a winner nor a loser, for the player has it already."""
     if g["test"]:
         won = []
         for key in keys:
             if key not in g["wins"]:
-                g["wins"][key] = {"uid": user_id, "name": name, "ts": stamp}
+                g["wins"][key] = {"uid": user_id, "name": name, "ts": stamp, "ref": ""}
                 won.append(key)
         return won, []
+    # time first, so of two attempts at the same click the one made earlier is the earlier row (the later one cannot
+    # win a tie against a prize already announced); a few random characters after it tell apart two in the same tick
+    token = "{:019d}{}".format(time.time_ns(), uuid.uuid4().hex[:6])
     created = []
     for key in keys:
         ok, _record_id = table.create({
             "record_key": "tambola_win_{}_{}_{}".format(g["id"], key, user_id), "row_type": WIN_ROW,
             "id": g["id"], "slack_channel_id": g["channel"], "group_id": user_id, "grant_type": key,
-            "member_name": name, "status": "won", "day": today_text(), "last_processed_ts": stamp})
+            "member_name": name, "status": "won", "day": today_text(), "last_processed_ts": stamp,
+            "source_ref": token})
         if ok:
             created.append(key)
         else:
@@ -1873,9 +2105,17 @@ def claim_prizes(table, g, keys, user_id, name, stamp, result):
     rows = table.wins(g["id"], g["channel"])
     if rows is LOOKUP_FAILED:
         return created, []                                         # cannot compare: as far as is known, first
+    kept = any(str(r.get("source_ref") or "") == token for r in rows)    # the table gave the token back
     g["wins"] = wins_from_rows(rows)
-    won = [k for k in created if g["wins"].get(k, {}).get("uid") == user_id]
-    lost = [(k, g["wins"][k]["name"]) for k in created if k in g["wins"] and g["wins"][k]["uid"] != user_id]
+    won, lost = [], []
+    for key in created:
+        held = g["wins"].get(key)
+        if held is None:
+            continue
+        if held["uid"] != user_id:
+            lost.append((key, held["name"]))
+        elif held["ref"] == token or not kept:
+            won.append(key)
     return won, lost
 
 
@@ -2256,6 +2496,10 @@ def click_set(input, result, token, table, parsed):
     if mode not in MODES or not g["id"]:
         result["error"] = "that is not one of the choices on the setup card"
         return
+    for kind in MENUS:                 # what each dropdown shows now, which the button may not have been drawn with
+        shown = dropdown_choice(input.get("state"), kind)
+        if shown:
+            g["cfg"][kind] = shown
     if not host_only(result, token, g, clicker):
         return
     g["host_name"] = name_of(slack_user_info(token, g["host"]))
@@ -2308,6 +2552,140 @@ def click_set(input, result, token, table, parsed):
             result["warnings"].append("the player menu searches everyone in Slack, not the channel's list: " + why)
     show_controls(result, token, input, g, clicker, menu=menu)     # the setup card turns into the lobby's controls
     result["ok"] = True
+
+
+def option_choice(value):
+    """The choice a size option carried (size_choice_value), from what the step was given as selected_option: the option
+    as Slack sends it, {"text": ..., "value": ...}, as JSON text, or just its value; a list of them (the picks of a
+    menu that allows several) is read at its first. {} when it is none of these."""
+    for _round in range(6):                                        # each pass peels one layer: text, list, option
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else ""
+        elif isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except ValueError:
+                return {}
+        elif isinstance(value, dict) and "value" in value and "s" not in value:
+            value = value["value"]
+        else:
+            break
+    return value if isinstance(value, dict) else {}
+
+
+def dropdown_choice(state, kind):
+    """What the setup card's dropdown `kind` ("size", "board") shows at the moment a way of joining was pressed. Slack
+    reports every dropdown's current choice with each press, in the interaction's `state`, under a block id it makes up
+    (so it is found by the dropdown's action id): this is what the organizer sees chosen, whether or not the card was
+    drawn again for it. `state` is the object or its JSON. None when there is none, or it is not one of the choices."""
+    if isinstance(state, str):
+        try:
+            state = json.loads(state)
+        except ValueError:
+            return None
+    values = state.get("values") if isinstance(state, dict) else None
+    for block in (values.values() if isinstance(values, dict) else []):
+        element = block.get(MENU_ACTION[kind]) if isinstance(block, dict) else None
+        if isinstance(element, dict):
+            return MENU_PARSE[kind](option_choice(element.get("selected_option")).get("s"), "") or None
+    return None
+
+
+def read_payload(value):
+    """The interaction payload Slack sent, as a dict: JSON text or an object, and possibly inside the trigger's own
+    wrapper, {"block_actions:button": {...}}. {} when there is none, None when there is one that cannot be read."""
+    if isinstance(value, str):
+        if not value.strip():
+            return {}
+        try:
+            value = json.loads(value)
+        except ValueError:
+            return None
+    if value is None or value == {}:
+        return {}
+    if not isinstance(value, dict):
+        return None
+    while len(value) == 1 and str(next(iter(value))).startswith("block_actions") and \
+            isinstance(next(iter(value.values())), dict):
+        value = next(iter(value.values()))
+    return value
+
+
+def with_payload(input):
+    """(inputs, problem): the click recipe's inputs filled in from `payload`, the whole interaction, so that is the only
+    thing it needs to map besides the tokens. What was mapped by hand is kept: the payload only fills what is blank.
+    `problem` says so when a payload was given and cannot be read."""
+    payload = read_payload(input.get("payload"))
+    if not payload:
+        return input, ("" if payload == {} else "payload could not be read: map the whole interaction payload as JSON "
+                                                "(or leave it empty and map the fields one by one)")
+    action = payload.get("actions")
+    action = action[0] if isinstance(action, list) and action and isinstance(action[0], dict) else {}
+    container = payload.get("container") if isinstance(payload.get("container"), dict) else {}
+    found = {
+        "user_id": (payload.get("user") or {}).get("id") if isinstance(payload.get("user"), dict) else None,
+        "channel": container.get("channel_id") or (payload.get("channel") or {}).get("id")
+        if isinstance(payload.get("channel") or {}, dict) else container.get("channel_id"),
+        "source_ts": container.get("message_ts"),
+        "response_url": payload.get("response_url"),
+        "action_value": action.get("value"),
+        "action_id": action.get("action_id"),
+        "action_ts": action.get("action_ts"),
+        "selected_users": action.get("selected_users"),
+        "selected_options": action.get("selected_options"),
+        "selected_option": action.get("selected_option"),
+        "state": payload.get("state"),
+    }
+    merged = dict(input)
+    for name, value in found.items():
+        if value not in (None, "", [], {}) and not str(merged.get(name) or "").strip():
+            merged[name] = value
+    return merged, ""
+
+
+def click_menu(input, result, token, table, parsed):
+    """A choice was made on one of the setup card's dropdowns (size, board style, ticket layout): the card is drawn
+    again, in place, standing on it and on whatever the others show. Nothing is saved: the game is only made when the
+    organizer chooses how people join, and those buttons now carry them all."""
+    clicker, channel = result["user_id"], result["channel"]
+    kind = MENU_OF_ACTION.get(parsed["arg"], "size")
+    result["mode"] = kind
+    given = input.get("selected_option") or input.get("selected_options")
+    choice = option_choice(given)
+    picked = MENU_PARSE[kind](choice.get("s"), "")
+    if not picked or not str(choice.get("m") or "").strip():
+        result["error"] = ("that is not one of the choices on the setup card's {} dropdown".format(kind) if given else
+                           "the {} dropdown's choice did not arrive: map payload (the whole interaction), or "
+                           "selected_option (actions[0].selected_option)".format(kind))
+        return
+    cfg = cfg_from(choice.get("f"))
+    for other in MENUS:                       # another dropdown may have been used since the card was drawn
+        shown = dropdown_choice(input.get("state"), other)
+        if shown:
+            cfg[other] = shown
+    cfg[kind] = picked
+    test = bool(choice.get("t"))
+    g = new_game("tb_{}_{}".format(channel, str(choice["m"]).strip()), channel, clicker,
+                 str(choice.get("w") or "Tambola"), cfg, test)
+    result["game_id"], result["testing"] = g["id"], test
+    text, blocks = fallback_text(g, "how should people join?"), setup_blocks(g)
+    url = usable_response_url(input)
+    if url and put_in_place(result, url, text, [blocks]):
+        result["ok"] = True
+        return
+    if not url:
+        result["warnings"].append("response_url is not mapped, so the setup card could not be redrawn in place: a new "
+                                  "one was sent")
+    error = slack_ephemeral(token, channel, clicker, text, None, blocks)
+    if error:
+        result["error"] = "could not show the setup card again: " + error
+        return
+    result["controls"], result["ok"] = CONTROLS_AS["sent"], True
+
+
+def click_blank(input, result, token, table, parsed):
+    """A blank square of a printed ticket was pressed. There is nothing on it: nothing changes, and nobody is told."""
+    result["mode"], result["ok"], result["skipped"] = "blank", True, "a blank square"
 
 
 def click_pick(input, result, token, table, parsed):
@@ -2542,8 +2920,8 @@ def click_start(input, result, token, table, parsed):
         existing = {} if rows is LOOKUP_FAILED else {r.get("group_id"): r for r in rows}
     seated, no_ticket, waiting = deal_tickets(token, table, g, ids, existing, stamp, deadline, result)
     error = slack_update(token, g["channel"], g["lobby_ts"], fallback_text(g, "the game has started"),
-                         lobby_closed_blocks(g, LOBBY_STARTED.format(word=g["word"], count=len(ids),
-                                                                     players=plural(len(ids), "player"))))
+                         lobby_closed_blocks(g, LOBBY_STARTED.format(count=len(ids),
+                                                                     players=plural(len(ids), "player")), title=False))
     if error:
         result["warnings"].append("lobby: " + error)
     missing = no_ticket + waiting
@@ -2976,11 +3354,11 @@ def click_ticket(input, result, token, table, parsed):
 # Entry point
 # --------------------------------------------------------------------------
 
-CLICKS = {"set": click_set, "pick": click_pick, "join": click_join, "start": click_start,
-          "cancel": click_cancel, "next": click_next, "review": click_review, "resume": click_resume,
-          "end": click_end, "mark": click_mark, "hmark": click_hmark, "ticket": click_ticket}
-CLICK_INPUTS = ("action_value", "action_id", "selected_users", "selected_options", "source_ts", "action_ts",
-                "response_url")
+CLICKS = {"set": click_set, "menu": click_menu, "blank": click_blank, "pick": click_pick, "join": click_join,
+          "start": click_start, "cancel": click_cancel, "next": click_next, "review": click_review,
+          "resume": click_resume, "end": click_end, "mark": click_mark, "hmark": click_hmark, "ticket": click_ticket}
+CLICK_INPUTS = ("payload", "action_value", "action_id", "selected_users", "selected_options", "selected_option",
+                "source_ts", "action_ts", "response_url", "state")
 
 
 def main(input):
@@ -2989,11 +3367,12 @@ def main(input):
     Returns:
         dict: dictionary with keys matching the output schema
     """
+    input, payload_problem = with_payload(input)
     value = str(input.get("action_value") or "").strip()
     action_id = str(input.get("action_id") or "").strip()
     # anything only a press carries makes this a press, so a click recipe that is missing a mapping reports
     # that instead of opening a new setup card for every press
-    is_click = any(str(input.get(name) or "").strip() for name in CLICK_INPUTS)
+    is_click = bool(payload_problem) or any(str(input.get(name) or "").strip() for name in CLICK_INPUTS)
     result = {
         "ok": False, "error": "", "warnings": [], "skipped": "",
         "mode": "click" if is_click else "setup", "testing": False, "preview": False,
@@ -3004,7 +3383,10 @@ def main(input):
     }
     table = Table(input.get("workato_api_token") or "")
     try:
-        _run(input, result, table, value, action_id, is_click)
+        if payload_problem:
+            result["error"] = payload_problem
+        else:
+            _run(input, result, table, value, action_id, is_click)
     except Exception as error:                                     # noqa: BLE001
         result["ok"] = False
         result["error"] = "unexpected {}: {}".format(type(error).__name__, str(error)[:300])

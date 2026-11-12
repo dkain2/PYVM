@@ -11,14 +11,19 @@ Nothing here touches the network, Slack or Workato, and it needs nothing beyond 
 THE GROUPS
     TestLargeGameUnchanged   the numbers and tickets of a large game are pinned to what the step dealt before game
                              sizes existed (a game in progress is re-dealt from its seed, so these must never move)
-    TestSizes                small / medium / large: names, aliases, the typed word, the settings a game keeps
+    TestSizes                small / medium / large: names, aliases, the dropdown's options, the settings a game keeps
     TestDealing              the order the numbers come out in and the tickets, for every size
     TestPrizes               prizes, progress and the review's steps at every ticket size
+    TestBoardStyles          the three board styles: emoji, plain number grid, called list
+    TestTicketLayout         printed (a number in its column, blanks between) and compact tickets
+    TestClaims               a prize is won, and announced, once: even if one player's click is handled twice
     TestCards                every card of every size, checked against Slack's Block Kit limits
     TestReview               the ranked table of the review: a hundred players, ties, top_n, odd names
     TestButtons              what a button carries and how it is read back, test games included
+    TestPayload              the click recipe's whole-payload input, and the dropdown's live choice read from `state`
     TestGames                whole games played through main(), the way the two recipes call it, against a stand-in
                              for Slack and for the data table (see World)
+    TestGamesByPayload       the same games again, every press sent as the one `payload` input instead of mapped fields
 
 THE WORLD
     World replaces the network (tambola._send_json), the waiting (_sleep) and the clock (_now). It answers the Slack
@@ -32,6 +37,7 @@ import hashlib
 import html
 import json
 import os
+import random
 import re
 import sys
 import threading
@@ -86,7 +92,14 @@ def check_element(element):
         assert len(element.get("value", "")) <= 2000, "button value of {} characters".format(len(element["value"]))
     else:
         assert len(element["action_id"]) <= 255, "action_id over 255 characters"
-        assert len(element.get("options") or []) <= 100, "menu with more than 100 options"
+        options = element.get("options") or []
+        assert len(options) <= 100, "menu with more than 100 options"
+        for option in options:
+            assert len(option["text"]["text"]) <= 75, "option text over 75 characters"
+            assert len(option["value"]) <= t.OPTION_VALUE_MAX, "option value of {} characters, Slack takes {}".format(
+                len(option["value"]), t.OPTION_VALUE_MAX)
+        if element.get("initial_option"):
+            assert element["initial_option"] in options, "initial_option is not one of the options"
 
 
 def buttons_of(blocks):
@@ -109,6 +122,60 @@ def all_text(blocks):
         parts += [e.get("text") if isinstance(e.get("text"), str) else (e.get("text") or {}).get("text", "")
                   for e in block.get("elements") or []]
     return "\n".join(parts)
+
+
+def menu_of(blocks, action):
+    """A dropdown on a setup card (each sits beside a line of text, as a section's accessory)."""
+    found = [b["accessory"] for b in blocks if b.get("accessory", {}).get("action_id") == action]
+    assert len(found) == 1, "{} dropdowns {} on the card".format(len(found), action)
+    return found[0]
+
+
+def size_menu_of(blocks):
+    return menu_of(blocks, t.SIZE_ACTION)
+
+
+def board_menu_of(blocks):
+    return menu_of(blocks, t.BOARD_ACTION)
+
+
+def layout_menu_of(blocks):
+    return menu_of(blocks, t.LAYOUT_ACTION)
+
+
+def chosen_size(blocks):
+    """The size a setup card's dropdown stands on."""
+    return json.loads(size_menu_of(blocks)["initial_option"]["value"])["s"]
+
+
+def chosen_board(blocks):
+    """The board style a setup card's dropdown stands on."""
+    return json.loads(board_menu_of(blocks)["initial_option"]["value"])["s"]
+
+
+def chosen_layout(blocks):
+    """The ticket layout a setup card's dropdown stands on."""
+    return json.loads(layout_menu_of(blocks)["initial_option"]["value"])["s"]
+
+
+def columns_of(size):
+    """Cells in a row of a printed ticket of this size: one for each column."""
+    return t.layout_columns(t.SIZES[size]["numbers"])
+
+
+def row_widths(blocks):
+    """The buttons in each row of a ticket, or of the organizer's card."""
+    return [len(b["elements"]) for b in blocks if b["type"] == "actions" and any(
+        e["action_id"].startswith((t.ACTION_PREFIX + "mark_", t.ACTION_PREFIX + "hmark_", t.BLANK_ACTION))
+        for e in b["elements"])]
+
+
+def dropdown_state(menu, key, block="SL9MT"):
+    """What Slack reports for a dropdown when `key` is showing in it: under a block id of its own making. Two
+    dropdowns' states are merged with dict.update, each under a block of its own."""
+    option = [o for o in menu["options"] if json.loads(o["value"])["s"] == key][0]
+    return {block: {menu["action_id"]: {"type": "static_select",
+                                        "selected_option": {"text": option["text"], "value": option["value"]}}}}
 
 
 def grid_sections(blocks):
@@ -221,20 +288,12 @@ class TestSizes(unittest.TestCase):
             self.assertEqual(t.parse_size(word), want, repr(word))
         self.assertEqual(t.parse_size("nonsense", "small"), "small")
 
-    def test_the_word_that_is_typed(self):
-        for text, want in (("itambola small", "small"), ("ihousie quick", "small"), ("itambola", None),
-                           ("itambola please", None), ("Hey all, itambola medium?", "medium"),
-                           ("ITAMBOLA Large", "large"), ("itambola, small", "small"), ("small game anyone", None),
-                           ("itambola s", "small"), ("", None), (None, None), ("itambolas small", None)):
-            self.assertEqual(t.typed_size(text), want, repr(text))
-
     def test_settings_a_game_keeps(self):
         self.assertEqual(t.game_config({})["size"], "large")
         self.assertEqual(t.game_config({"size": "small"})["size"], "small")
         self.assertEqual(t.game_config({"size": "gibberish"})["size"], "large")
-        # what is typed wins over the recipe's default, and a word that is not a size changes nothing
-        self.assertEqual(t.game_config({"size": "large", "text": "itambola small"})["size"], "small")
-        self.assertEqual(t.game_config({"size": "medium", "text": "itambola please"})["size"], "medium")
+        self.assertEqual(t.game_config({"size": "small", "text": "itambola large"})["size"], "small",
+                         "the size is not read from what is typed any more: the dropdown chooses it")
         self.assertEqual(t.game_config({})["top"], 10)
         for given, want in ((5, 5), ("7", 7), (0, 1), (-3, 1), (500, 50), ("abc", 10), (None, 10)):
             self.assertEqual(t.game_config({"top_n": given})["top"], want, repr(given))
@@ -242,11 +301,14 @@ class TestSizes(unittest.TestCase):
     def test_settings_survive_being_saved_and_read_back(self):
         for size in t.SIZES:
             cfg = t.game_config({"size": size, "top_n": 7, "prizes": "top,full", "announce": "thread",
-                                 "board_columns": 6, "max_players": 40})
+                                 "board_columns": 6, "max_players": 40, "board_style": "list"})
             self.assertEqual(t.cfg_from(json.loads(json.dumps(t.cfg_list(cfg)))), cfg)
-        for junk in (None, "x", 5, [], {}, [1], ["", "", "", "", "?", "?"]):
+        for junk in (None, "x", 5, [], {}, [1], ["", "", "", "", "?", "?", "?"]):
             cfg = t.cfg_from(junk)
-            self.assertEqual((cfg["size"], cfg["top"]), ("large", 10), repr(junk))
+            self.assertEqual((cfg["size"], cfg["top"], cfg["board"]), ("large", 10, "emoji"), repr(junk))
+        # a game saved before board styles has six settings: it keeps its size and has the emoji board
+        self.assertEqual(t.cfg_from(["full", "off", 10, 60, "small", 7]),
+                         dict(t.cfg_from(["full", "off", 10, 60, "small", 7, "emoji"]), size="small", top=7))
 
     def test_a_game_keeps_its_size_in_its_state(self):
         for size, spec in t.SIZES.items():
@@ -257,17 +319,65 @@ class TestSizes(unittest.TestCase):
         small = t.game_from_state({"f": t.cfg_list(t.game_config({"size": "small"})), "n": 70}, False)
         self.assertEqual(small["n"], 30, "numbers called cannot pass the size's numbers")
 
-    def test_the_setup_card_and_the_lobby_say_what_the_size_is(self):
+    def test_the_setup_card_has_a_dropdown_standing_on_the_games_size(self):
         for size in t.SIZES:
             g = make_game(size)
-            setup = all_text(t.setup_blocks(g))
-            self.assertIn("Game size: *{}*".format(t.SIZES[size]["label"]), setup)
-            self.assertIn("1 to {}".format(t.numbers_of(g)), setup)
-            for other in t.SIZES:
-                if other != size:
-                    self.assertIn("`itambola {}`".format(other), setup)
-                else:
-                    self.assertNotIn("`itambola {}`".format(other), setup)
+            blocks = t.setup_blocks(g)
+            check_blocks(blocks)
+            menu = size_menu_of(blocks)
+            self.assertEqual(menu["type"], "static_select")
+            self.assertEqual(chosen_size(blocks), size)
+            self.assertEqual([json.loads(o["value"])["s"] for o in menu["options"]], ["small", "medium", "large"])
+            for option in menu["options"]:
+                spec = t.SIZES[json.loads(option["value"])["s"]]
+                text = option["text"]["text"]
+                self.assertIn(spec["label"], text)
+                self.assertIn("1 to {}".format(spec["numbers"]), text)
+                self.assertIn("{} on a ticket".format(3 * spec["row"]), text)
+            # the dropdown comes before the ways of joining, which are still the three they were
+            kinds = [b["type"] for b in blocks]
+            self.assertLess(blocks.index([b for b in blocks if b.get("accessory")][0]),
+                            kinds.index("actions"))
+            self.assertEqual([b["action_id"] for b in buttons_of(blocks)],
+                             [t.ACTION_PREFIX + "set_" + m for m in t.MODES])
+
+    def test_every_way_of_joining_carries_the_size_on_the_card(self):
+        for size in t.SIZES:
+            for test in (False, True):
+                g = make_game(size, test=test)
+                for button in buttons_of(t.setup_blocks(g)):
+                    parsed = t.parse_value(button["value"])
+                    if test:
+                        self.assertEqual(t.game_from_state(parsed["state"], True)["cfg"]["size"], size)
+                    else:
+                        self.assertEqual(t.cfg_from(json.loads(parsed["arg"])["f"])["size"], size)
+
+    def test_what_an_option_carries_fits_what_slack_allows(self):
+        """The worst case: the longest channel id, every setting at its longest, a test game."""
+        g = make_game("medium", test=True, prizes="early5,top,middle,bottom", announce="thread",
+                      board_columns=10, max_players=100, top_n=50, board_style="numbers", ticket_layout="compact")
+        g["id"] = "tb_C0123456789_1700000000000100"
+        g["channel"], g["word"] = "C0123456789", "Tambola"
+        for key in list(t.SIZES) + list(t.BOARD_STYLES):
+            value = t.choice_value(g, key)
+            self.assertLessEqual(len(value), t.OPTION_VALUE_MAX, "{}: {}".format(len(value), value))
+        for key in t.LAYOUTS:
+            self.assertLessEqual(len(t.choice_value(g, key)), t.OPTION_VALUE_MAX)
+        check_blocks(t.setup_blocks(g))
+
+    def test_an_option_comes_back_however_the_recipe_hands_it_over(self):
+        g = make_game("small")
+        value = t.choice_value(g, "medium")
+        want = {"s": "medium", "m": "1700000000000100", "w": "Tambola", "f": t.cfg_list(g["cfg"])}
+        slack_shape = {"text": {"type": "plain_text", "text": "Medium"}, "value": value}
+        for given in (value, slack_shape, json.dumps(slack_shape), [slack_shape], json.dumps([slack_shape])):
+            self.assertEqual(t.option_choice(given), want, repr(given)[:60])
+        for nothing in (None, "", "x", "[]", [], {}, 5, "{\"value\": \"not json\"}"):
+            self.assertEqual(t.option_choice(nothing), {}, repr(nothing))
+
+    def test_the_lobby_says_what_the_size_is(self):
+        for size in t.SIZES:
+            g = make_game(size)
             lobby = all_text(t.lobby_blocks(g))
             self.assertIn("{} numbers in 3 rows".format(t.ticket_size_of(g)), lobby)
             self.assertIn("from 1 to {}".format(t.numbers_of(g)), lobby)
@@ -395,12 +505,286 @@ class TestPrizes(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# Board styles
+# --------------------------------------------------------------------------
+
+class TestBoardStyles(unittest.TestCase):
+    def test_names_and_aliases(self):
+        for word, want in (("emoji", "emoji"), ("Emojis", "emoji"), ("numbers", "numbers"), ("plain", "numbers"),
+                           ("Normal", "numbers"), ("list", "list"), ("called", "list"), ("", "emoji"), (None, "emoji"),
+                           ("grid", "emoji"), (7, "emoji")):
+            self.assertEqual(t.parse_board_style(word), want, repr(word))
+        self.assertEqual(t.parse_board_style("nonsense", "list"), "list")
+        self.assertEqual(t.DEFAULT_BOARD_STYLE, "emoji")
+
+    def test_the_recipe_sets_where_the_dropdown_starts(self):
+        self.assertEqual(t.game_config({})["board"], "emoji")
+        self.assertEqual(t.game_config({"board_style": "plain"})["board"], "numbers")
+        self.assertEqual(t.game_config({"board_style": "huh"})["board"], "emoji")
+
+    def test_the_plain_grid(self):
+        for size, spec in t.SIZES.items():
+            for columns in (10, 7, 5):
+                grid = t.number_grid([], columns, spec["numbers"])
+                lines = grid.strip("`\n").split("\n")
+                self.assertEqual(len(lines), -(-spec["numbers"] // columns), (size, columns))
+                self.assertEqual(sorted(int(n) for n in re.findall(r"\d+", grid)), list(range(1, spec["numbers"] + 1)))
+                self.assertNotIn("[", grid)
+                self.assertLessEqual(max(len(line) for line in lines), 4 * columns)
+        called = [4, 17, 90, 1]
+        grid = t.number_grid(called, 10, 90)
+        self.assertEqual(sorted(int(n) for n in re.findall(r"\[(\d+)\]", grid)), [1, 4, 17, 90])
+        self.assertEqual(len(re.findall(r"\[", grid)), 4)
+        self.assertTrue(grid.startswith("```\n") and grid.endswith("\n```"))
+        # a number is two digits, so the columns line up
+        self.assertIn("[04]", grid)
+        self.assertIn(" 05 ", grid)
+        for line in grid.strip("`\n").split("\n"):
+            columns = {m.start() % 4 for m in re.finditer(r"\d\d", line)}
+            self.assertEqual(columns, {1}, line)                       # every digit pair sits in its own column
+            self.assertLessEqual(len(line), 40)
+
+    def test_the_called_list_is_smallest_first(self):
+        self.assertEqual(t.called_lines([30, 4, 17, 1]), "1  \u00b7  4  \u00b7  17  \u00b7  30")
+        lines = t.called_lines(list(range(90, 0, -1))).split("\n")
+        self.assertEqual([len(line.split("\u00b7")) for line in lines], [15] * 6)
+        self.assertEqual(t.called_lines([]), "")
+
+    def test_the_number_just_called_is_said_in_the_style(self):
+        self.assertIn(t.tiles(4), t.call_lines(4, "emoji"))
+        for style in ("numbers", "list"):
+            line = t.call_lines(4, style)
+            self.assertNotIn(":four:", line)
+            self.assertNotIn(":zero:", line)
+            self.assertIn("*4*", line)
+            self.assertIn("Four", line)
+            self.assertIn("Knock at the door", line)
+        self.assertEqual(t.call_lines(4), t.call_lines(4, "emoji"), "the emoji board is what it always was")
+
+    def test_every_board_of_every_size_and_style_is_one_slack_takes(self):
+        for size, spec in t.SIZES.items():
+            for style in t.BOARD_STYLES:
+                for n in (0, 1, 7, spec["numbers"] - 1, spec["numbers"]):
+                    for over in ("", "game over"):
+                        g = make_game(size, n=n, board_style=style, board_columns=7 if n == 7 else 10)
+                        blocks = t.board_blocks(g, over)
+                        try:
+                            check_blocks(blocks)
+                        except AssertionError as error:
+                            self.fail("{} {} n={}: {}".format(size, style, n, error))
+
+    def test_what_each_style_shows(self):
+        size = "small"
+        for style in t.BOARD_STYLES:
+            g = make_game(size, n=9, board_style=style, seed=77)
+            called = t.called_list(g)
+            blocks = t.board_blocks(g)
+            text = all_text(blocks)
+            if style == "emoji":
+                self.assertEqual(len(grid_sections(blocks)), 3)
+                self.assertNotIn("[", text)
+            elif style == "numbers":
+                table = code_table(blocks)
+                self.assertEqual(len(table), 3)
+                self.assertEqual(sorted(int(n) for n in re.findall(r"\[(\d+)\]", "\n".join(table))), sorted(called))
+                self.assertEqual(grid_sections(blocks), [])
+            else:
+                self.assertEqual(grid_sections(blocks), [])
+                self.assertEqual(code_table(blocks), [])
+                self.assertIn("Called so far", text)
+                self.assertIn(t.called_lines(called), text)
+            self.assertEqual(text.count(":tickets:"), 1, style)           # the one title
+            self.assertIn("9 of 30 called", text.replace("*", ""))
+
+    def test_a_board_with_nothing_called_has_no_empty_list(self):
+        blocks = t.board_blocks(make_game("small", n=0, board_style="list"))
+        self.assertNotIn("Called so far", all_text(blocks))
+        check_blocks(blocks)
+
+    def test_the_review_does_not_depend_on_the_style(self):
+        reviews = []
+        for style in t.BOARD_STYLES:
+            g = make_game("small", status=t.PAUSED, n=12, board_style=style, seed=3)
+            reviews.append(all_text(t.review_blocks(g, t.review_stats(g, make_players(g, 8)))))
+        self.assertEqual(len(set(reviews)), 1)
+
+    def test_the_setup_card_has_all_three_dropdowns(self):
+        for style in t.BOARD_STYLES:
+            for size in t.SIZES:
+                g = make_game(size, board_style=style)
+                blocks = t.setup_blocks(g)
+                check_blocks(blocks)
+                self.assertEqual((chosen_size(blocks), chosen_board(blocks)), (size, style))
+                menu = board_menu_of(blocks)
+                self.assertEqual([json.loads(o["value"])["s"] for o in menu["options"]], list(t.BOARD_STYLES))
+                for option in menu["options"]:
+                    self.assertIn(t.BOARD_STYLES[json.loads(option["value"])["s"]]["label"], option["text"]["text"])
+                kinds = [b["type"] for b in blocks]
+                self.assertEqual([b["accessory"]["action_id"] for b in blocks if b.get("accessory")],
+                                 [t.SIZE_ACTION, t.BOARD_ACTION, t.LAYOUT_ACTION])
+                self.assertLess(max(i for i, b in enumerate(blocks) if b.get("accessory")), kinds.index("actions"))
+                for button in buttons_of(blocks):                       # every way of joining carries both
+                    parsed = t.parse_value(button["value"])
+                    cfg = (t.game_from_state(parsed["state"], False)["cfg"] if parsed["test"]
+                           else t.cfg_from(json.loads(parsed["arg"])["f"]))
+                    self.assertEqual((cfg["size"], cfg["board"]), (size, style))
+
+    def test_a_test_games_state_fits_in_every_board_of_every_style(self):
+        """The state of a test game is kept in the block ids of its messages, and a board with fewer blocks holds less:
+        the list style with nothing called is the smallest board there is."""
+        for size in t.SIZES:
+            for style in t.BOARD_STYLES:
+                ids = ["U" + "".join(random.Random(i).choice("ABCDEFGHJKLMNPQRSTUVWXYZ0123456789") for _ in range(10))
+                       for i in range(t.TEST_PLAYERS)]
+                g = make_game(size, test=True, n=0, players=2, status=t.RUNNING, board_style=style)
+                g.update(roster=ids, host=ids[0], names={})
+                g["wins"] = {k: {"uid": ids[1], "name": "A Long Name Here", "ts": "1700000100.000100"}
+                             for k in t.PRIZE_KEYS}
+                for blocks in (t.board_blocks(g), t.board_blocks(dict(g, n=9)),
+                               t.lobby_closed_blocks(g, "x", title=False), t.lobby_closed_blocks(g, "x")):
+                    self.assertEqual(t.carried_state({"blocks": blocks})["f"], t.cfg_list(g["cfg"]), (size, style))
+
+
+# --------------------------------------------------------------------------
+# Ticket layouts
+# --------------------------------------------------------------------------
+
+class TestTicketLayout(unittest.TestCase):
+    USERS = ("UAAAAAAA1", "UBBBBBBB2", "UCCCCCCC3", "UDDDDDDD4", "UHOST0001")
+
+    def test_names_and_aliases(self):
+        for word, want in (("printed", "printed"), ("Paper", "printed"), ("physical", "printed"), ("compact", "compact"),
+                           ("rows", "compact"), ("", "printed"), (None, "printed"), ("huh", "printed")):
+            self.assertEqual(t.parse_layout(word), want, repr(word))
+        self.assertEqual(t.parse_layout("huh", "compact"), "compact")
+        self.assertEqual(t.DEFAULT_LAYOUT, "printed")
+
+    def test_settings(self):
+        self.assertEqual(t.game_config({})["layout"], "printed")
+        self.assertEqual(t.game_config({"ticket_layout": "compact"})["layout"], "compact")
+        cfg = t.game_config({"ticket_layout": "compact", "size": "medium", "board_style": "list", "top_n": 4,
+                             "prizes": "top,full"})
+        self.assertEqual(t.cfg_from(json.loads(json.dumps(t.cfg_list(cfg)))), cfg)
+        # a game saved before layouts has seven settings (or fewer): it was dealt compact tickets and keeps them
+        for old in (["", "channel", 10, 60, "large", 10, "emoji"], ["", "channel", 10, 60], []):
+            self.assertEqual(t.cfg_from(old)["layout"], "compact", old)
+        self.assertEqual(t.cfg_from(["", "channel", 10, 60, "large", 10, "emoji", "printed"])["layout"], "printed")
+
+    def test_all_five_prizes_are_left_blank_in_what_a_game_saves(self):
+        every = t.game_config({})
+        self.assertEqual(t.cfg_list(every)[0], "")
+        self.assertEqual(t.cfg_from(t.cfg_list(every))["prizes"], list(t.PRIZE_KEYS))
+        some = t.game_config({"prizes": "top,full"})
+        self.assertEqual(t.cfg_list(some)[0], "top,full")
+        self.assertEqual(t.cfg_from(t.cfg_list(some))["prizes"], ["top", "full"])
+        self.assertEqual(t.cfg_from(["early5,top,middle,bottom,full"])["prizes"], list(t.PRIZE_KEYS),
+                         "a game saved with the five spelled out reads the same")
+
+    def test_printed_cells_put_every_number_in_its_column(self):
+        for size, spec in t.SIZES.items():
+            columns, ranges = columns_of(size), t.column_ranges(spec["numbers"])
+            for seed in range(1, 30):
+                for user in self.USERS:
+                    g = make_game(size, seed=seed)
+                    ticket = t.make_ticket(seed, user, size)
+                    rows = t.ticket_cells(g, ticket)
+                    where = (size, seed, user)
+                    self.assertEqual([len(r) for r in rows], [columns] * 3, where)
+                    self.assertEqual(sorted(n for r in rows for n in r if n), sorted(t.ticket_numbers(ticket)), where)
+                    for cells, row in zip(rows, ticket):
+                        self.assertEqual([n for n in cells if n], row, "a row reads left to right, ascending")
+                        for column, number in enumerate(cells):
+                            if number:
+                                low, high = ranges[column]
+                                self.assertTrue(low <= number <= high, "{} in column {} of {}".format(number, column, where))
+                    for column in range(columns):                                      # and down a column, ascending
+                        down = [r[column] for r in rows if r[column]]
+                        self.assertEqual(down, sorted(down), where)
+                        self.assertTrue(1 <= len(down) <= 3, where)
+
+    def test_compact_cells_are_just_the_numbers(self):
+        for size in t.SIZES:
+            g = make_game(size, ticket_layout="compact")
+            ticket = t.make_ticket(4, "UAAAAAAA1", size)
+            self.assertEqual(t.ticket_cells(g, ticket), ticket)
+            self.assertIsNot(t.ticket_cells(g, ticket)[0], ticket[0], "a copy, never the ticket's own rows")
+
+    def test_a_ticket_that_does_not_fit_the_columns_is_drawn_compact_not_cut(self):
+        g = make_game("large")
+        odd = [[11, 12, 30, 50, 75], [5, 28, 44, 60, 77], [47, 58, 63, 78, 89]]      # 11 and 12: both in column two
+        self.assertEqual(t.ticket_cells(g, odd), odd)
+
+    def test_how_the_columns_are_named(self):
+        self.assertEqual(t.column_names(90), "1-9, 10s, 20s ... 80s")
+        self.assertEqual(t.column_names(60), "1-9, 10s, 20s ... 50s")
+        self.assertEqual(t.column_names(30), "1-9, 10s, 20s")
+
+    def test_a_ticket_in_each_layout(self):
+        for size, spec in t.SIZES.items():
+            for layout in t.LAYOUTS:
+                for marked in (0, 1, 5):
+                    g = make_game(size, ticket_layout=layout)
+                    ticket = t.deal_ticket(g, HOST)
+                    marks = set(t.ticket_numbers(ticket)[:marked])
+                    for blocks in (t.ticket_blocks(g, ticket, marks), t.panel_blocks(g, mine=(ticket, marks))):
+                        where = (size, layout, marked)
+                        try:
+                            check_blocks(blocks)
+                        except AssertionError as error:
+                            self.fail("{}: {}".format(where, error))
+                        width = columns_of(size) if layout == "printed" else spec["row"]
+                        self.assertEqual(row_widths(blocks), [width] * 3, where)
+                        buttons = [b for b in buttons_of(blocks)
+                                   if b["action_id"].startswith((t.ACTION_PREFIX + "mark_", t.ACTION_PREFIX + "hmark_",
+                                                                 t.BLANK_ACTION))]
+                        ids = [b["action_id"] for b in buttons]
+                        self.assertEqual(len(ids), len(set(ids)), "every button needs an id of its own")
+                        blanks = [b for b in buttons if b["action_id"].startswith(t.BLANK_ACTION)]
+                        numbers = [b for b in buttons if not b["action_id"].startswith(t.BLANK_ACTION)]
+                        self.assertEqual(len(numbers), 3 * spec["row"], where)
+                        self.assertEqual(len(blanks), 3 * (columns_of(size) - spec["row"]) if layout == "printed" else 0,
+                                         where)
+                        for blank in blanks:
+                            parsed = t.parse_value(blank["value"], blank["action_id"])
+                            self.assertEqual((parsed["kind"], parsed["test"]), ("blank", True))
+                        marked_buttons = [b for b in numbers if b.get("style") == "primary"]
+                        self.assertEqual(len(marked_buttons), marked, where)
+                        for b in marked_buttons:
+                            self.assertIn(":white_check_mark:", b["text"]["text"])
+
+    def test_the_ticket_names_its_columns_only_when_they_are_there_to_find(self):
+        for size in t.SIZES:
+            for layout in t.LAYOUTS:
+                g = make_game(size, ticket_layout=layout)
+                text = all_text(t.ticket_blocks(g, t.deal_ticket(g, HOST), set()))
+                named = "Each number sits in its column" in text
+                self.assertEqual(named, layout == "printed" and size != "small", (size, layout))
+        g = make_game("large")
+        self.assertIn("1-9, 10s, 20s ... 80s", all_text(t.ticket_blocks(g, t.deal_ticket(g, HOST), set())))
+
+    def test_the_setup_card_has_the_layout_dropdown(self):
+        for layout in t.LAYOUTS:
+            g = make_game("large", ticket_layout=layout)
+            blocks = t.setup_blocks(g)
+            check_blocks(blocks)
+            self.assertEqual(chosen_layout(blocks), layout)
+            menu = layout_menu_of(blocks)
+            self.assertEqual([json.loads(o["value"])["s"] for o in menu["options"]], list(t.LAYOUTS))
+            for button in buttons_of(blocks):
+                parsed = t.parse_value(button["value"])
+                cfg = (t.game_from_state(parsed["state"], False)["cfg"] if parsed["test"]
+                       else t.cfg_from(json.loads(parsed["arg"])["f"]))
+                self.assertEqual(cfg["layout"], layout)
+
+
+# --------------------------------------------------------------------------
 # Every card, against Slack's limits
 # --------------------------------------------------------------------------
 
 class TestCards(unittest.TestCase):
-    def cards(self, size, test):
-        out = t.main({"text": "itambola " + size, "user_id": HOST, "channel": "C0TEST",
+    def cards(self, size, test, layout=None):
+        out = t.main({"text": "itambola", "size": size, "ticket_layout": layout or "", "user_id": HOST,
+                      "channel": "C0TEST",
                       "message_ts": "1700000000.000100", "skip_post": "yes", "testing": "yes" if test else "no"})
         self.assertTrue(out["ok"], out)
         return json.loads(out["preview_json"])
@@ -418,9 +802,9 @@ class TestCards(unittest.TestCase):
 
     def test_the_ticket_card_is_three_rows_of_the_size(self):
         for size, spec in t.SIZES.items():
-            ticket = self.cards(size, False)["ticket"]
-            rows = [b for b in ticket if b["type"] == "actions"]
-            self.assertEqual([len(r["elements"]) for r in rows], [spec["row"]] * 3, size)
+            for layout, width in (("compact", spec["row"]), ("printed", columns_of(size)), (None, columns_of(size))):
+                ticket = self.cards(size, False, layout)["ticket"]
+                self.assertEqual(row_widths(ticket), [width] * 3, (size, layout))
             self.assertIn("of {}".format(3 * spec["row"]), all_text(ticket), size)
 
     def test_the_board_and_the_review_follow_the_size(self):
@@ -438,15 +822,46 @@ class TestCards(unittest.TestCase):
         self.assertLess(len(json.dumps(small)), len(json.dumps(large)))
         self.assertEqual((len(grid_sections(large)), len(grid_sections(small))), (9, 3))
 
+    def test_the_boards_last_line(self):
+        for status, over, hint in ((t.RUNNING, "", True), (t.PAUSED, "", True), (t.RUNNING, "x", False),
+                                   (t.DONE, "x", False), (t.DONE, "", False)):
+            g = make_game("small", status=status, n=3)
+            line = t.board_foot(g, bool(over))
+            self.assertIn("Hosted by", line)
+            self.assertEqual("lost your ticket" in line, hint, (status, over))
+        self.assertEqual(t.board_foot(make_game(status=t.DONE)).count("itambola"), 0)
+
+    def test_the_title_is_said_once(self):
+        """:tickets: and the game's name are the header's, once: not again in the host line, the rules, or the line the
+        lobby shrinks to when the game starts (the board below it has the title)."""
+        for word in ("Tambola", "Housie"):
+            g = make_game("large", n=3)
+            g["word"] = word
+            lobby = all_text(t.lobby_blocks(g))
+            self.assertEqual((lobby.count(":tickets:"), lobby.count(word)), (1, 1), lobby)
+            started = t.lobby_closed_blocks(g, t.LOBBY_STARTED.format(count=4, players="players"), title=False)
+            text = all_text(started)
+            self.assertEqual((text.count(":tickets:"), text.count(word), text.count(word.lower())), (0, 0, 0), text)
+            self.assertNotIn("header", [b["type"] for b in started])
+            self.assertNotIn("Prizes", text, "the board has them")
+            self.assertIn("4 players", text)
+            self.assertIn("Players (4)", text)
+            board = all_text(t.board_blocks(g))
+            self.assertEqual((board.count(":tickets:"), board.count(word)), (1, 1), board)
+            cancelled = all_text(t.lobby_closed_blocks(g, t.LOBBY_CANCELLED.format(host="Priya")))
+            self.assertEqual(cancelled.count(":tickets:"), 1, "a cancelled game has no board: it keeps its title")
+            ticket = all_text(t.ticket_blocks(g, t.deal_ticket(g, HOST), set()))
+            self.assertEqual(ticket.count(word), 0)
+
     def test_the_organizers_card_follows_the_size(self):
         for size, spec in t.SIZES.items():
             g = make_game(size, n=5)
             ticket = t.deal_ticket(g, HOST)
             blocks = t.panel_blocks(g, mine=(ticket, set()))
             check_blocks(blocks)
-            card = [b for b in blocks if b["type"] == "actions"
-                    and b["elements"][0]["action_id"].startswith(t.ACTION_PREFIX + "hmark_")]
-            self.assertEqual([len(b["elements"]) for b in card], [spec["row"]] * 3, size)
+            self.assertEqual(row_widths(blocks), [columns_of(size)] * 3, size)           # printed is the default
+            compact = t.panel_blocks(dict(g, cfg=dict(g["cfg"], layout="compact")), mine=(ticket, set()))
+            self.assertEqual(row_widths(compact), [spec["row"]] * 3, size)
             self.assertIn("of {} called".format(spec["numbers"]), all_text(blocks), size)
 
 
@@ -781,21 +1196,52 @@ class World(object):
         return [r for r in self.rows.values() if r.get("row_type") == row_type]
 
     # -- what people do
-    def click(self, user, button, channel, source_ts="", response=True, **extra):
-        """The click recipe's input for a press on `button`, run through main()."""
-        given = {"action_value": button.get("value") or "", "action_id": button["action_id"], "user_id": user,
-                 "channel": channel, "source_ts": source_ts, "action_ts": self.tick(),
-                 "slack_bot_token": "xoxb-test", "workato_api_token": "wk-test"}
-        if response:
-            given["response_url"] = HOOK + user
+    via = "fields"                    # "fields": the recipe maps each field; "payload": it maps the whole interaction
+
+    def _press(self, user, action, channel, source_ts, response, state, extra):
+        """Run a press through main(), the way the click recipe hands it over: field by field, or as `payload`, the
+        interaction as Slack sends it (inside the trigger's own wrapper)."""
+        tokens = {"slack_bot_token": "xoxb-test", "workato_api_token": "wk-test"}
+        if self.via == "payload":
+            payload = {"type": "block_actions", "user": {"id": user, "username": "someone", "team_id": "T0TEST"},
+                       "container": {"type": "message", "message_ts": source_ts, "channel_id": channel,
+                                     "is_ephemeral": True},
+                       "channel": {"id": channel, "name": "games"}, "state": {"values": state or {}},
+                       "actions": [dict(action, block_id="yR2vV", action_ts=self.tick())]}
+            if response:
+                payload["response_url"] = HOOK + user
+            given = dict(tokens, payload=json.dumps({"block_actions:button": payload}))
+        else:
+            given = dict(tokens, action_id=action["action_id"], user_id=user, channel=channel, source_ts=source_ts,
+                         action_ts=self.tick())
+            if "value" in action:
+                given["action_value"] = action["value"]
+            if "selected_option" in action:
+                given["selected_option"] = json.dumps(action["selected_option"])
+            if response:
+                given["response_url"] = HOOK + user
+            if state is not None:
+                given["state"] = {"values": state}
         given.update(extra)
         return t.main(given)
+
+    def click(self, user, button, channel, source_ts="", response=True, state=None, **extra):
+        """A press on `button`. `state` is what the dropdowns on the message hold at that moment (Slack sends it)."""
+        action = {"type": "button", "action_id": button["action_id"], "value": button.get("value") or ""}
+        return self._press(user, action, channel, source_ts, response, state, extra)
 
     def type_word(self, user, channel, text, **extra):
         given = {"text": text, "user_id": user, "channel": channel, "message_ts": self.next_ts(),
                  "slack_bot_token": "xoxb-test", "workato_api_token": "wk-test"}
         given.update(extra)
         return t.main(given)
+
+    def select(self, user, menu, size, channel, source_ts="", response=True, state=None, **extra):
+        """Choosing `size` on a dropdown, the way Slack sends it: no value, the option in selected_option."""
+        option = [o for o in menu["options"] if json.loads(o["value"])["s"] == size][0]
+        action = {"type": "static_select", "action_id": menu["action_id"],
+                  "selected_option": {"text": option["text"], "value": option["value"]}}
+        return self._press(user, action, channel, source_ts, response, state, extra)
 
     def tap(self, user, number):
         """The player taps `number` on their ticket, if it is there. The recipe's result, or None."""
@@ -812,6 +1258,207 @@ def ticket_numbers_on(blocks):
 
 
 # --------------------------------------------------------------------------
+# Prizes are won once
+# --------------------------------------------------------------------------
+
+class TestClaims(unittest.TestCase):
+    """What was seen in Slack: "Early Five goes to ..." twice in a row. When one player's click was handled twice, both
+    attempts found that player holding the prize, and each took that as its own win."""
+
+    def setUp(self):
+        self.world = World()
+        for name, new in (("_send_json", self.world.send), ("_now", lambda: self.world.clock),
+                          ("_sleep", lambda seconds: None)):
+            patcher = mock.patch.object(t, name, new)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.g = make_game("small", seed=5, n=10)
+        self.table = t.Table("x")
+        self.result = {"warnings": []}
+
+    def claim(self, user="UHOST0001", name="Priya", stamp="1700000001.000100", keys=("early5",)):
+        return t.claim_prizes(self.table, dict(self.g, wins={}), list(keys), user, name, stamp, self.result)
+
+    def test_the_same_claim_handled_twice_is_won_once(self):
+        for round_ in range(25):          # the second attempt must never win the tie, whatever its token looks like
+            self.world.rows.clear()
+            self.assertEqual(self.claim(), (["early5"], []), round_)
+            self.assertEqual(self.claim(), ([], []), "the same click, handled again (round {})".format(round_))
+            self.assertEqual(self.claim(stamp="1700000009.000100"), ([], []), "the number tapped again, later")
+            self.assertEqual(len(self.world.rows_of(t.WIN_ROW)), 3, "every attempt is on record")
+
+    def test_a_repeat_is_not_a_loss_either(self):
+        self.claim()
+        won, lost = self.claim(stamp="1700000009.000100")
+        self.assertEqual((won, lost), ([], []), "the player holds it: nothing to tell them but that they do")
+
+    def test_two_attempts_at_the_same_moment_have_one_winner(self):
+        """The second attempt's row is written while the first is waiting to check, so both then read both rows."""
+        for round_ in range(30):
+            self.world.rows.clear()
+            outs, state = {}, {"inside": False}
+
+            def sleeper(seconds):
+                if not state["inside"]:
+                    state["inside"] = True
+                    outs["second"] = self.claim()
+            with mock.patch.object(t, "_sleep", sleeper):
+                outs["first"] = self.claim()
+            winners = len(outs["first"][0]) + len(outs["second"][0])
+            self.assertEqual(winners, 1, "round {}: {}".format(round, outs))
+            self.assertEqual(len(self.world.rows_of(t.WIN_ROW)), 2)
+
+    def test_another_player_with_a_later_click_loses_and_with_an_earlier_one_wins(self):
+        self.assertEqual(self.claim(), (["early5"], []))
+        self.assertEqual(self.claim("UJACK0002", "Jack", "1700000005.000100"), ([], [("early5", "Priya")]))
+        self.assertEqual(self.claim("USAM00003", "Sam", "1700000000.500000"), (["early5"], []))
+
+    def test_every_prize_asked_for_is_settled_on_its_own(self):
+        self.assertEqual(self.claim(keys=("early5", "top")), (["early5", "top"], []))
+        self.assertEqual(self.claim("UJACK0002", "Jack", "1700000005.000100", ("top", "middle")),
+                         (["middle"], [("top", "Priya")]))
+        self.assertEqual(self.claim(keys=("top",), stamp="1700000009.000100"), ([], []), "held already, by this player")
+        # an earlier click is the one that holds a prize, so a repeat that carries the earlier time takes it back
+        self.assertEqual(self.claim(keys=("middle",)), (["middle"], []))
+
+    def test_a_table_that_does_not_keep_the_token_still_names_a_winner(self):
+        """If the data table dropped the token, nobody can be told apart: as before, the holder wins. Never silence."""
+        real = World._table
+
+        def without_token(world, url, payload, method):
+            if method == "POST" and not url.endswith("/query"):
+                payload = dict(payload, document={k: v for k, v in payload["document"].items()
+                                                  if k != "$" + t.COLUMNS["source_ref"]})
+            return real(world, url, payload, method)
+        with mock.patch.object(World, "_table", without_token):
+            self.assertEqual(self.claim(), (["early5"], []))
+            self.assertEqual(self.claim("UJACK0002", "Jack", "1700000005.000100"), ([], [("early5", "Priya")]))
+
+    def test_the_same_holder_is_picked_whatever_order_the_rows_come_in(self):
+        rows = [{"grant_type": "early5", "group_id": "UHOST0001", "member_name": "Priya",
+                 "last_processed_ts": "1700000001.000100", "source_ref": ref} for ref in ("bbb", "aaa", "ccc")]
+        for order in (rows, rows[::-1], rows[1:] + rows[:1]):
+            self.assertEqual(t.wins_from_rows(order)["early5"]["ref"], "aaa")
+
+    def test_a_win_row_carries_its_attempts_token(self):
+        self.claim()
+        self.claim()
+        refs = [r["source_ref"] for r in self.world.rows_of(t.WIN_ROW)]
+        self.assertTrue(all(refs) and len(set(refs)) == 2, refs)
+
+    def test_a_test_game_has_nothing_to_tell_apart_and_wins_once(self):
+        g = make_game("small", test=True, seed=5, n=10)
+        self.assertEqual(t.claim_prizes(self.table, g, ["early5"], "UHOST0001", "Priya", "1.5", self.result),
+                         (["early5"], []))
+        self.assertEqual(t.claim_prizes(self.table, g, ["early5"], "UHOST0001", "Priya", "1.6", self.result),
+                         ([], []))
+
+
+# --------------------------------------------------------------------------
+# The payload
+# --------------------------------------------------------------------------
+
+def slack_press(**changes):
+    """An interaction as the click trigger shows it: the join button pressed after Small was chosen on the dropdown,
+    while the button itself was drawn for Large (names and ids made up)."""
+    state = dropdown_state(size_menu_of(t.setup_blocks(make_game("small"))), "small")
+    payload = {
+        "type": "block_actions",
+        "user": {"id": "U0HOST001", "username": "host", "name": "host", "team_id": "T0TEST001"},
+        "api_app_id": "A0TEST001",
+        "container": {"type": "message", "message_ts": "1794511081.000100", "channel_id": "C0GAME001",
+                      "is_ephemeral": True},
+        "trigger_id": "1.2.abc",
+        "team": {"id": "T0TEST001", "domain": "example"},
+        "channel": {"id": "C0GAME001", "name": "games"},
+        "state": {"values": state},
+        "response_url": "https://hooks.slack.com/actions/T0TEST001/1/abc",
+        "actions": [{"type": "button", "block_id": "yR2vV", "action_id": "tambola_click_set_all",
+                     "text": {"type": "plain_text", "text": "Everyone in this channel", "emoji": True},
+                     "value": "tb|set|tb_C0GAME001_1794511079201789|" + json.dumps(
+                         {"m": "all", "w": "Tambola", "f": ["early5,top,middle,bottom,full", "channel", 10, 60,
+                                                             "large", 10]}, separators=(",", ":")),
+                     "style": "primary", "action_ts": "1794511091.002829"}],
+    }
+    payload.update(changes)
+    return payload
+
+
+class TestPayload(unittest.TestCase):
+    def test_every_field_is_read_out_of_the_payload(self):
+        for given in (json.dumps({"block_actions:button": slack_press()}), json.dumps(slack_press()),
+                      {"block_actions:button": slack_press()}, slack_press()):
+            merged, problem = t.with_payload({"payload": given, "slack_bot_token": "x"})
+            self.assertEqual(problem, "")
+            self.assertEqual((merged["user_id"], merged["channel"], merged["source_ts"]),
+                             ("U0HOST001", "C0GAME001", "1794511081.000100"))
+            self.assertEqual((merged["action_id"], merged["action_ts"], merged["response_url"]),
+                             ("tambola_click_set_all", "1794511091.002829",
+                              "https://hooks.slack.com/actions/T0TEST001/1/abc"))
+            self.assertTrue(merged["action_value"].startswith("tb|set|tb_C0GAME001_"))
+            self.assertEqual(merged["slack_bot_token"], "x")
+            self.assertEqual(t.dropdown_choice(merged["state"], "size"), "small")
+
+    def test_what_was_mapped_by_hand_is_kept(self):
+        merged, _ = t.with_payload({"payload": slack_press(), "user_id": "UMAPPED01", "channel": "CMAPPED01",
+                                    "action_ts": "1.5"})
+        self.assertEqual((merged["user_id"], merged["channel"], merged["action_ts"]), ("UMAPPED01", "CMAPPED01", "1.5"))
+        self.assertEqual(merged["action_id"], "tambola_click_set_all")             # what was blank is filled
+
+    def test_a_menus_picks_come_out_of_the_payload(self):
+        press = slack_press(actions=[{"type": "multi_users_select", "action_id": "tambola_click_pick_tb_C_1",
+                                      "selected_users": ["U0AAAAAAA", "U0BBBBBBB"], "action_ts": "1.5"}])
+        merged, _ = t.with_payload({"payload": press})
+        self.assertEqual(t.ids_in(merged["selected_users"]), ["U0AAAAAAA", "U0BBBBBBB"])
+        self.assertEqual(t.parse_value("", merged["action_id"])["kind"], "pick")
+
+    def test_no_payload_changes_nothing(self):
+        given = {"user_id": "U1", "channel": "C1", "action_value": "tb|next|g|"}
+        for empty in (None, "", "   ", {}):
+            merged, problem = t.with_payload(dict(given, payload=empty))
+            self.assertEqual((merged, problem), (dict(given, payload=empty), ""))
+
+    def test_a_payload_that_cannot_be_read_is_reported(self):
+        for bad in ("garbage", "[1, 2]", 5, [1], '"text"'):
+            out = t.main({"payload": bad, "slack_bot_token": "x", "workato_api_token": "y"})
+            self.assertFalse(out["ok"], bad)
+            self.assertIn("payload could not be read", out["error"], bad)
+            self.assertEqual(out["mode"], "click")
+
+    def test_the_dropdowns_live_choice(self):
+        small = dropdown_state(size_menu_of(t.setup_blocks(make_game("large"))), "small")
+        self.assertEqual(t.dropdown_choice({"values": small}, "size"), "small")
+        self.assertEqual(t.dropdown_choice(json.dumps({"values": small}), "size"), "small")
+        # found by its action id, whatever block it is in, among other things Slack reports
+        crowded = dict(small, XXXXX={"another_menu": {"selected_option": {"value": "{}"}}},
+                       YYYYY={t.SIZE_ACTION: small["SL9MT"][t.SIZE_ACTION]})
+        self.assertEqual(t.dropdown_choice({"values": crowded}, "size"), "small")
+        huge = {"B": {t.SIZE_ACTION: {"selected_option": {"value": json.dumps({"s": "huge", "m": "1"})}}}}
+        for nothing in (None, "", "garbage", {}, [], 5, {"values": None}, {"values": {}}, {"values": {"B": None}},
+                        {"values": huge}, {"values": {"B": {t.SIZE_ACTION: {}}}},
+                        {"values": {"B": {t.SIZE_ACTION: {"selected_option": None}}}}):
+            self.assertIsNone(t.dropdown_choice(nothing, "size"), repr(nothing))
+
+    def test_a_press_by_payload_is_answered_like_one_by_fields(self):
+        """The same press both ways, with nothing else different, must say the same."""
+        outs = []
+        for via in ("fields", "payload"):
+            world = World()
+            world.via = via
+            with mock.patch.object(t, "_send_json", world.send), mock.patch.object(t, "_now", lambda: world.clock), \
+                    mock.patch.object(t, "_sleep", lambda seconds: None):
+                world.members["C0GAME"] = [HOST, "U0000001"]
+                world.names.update({HOST: "Priya Sharma", "U0000001": "Sam"})
+                world.type_word(HOST, "C0GAME", "itambola")
+                card = world.last_note(HOST)["blocks"]
+                out = world.select(HOST, size_menu_of(card), "small", "C0GAME")
+                outs.append((out["ok"], out["mode"], out["controls"], chosen_size(world.last_note(HOST)["blocks"]),
+                             world.last_note(HOST)["how"]))
+        self.assertEqual(outs[0], outs[1])
+        self.assertEqual(outs[0], (True, "size", "in place", "small", "in place"))
+
+
+# --------------------------------------------------------------------------
 # Whole games
 # --------------------------------------------------------------------------
 
@@ -819,6 +1466,7 @@ class TestGames(unittest.TestCase):
     CHANNEL = "C0GAME"
 
     KEY_OF = {name: key for key, name in t.PRIZE_NAME.items()}
+    via = "fields"
 
     def setUp(self):
         self.patches = []
@@ -834,6 +1482,7 @@ class TestGames(unittest.TestCase):
         for patch in getattr(self, "world_patches", []):
             patch.stop()
         self.world = World()
+        self.world.via = self.via
         self.world_patches = [mock.patch.object(t, "_send_json", self.world.send),
                               mock.patch.object(t, "_now", lambda: self.world.clock)]
         for patch in self.world_patches:
@@ -848,15 +1497,42 @@ class TestGames(unittest.TestCase):
         self.world.names[HOST] = "Priya Sharma"
         return ids
 
-    def open_game(self, ids, word="itambola", test=False, **extra):
-        """Type the word, choose 'Everyone in this channel', press Start. The result of Start."""
+    def open_game(self, ids, choose=None, test=False, board=None, layout=None, **extra):
+        """Type the word, choose a size (`choose`) and a board style (`board`) on the dropdowns (none leaves it where
+        the card opened), choose 'Everyone in this channel', press Start. The result of Start. `extra` are the recipe's
+        other inputs."""
         w = self.world
         if test:
             extra["testing"] = "yes"
-        out = w.type_word(HOST, self.CHANNEL, word, **extra)
+        out = w.type_word(HOST, self.CHANNEL, "itambola", **extra)
         self.assertTrue(out["ok"], out)
         setup = w.last_note(HOST)
-        self.setup_text = all_text(setup["blocks"])
+        self.opened_on, self.opened_board = chosen_size(setup["blocks"]), chosen_board(setup["blocks"])
+        self.opened_layout = chosen_layout(setup["blocks"])
+        if layout:
+            out = w.select(HOST, layout_menu_of(setup["blocks"]), layout, self.CHANNEL)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["mode"], "layout")
+            setup = w.last_note(HOST)
+            self.assertEqual(setup["how"], "in place")
+            self.assertEqual(chosen_layout(setup["blocks"]), layout)
+        if board:
+            out = w.select(HOST, board_menu_of(setup["blocks"]), board, self.CHANNEL)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["mode"], "board")
+            setup = w.last_note(HOST)
+            self.assertEqual(setup["how"], "in place")
+            self.assertEqual(chosen_board(setup["blocks"]), board)
+        if choose:
+            out = w.select(HOST, size_menu_of(setup["blocks"]), choose, self.CHANNEL)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["mode"], "size")
+            setup = w.last_note(HOST)
+            self.assertEqual(setup["how"], "in place", "the card is drawn again where it was")
+            self.assertEqual(chosen_size(setup["blocks"]), choose)
+            if board:
+                self.assertEqual(chosen_board(setup["blocks"]), board, "choosing a size must not undo the style")
+        self.setup_blocks = setup["blocks"]
         out = w.click(HOST, button_named(setup["blocks"], "set_all"), self.CHANNEL)
         self.assertTrue(out["ok"], out)
         self.lobby_text = all_text(w.channel_messages(self.CHANNEL)[-1]["blocks"])
@@ -869,6 +1545,11 @@ class TestGames(unittest.TestCase):
 
     def board(self):
         return self.world.messages[(self.CHANNEL, self.board_ts)]["blocks"]
+
+    def announcements(self):
+        """The prize announcements the channel has had."""
+        return [m for m in self.world.channel_messages(self.CHANNEL)
+                if re.search(r"goes to|Full House!", all_text(m["blocks"]))]
 
     def next_number(self):
         out = self.world.click(HOST, button_named(self.world.panel(HOST), "next"), self.CHANNEL)
@@ -894,11 +1575,12 @@ class TestGames(unittest.TestCase):
                     return call, won
         return limit, won
 
-    # -- a small game, from the typed word to the Full House
-    def test_a_small_game_from_the_typed_word_to_full_house(self):
+    # -- a small game, from the dropdown to the Full House
+    def test_a_small_game_from_the_dropdown_to_full_house(self):
         ids = self.people(6)
-        self.open_game(ids, "itambola small")
-        self.assertIn("Game size: *Small*", self.setup_text)
+        self.open_game(ids, "small")
+        self.assertEqual(self.opened_on, "large")
+        self.assertEqual(chosen_size(self.setup_blocks), "small")
         self.assertIn("9 numbers in 3 rows", self.lobby_text)
         self.assertIn("(small game: numbers 1 to 30)", self.lobby_text)
 
@@ -923,10 +1605,11 @@ class TestGames(unittest.TestCase):
         self.assertIn("Game over", board)
         self.assertIn("Full House", board)
         self.assertEqual(len(grid_sections(self.board())), 3, "thirty numbers are three rows of ten")
+        self.assertEqual(len(self.announcements()), 5, "each prize is announced once")
 
     def test_a_small_game_ends_when_the_thirty_numbers_are_out(self):
         ids = self.people(2)
-        self.open_game(ids, "itambola small")
+        self.open_game(ids, "small")
         for call in range(1, 31):
             out = self.next_number()                   # nobody marks anything, so nobody can win
         self.assertTrue(out["finished"], out)
@@ -936,34 +1619,478 @@ class TestGames(unittest.TestCase):
 
     def test_a_medium_game_deals_four_numbers_a_row(self):
         ids = self.people(5)
-        self.open_game(ids, "itambola medium")
+        self.open_game(ids, "medium")
         for user in ids:
             blocks = self.world.ticket_of(user)[2]
-            self.assertEqual([len(b["elements"]) for b in blocks if b["type"] == "actions"], [4, 4, 4])
+            self.assertEqual(row_widths(blocks), [6, 6, 6], "a printed row has a cell for each of six columns")
             self.assertTrue(all(1 <= n <= 60 for n in ticket_numbers_on(blocks)))
+            self.assertEqual(len(ticket_numbers_on(blocks)), 12)
         calls, won = self.play_out(ids, 60)
         self.assertLessEqual(calls, 60)
         self.assertEqual(sorted(won), sorted(t.PRIZE_KEYS))
+        self.assertEqual(len(self.announcements()), 5)
 
-    def test_the_recipes_size_input_is_the_default_and_the_typed_word_wins(self):
+    def test_the_recipes_size_input_is_where_the_dropdown_starts(self):
         ids = self.people(2)
-        self.open_game(ids, "itambola", size="small")
+        self.open_game(ids, size="small")                           # the recipe's input; nothing chosen on the card
+        self.assertEqual(self.opened_on, "small")
         self.assertIn("(small game", self.lobby_text)
         self.use_world()                 # typing the word again would bring back the first game's controls
         ids = self.people(2)
-        self.open_game(ids, "itambola large", size="small")
+        self.open_game(ids, "large", size="small")                  # the organizer's choice is what counts
+        self.assertEqual((self.opened_on, chosen_size(self.setup_blocks)), ("small", "large"))
         self.assertNotIn("small game", self.lobby_text)
         self.assertIn("15 numbers in 3 rows", self.lobby_text)
+
+    # -- the dropdown itself
+    def test_choosing_a_size_redraws_the_card_and_creates_nothing(self):
+        w, ids = self.world, self.people(3)
+        self.assertTrue(w.type_word(HOST, self.CHANNEL, "itambola")["ok"])
+        card = w.last_note(HOST)
+        self.assertEqual(chosen_size(card["blocks"]), "large")
+        before = len(w.events(HOST))
+        for size in ("medium", "small", "medium", "large"):
+            out = w.select(HOST, size_menu_of(w.last_note(HOST)["blocks"]), size, self.CHANNEL)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual((out["mode"], out["controls"]), ("size", "in place"))
+            blocks = w.last_note(HOST)["blocks"]
+            self.assertEqual(chosen_size(blocks), size)
+            for button in buttons_of(blocks):                       # every way of joining now carries it
+                parsed = t.parse_value(button["value"])
+                self.assertEqual(t.cfg_from(json.loads(parsed["arg"])["f"])["size"], size)
+        self.assertEqual(len(w.events(HOST)), before + 4)
+        self.assertEqual(w.rows, {}, "nothing is saved until the organizer chooses how people join")
+        self.assertEqual(w.channel_messages(self.CHANNEL), [], "nothing is posted either")
+        self.assertEqual(len(w.members[self.CHANNEL]) if self.CHANNEL in w.members else 0, len(ids))
+
+    def test_the_game_is_made_with_the_size_that_was_chosen(self):
+        for size in t.SIZES:
+            self.use_world()
+            ids = self.people(2)
+            self.open_game(ids, size)
+            game = t.game_from_row(self.world.rows_of(t.GAME_ROW)[0])
+            self.assertEqual((game["cfg"]["size"], t.numbers_of(game)), (size, t.SIZES[size]["numbers"]))
+
+    def test_without_a_response_url_a_new_card_is_sent(self):
+        w = self.world
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        out = w.select(HOST, size_menu_of(w.last_note(HOST)["blocks"]), "small", self.CHANNEL, response=False)
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(w.last_note(HOST)["how"], "note")
+        self.assertEqual(chosen_size(w.last_note(HOST)["blocks"]), "small")
+        self.assertTrue(any("response_url" in warning for warning in out["warnings"]), out["warnings"])
+
+    def test_an_unmapped_or_unreadable_choice_is_reported_not_guessed(self):
+        w = self.world
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        base = {"action_id": t.SIZE_ACTION, "user_id": HOST, "channel": self.CHANNEL, "action_ts": w.tick(),
+                "slack_bot_token": "xoxb-test", "workato_api_token": "wk-test", "response_url": HOOK + HOST}
+        out = t.main(dict(base))
+        self.assertFalse(out["ok"])
+        self.assertIn("did not arrive", out["error"])
+        self.assertIn("payload", out["error"])
+        for junk in ("garbage", '{"value": "{}"}', json.dumps({"value": json.dumps({"s": "huge", "m": "1"})}),
+                     json.dumps({"value": json.dumps({"s": "small"})})):
+            out = t.main(dict(base, selected_option=junk))
+            self.assertFalse(out["ok"], junk)
+            self.assertIn("not one of the choices", out["error"], junk)
+        self.assertEqual(chosen_size(w.last_note(HOST)["blocks"]), "large", "the card was left as it was")
+
+    def test_the_lobby_follows_the_dropdown_whatever_size_the_button_was_drawn_with(self):
+        """What happened in Slack: the dropdown said Small, but its own click never redrew the card, so the button was
+        still the one drawn for Large. The press reports what the dropdown shows, and that is the size."""
+        for test in (False, True):
+            for size, spec in t.SIZES.items():
+                with self.subTest(size=size, test=test):
+                    self.use_world()
+                    ids = self.people(3)
+                    w = self.world
+                    w.type_word(HOST, self.CHANNEL, "itambola", **({"testing": "yes"} if test else {}))
+                    card = w.last_note(HOST)["blocks"]
+                    self.assertEqual(chosen_size(card), "large", "the card was drawn for large")
+                    state = dropdown_state(size_menu_of(card), size)
+                    out = w.click(HOST, button_named(card, "set_all"), self.CHANNEL, state=state)
+                    self.assertTrue(out["ok"], out)
+                    lobby = all_text(w.channel_messages(self.CHANNEL)[-1]["blocks"])
+                    self.assertIn("{} numbers in 3 rows".format(3 * spec["row"]), lobby)
+                    self.assertIn("from 1 to {}".format(spec["numbers"]), lobby)
+                    if size == "large":
+                        self.assertNotIn(" game: numbers", lobby)
+                    else:
+                        self.assertIn("({} game: numbers 1 to {})".format(size, spec["numbers"]), lobby)
+                        self.assertNotIn("15 numbers", lobby)
+                        self.assertNotIn("1 to 90", lobby)
+                    out = w.click(HOST, button_named(w.panel(HOST), "start"), self.CHANNEL)
+                    self.assertTrue(out["ok"], out)
+                    for user in ids:
+                        self.assertEqual(len(ticket_numbers_on(w.ticket_of(user)[2])), 3 * spec["row"])
+                    if not test:
+                        game = t.game_from_row(w.rows_of(t.GAME_ROW)[0])
+                        self.assertEqual((game["cfg"]["size"], t.numbers_of(game)), (size, spec["numbers"]))
+
+    def test_a_press_with_nothing_on_the_dropdown_keeps_the_size_the_button_has(self):
+        w = self.world
+        self.people(2)
+        w.type_word(HOST, self.CHANNEL, "itambola", size="medium")
+        card = w.last_note(HOST)["blocks"]
+        for state in (None, {}, {"SL9MT": {"some_other_menu": {"selected_option": {"value": "x"}}}},
+                      {"SL9MT": {t.SIZE_ACTION: {"type": "static_select", "selected_option": None}}},
+                      {"SL9MT": {t.SIZE_ACTION: {"selected_option": {"value": "not json"}}}}):
+            self.use_world()
+            self.people(2)
+            w = self.world
+            w.type_word(HOST, self.CHANNEL, "itambola", size="medium")
+            out = w.click(HOST, button_named(w.last_note(HOST)["blocks"], "set_all"), self.CHANNEL, state=state)
+            self.assertTrue(out["ok"], out)
+            self.assertIn("(medium game", all_text(w.channel_messages(self.CHANNEL)[-1]["blocks"]), repr(state))
+
+    def test_a_prize_is_announced_once_even_when_the_win_is_asked_for_again(self):
+        """The production sequence: the winning number is tapped again before the table shows the first win, so the
+        second press finds the prize open, claims it, and used to announce it a second time."""
+        def early_five():
+            return [m for m in self.announcements() if "Early Five" in all_text(m["blocks"])]
+        ids = self.people(1)
+        self.open_game(ids, "small")
+        number = 0
+        for _ in range(30):
+            number = self.next_number()["number"]
+            result = self.world.tap(HOST, number)
+            if result and "Early Five" in result["prize"]:
+                break
+        else:
+            self.fail("Early Five was never won")
+        self.assertEqual(len(early_five()), 1)
+        heard = len(self.announcements())
+        real, reads = t.Table.wins, {"n": 0}
+
+        def stale(table, game_id, channel):
+            reads["n"] += 1
+            return [] if reads["n"] == 1 else real(table, game_id, channel)       # the first read has not seen the win
+        with mock.patch.object(t.Table, "wins", stale):
+            again = self.world.tap(HOST, number)
+        self.assertTrue(again["ok"], again)
+        self.assertEqual(again["prize"], "", "it is theirs already: not a win to announce again")
+        self.assertEqual(len(early_five()), 1, "the channel heard of it once")
+        self.assertEqual(len(self.announcements()), heard)
+
+    # -- ticket layouts, on the third dropdown
+    def test_a_printed_ticket_has_every_number_in_its_column(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids)                                           # large, printed: the defaults
+        self.assertEqual((self.opened_on, self.opened_layout), ("large", "printed"))
+        ranges = t.column_ranges(90)
+        for user in ids:
+            channel, ts, blocks = w.ticket_of(user)
+            self.assertEqual(row_widths(blocks), [9, 9, 9])
+            rows = [b["elements"] for b in blocks if b["type"] == "actions"]
+            for cells in rows:
+                self.assertEqual(sum(1 for e in cells if e["action_id"].startswith(t.ACTION_PREFIX + "mark_")), 5)
+                for column, e in enumerate(cells):
+                    if e["action_id"].startswith(t.ACTION_PREFIX + "mark_"):
+                        number = int(e["action_id"].rsplit("_", 1)[1])
+                        self.assertTrue(ranges[column][0] <= number <= ranges[column][1], (column, number))
+                    else:
+                        self.assertEqual(e["text"]["text"], t.BLANK_TEXT)
+            self.assertIn("1-9, 10s, 20s ... 80s", all_text(blocks))
+            before = [[e["action_id"] for e in cells] for cells in rows]
+            # a tap marks a number and leaves every square where it was
+            out = self.next_number()
+            mine = ticket_numbers_on(blocks)
+            number = out["number"]
+            if number in mine:
+                self.assertEqual(w.tap(user, number)["marked"], number)
+                after = [b["elements"] for b in w.messages[(channel, ts)]["blocks"] if b["type"] == "actions"]
+                self.assertEqual([[e["action_id"] for e in cells] for cells in after], before)
+                self.assertTrue(any(":white_check_mark: {}".format(number) in e["text"]["text"]
+                                    for cells in after for e in cells))
+
+    def test_pressing_a_blank_square_does_nothing(self):
+        w = self.world
+        ids = self.people(2)
+        self.open_game(ids)
+        channel, ts, blocks = w.ticket_of(ids[1])
+        blank = [b for b in buttons_of(blocks) if b["action_id"].startswith(t.BLANK_ACTION)][0]
+        snapshot = json.dumps(w.messages[(channel, ts)]["blocks"], sort_keys=True)
+        calls, private, rows = len(w.calls), len(w.private), json.dumps(w.rows, sort_keys=True)
+        out = w.click(ids[1], blank, channel, source_ts=ts, response=False)
+        self.assertEqual((out["ok"], out["mode"], out["skipped"], out["error"]), (True, "blank", "a blank square", ""))
+        self.assertEqual(json.dumps(w.messages[(channel, ts)]["blocks"], sort_keys=True), snapshot)
+        self.assertEqual((len(w.calls), len(w.private), json.dumps(w.rows, sort_keys=True)), (calls, private, rows),
+                         "no message sent, no row touched, nothing asked of Slack or the table")
+        # and it needs no table token, being nobody's game
+        out = w.click(ids[1], blank, channel, source_ts=ts, response=False, workato_api_token="")
+        self.assertTrue(out["ok"], out)
+
+    def test_the_compact_layout_is_the_old_ticket(self):
+        for size, spec in t.SIZES.items():
+            with self.subTest(size=size):
+                self.use_world()
+                ids = self.people(3)
+                self.open_game(ids, size, layout="compact")
+                self.assertEqual(self.opened_layout, "printed")
+                for user in ids:
+                    blocks = self.world.ticket_of(user)[2]
+                    self.assertEqual(row_widths(blocks), [spec["row"]] * 3)
+                    self.assertFalse([b for b in buttons_of(blocks) if b["action_id"].startswith(t.BLANK_ACTION)])
+                    self.assertNotIn("Each number sits in its column", all_text(blocks))
+                game = t.game_from_row(self.world.rows_of(t.GAME_ROW)[0])
+                self.assertEqual(game["cfg"]["layout"], "compact")
+
+    def test_every_layout_plays_through_at_every_size_and_in_test_games(self):
+        for test in (False, True):
+            for size in t.SIZES:
+                for layout in t.LAYOUTS:
+                    with self.subTest(size=size, layout=layout, test=test):
+                        self.use_world()
+                        ids = self.people(3)
+                        self.open_game(ids, size, layout=layout, test=test)
+                        width = columns_of(size) if layout == "printed" else t.SIZES[size]["row"]
+                        for user in ids:
+                            self.assertEqual(row_widths(self.world.ticket_of(user)[2]), [width] * 3)
+                        calls, won = self.play_out(ids, t.SIZES[size]["numbers"])
+                        self.assertEqual(won[-1] if won else "", "full", won)
+                        for user in ids:                      # the tickets are still laid out the same after all the taps
+                            self.assertEqual(row_widths(self.world.ticket_of(user)[2]), [width] * 3)
+                        self.assertIn("Game over", all_text(self.board()))
+
+    def test_the_lobby_follows_the_layout_dropdown_whatever_the_buttons_were_drawn_with(self):
+        for test in (False, True):
+            with self.subTest(test=test):
+                self.use_world()
+                ids = self.people(3)
+                w = self.world
+                w.type_word(HOST, self.CHANNEL, "itambola", **({"testing": "yes"} if test else {}))
+                card = w.last_note(HOST)["blocks"]
+                self.assertEqual(chosen_layout(card), "printed")
+                state = dropdown_state(layout_menu_of(card), "compact", "BLOCKC")
+                out = w.click(HOST, button_named(card, "set_all"), self.CHANNEL, state=state)
+                self.assertTrue(out["ok"], out)
+                out = w.click(HOST, button_named(w.panel(HOST), "start"), self.CHANNEL)
+                self.assertTrue(out["ok"], out)
+                for user in ids:
+                    self.assertEqual(row_widths(w.ticket_of(user)[2]), [5, 5, 5])
+
+    def test_choosing_each_dropdown_keeps_what_the_others_show(self):
+        w = self.world
+        self.people(2)
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        card = w.last_note(HOST)["blocks"]
+        state = dropdown_state(size_menu_of(card), "small", "BLOCKA")
+        state.update(dropdown_state(board_menu_of(card), "list", "BLOCKB"))
+        out = w.select(HOST, layout_menu_of(card), "compact", self.CHANNEL, state=state)
+        self.assertEqual(out["mode"], "layout")
+        now = w.last_note(HOST)["blocks"]
+        self.assertEqual((chosen_size(now), chosen_board(now), chosen_layout(now)), ("small", "list", "compact"))
+
+    def test_a_game_that_began_before_layouts_keeps_compact_tickets(self):
+        w = self.world
+        ids = self.people(2)
+        self.open_game(ids)
+        row = w.rows_of(t.GAME_ROW)[0]
+        state = json.loads(row["content"])
+        state["f"] = state["f"][:7]                                    # what a game saved before layouts holds
+        row["content"] = json.dumps(state)
+        mine = ticket_numbers_on(w.ticket_of(ids[1])[2])
+        number = 0
+        while number not in mine:
+            number = self.next_number()["number"]
+        self.assertEqual(w.tap(ids[1], number)["marked"], number)
+        self.assertEqual(row_widths(w.ticket_of(ids[1])[2]), [5, 5, 5], "redrawn as it was dealt to that game: compact")
+
+    # -- typing the word again, which the board's footer tells a player to do
+    def test_typing_the_word_again_brings_a_player_their_ticket_not_a_new_game(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        w.members[self.CHANNEL] = ids + ["U0000009"]              # joins the channel after the game began: not dealt in
+        w.names["U0000009"] = "Late Joiner"
+        sam = ids[1]
+        mine = ticket_numbers_on(w.ticket_of(sam)[2])
+        number = 0
+        while number not in mine:                                    # a number on Sam's ticket gets called and marked
+            number = self.next_number()["number"]
+        self.assertEqual(w.tap(sam, number)["marked"], number)
+        games = len(w.rows_of(t.GAME_ROW))
+
+        out = w.type_word(sam, self.CHANNEL, "itambola")                     # a player
+        self.assertEqual((out["mode"], out["ok"]), ("ticket", True), out)
+        dms = sorted((ts, m) for (c, ts), m in w.messages.items() if c == "D" + sam)
+        newest = dms[-1][1]["blocks"]
+        self.assertIn(":white_check_mark: {}".format(number), all_text(newest), "their marks come back with it")
+        self.assertEqual(len(w.rows_of(t.GAME_ROW)), games, "no new game")
+        self.assertNotIn(t.ACTION_PREFIX + "set_all", [b["action_id"] for b in buttons_of(w.last_note(sam)["blocks"])])
+
+        out = w.type_word(HOST, self.CHANNEL, "itambola")                    # the host
+        self.assertEqual((out["mode"], out["ok"]), ("panel", True), out)
+        self.assertIn("You already have a Tambola game open", all_text(w.last_note(HOST)["blocks"]))
+        self.assertEqual(len(w.rows_of(t.GAME_ROW)), games)
+
+        out = w.type_word("U0000009", self.CHANNEL, "itambola")              # someone who is not playing: a new game
+        self.assertEqual(out["mode"], "setup", out)
+        self.assertIn(t.ACTION_PREFIX + "set_all", [b["action_id"] for b in buttons_of(w.last_note("U0000009")["blocks"])])
+
+        out = w.type_word(sam, self.CHANNEL, "itambola", workato_api_token="")   # no table token on the typed recipe
+        self.assertEqual(out["mode"], "setup", "without it the word cannot find the game, so it always opens the setup")
+
+    def test_once_the_game_is_over_the_word_starts_a_new_one(self):
+        w = self.world
+        ids = self.people(2)
+        self.open_game(ids, "small")
+        self.assertTrue(w.click(HOST, button_named(w.panel(HOST), "end"), self.CHANNEL)["ok"])
+        self.assertEqual(w.type_word(ids[1], self.CHANNEL, "itambola")["mode"], "setup")
+        self.assertEqual(w.type_word(HOST, self.CHANNEL, "itambola")["mode"], "setup")
+
+    def test_the_board_only_offers_a_lost_ticket_while_the_game_is_on(self):
+        ids = self.people(2)
+        self.open_game(ids, "small")
+        running = all_text(self.board())
+        self.assertIn("Playing and lost your ticket? Type `itambola` here and it is sent to you again", running)
+        self.next_number()
+        self.world.click(HOST, button_named(self.world.panel(HOST), "review"), self.CHANNEL)
+        self.world.click(HOST, button_named(self.world.panel(HOST), "resume"), self.CHANNEL)
+        self.assertIn("lost your ticket", all_text(self.board()))
+        self.assertTrue(self.world.click(HOST, button_named(self.world.panel(HOST), "end"), self.CHANNEL)["ok"])
+        over = all_text(self.board())
+        self.assertIn("Game over", over)
+        self.assertNotIn("lost your ticket", over)
+        self.assertIn("Hosted by", over)
+
+    def test_the_channel_sees_the_title_once(self):
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        lobby, board = self.world.channel_messages(self.CHANNEL)[:2]
+        self.assertEqual(self.lobby_text.count(":tickets:"), 1, "the open lobby: its header, once")
+        started = all_text(lobby["blocks"])
+        self.assertNotIn("header", [b["type"] for b in lobby["blocks"]], "the started lobby is a line, not a title")
+        self.assertIn("Game on with 3 players", started.replace("*", ""))
+        self.assertIn("Players (3)", started.replace("*", ""))
+        self.assertEqual(started.count("Tambola"), 0)
+        self.assertEqual(started.count(":tickets:"), 0)
+        self.assertNotIn("Prizes", started)
+        self.assertEqual(all_text(board["blocks"]).count("Tambola"), 1)
+        self.assertEqual(all_text(board["blocks"]).count(":tickets:"), 1)
+        both = started + all_text(board["blocks"])
+        self.assertEqual((both.count(":tickets:"), both.count("Tambola")), (1, 1), "once across what the channel shows")
+
+    # -- board styles, on the second dropdown
+    def test_every_board_style_plays_through_at_every_size_and_in_test_games(self):
+        for test in (False, True):
+            for style in t.BOARD_STYLES:
+                with self.subTest(style=style, test=test):
+                    self.use_world()
+                    ids = self.people(3)
+                    self.open_game(ids, "small", board=style, test=test)
+                    self.assertEqual(chosen_board(self.setup_blocks), style)
+                    self.assertEqual(self.opened_board, "emoji")
+                    out = self.next_number()
+                    text = all_text(self.board())
+                    if style == "emoji":
+                        self.assertEqual(len(grid_sections(self.board())), 3)
+                    elif style == "numbers":
+                        self.assertEqual(len(re.findall(r"\[\d\d\]", text)), 1)
+                        self.assertIn("[{:02d}]".format(out["number"]), text)
+                    else:
+                        self.assertIn("Called so far", text)
+                        self.assertIn(str(out["number"]), text)
+                    if style != "emoji":
+                        self.assertNotIn(":zero:", text)
+                        self.assertNotIn(t.EMPTY_TILE, text)
+                    calls, won = self.play_out(ids, 30)
+                    self.assertEqual(won[-1] if won else "", "full", "{} {}".format(style, won))
+                    self.assertIn("Game over", all_text(self.board()))
+
+    def test_the_style_chosen_is_the_one_kept_with_the_game(self):
+        for style in t.BOARD_STYLES:
+            self.use_world()
+            ids = self.people(2)
+            self.open_game(ids, board=style)
+            game = t.game_from_row(self.world.rows_of(t.GAME_ROW)[0])
+            self.assertEqual(game["cfg"]["board"], style)
+            self.assertEqual(game["cfg"]["size"], "large", "the size was not touched")
+
+    def test_the_recipes_board_style_is_where_the_dropdown_starts(self):
+        ids = self.people(2)
+        self.open_game(ids, board_style="numbers")
+        self.assertEqual(self.opened_board, "numbers")
+        self.assertIn("[", code_table(self.world.messages[(self.CHANNEL, self.world.channel_messages(
+            self.CHANNEL)[-1]["ts"])]["blocks"])[0] + "[", "the board opens in its style")
+        self.next_number()
+        self.assertEqual(len(code_table(self.board())), 9, "ninety numbers are nine rows of ten")
+
+    def test_choosing_one_dropdown_keeps_what_the_other_shows(self):
+        w = self.world
+        self.people(2)
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        card = w.last_note(HOST)["blocks"]
+        # the size is chosen, but the card is not redrawn for it (the press only says what the dropdowns show)
+        state = dropdown_state(size_menu_of(card), "small", "BLOCKA")
+        out = w.select(HOST, board_menu_of(card), "list", self.CHANNEL, state=state)
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(out["mode"], "board")
+        now = w.last_note(HOST)["blocks"]
+        self.assertEqual((chosen_size(now), chosen_board(now)), ("small", "list"))
+        out = w.select(HOST, size_menu_of(now), "medium", self.CHANNEL,
+                       state=dropdown_state(board_menu_of(now), "list", "BLOCKB"))
+        self.assertEqual(out["mode"], "size")
+        again = w.last_note(HOST)["blocks"]
+        self.assertEqual((chosen_size(again), chosen_board(again)), ("medium", "list"))
+
+    def test_the_lobby_and_board_follow_both_dropdowns_whatever_the_buttons_were_drawn_with(self):
+        for test in (False, True):
+            with self.subTest(test=test):
+                self.use_world()
+                ids = self.people(3)
+                w = self.world
+                w.type_word(HOST, self.CHANNEL, "itambola", **({"testing": "yes"} if test else {}))
+                card = w.last_note(HOST)["blocks"]
+                self.assertEqual((chosen_size(card), chosen_board(card)), ("large", "emoji"))
+                state = dropdown_state(size_menu_of(card), "small", "BLOCKA")
+                state.update(dropdown_state(board_menu_of(card), "numbers", "BLOCKB"))
+                out = w.click(HOST, button_named(card, "set_all"), self.CHANNEL, state=state)
+                self.assertTrue(out["ok"], out)
+                self.assertIn("(small game: numbers 1 to 30)", all_text(w.channel_messages(self.CHANNEL)[-1]["blocks"]))
+                out = w.click(HOST, button_named(w.panel(HOST), "start"), self.CHANNEL)
+                self.assertTrue(out["ok"], out)
+                board = w.messages[(self.CHANNEL, out["message_ts"])]["blocks"]
+                self.assertEqual(len(code_table(board)), 3, "a plain number grid of thirty numbers")
+                self.assertEqual(grid_sections(board), [])
+                if not test:
+                    game = t.game_from_row(w.rows_of(t.GAME_ROW)[0])
+                    self.assertEqual((game["cfg"]["size"], game["cfg"]["board"]), ("small", "numbers"))
+
+    def test_a_board_dropdown_that_did_not_arrive_is_reported(self):
+        self.world.type_word(HOST, self.CHANNEL, "itambola")
+        out = t.main({"action_id": t.BOARD_ACTION, "user_id": HOST, "channel": self.CHANNEL,
+                      "action_ts": self.world.tick(), "slack_bot_token": "xoxb-test", "workato_api_token": "wk-test"})
+        self.assertFalse(out["ok"])
+        self.assertIn("board dropdown's choice did not arrive", out["error"])
+        out = t.main({"action_id": t.BOARD_ACTION, "selected_option": "garbage", "user_id": HOST,
+                      "channel": self.CHANNEL, "action_ts": self.world.tick(), "slack_bot_token": "xoxb-test",
+                      "workato_api_token": "wk-test"})
+        self.assertIn("not one of the choices on the setup card's board dropdown", out["error"])
+
+    def test_the_choice_can_arrive_as_just_the_options_value(self):
+        w = self.world
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        menu = size_menu_of(w.last_note(HOST)["blocks"])
+        value = [o["value"] for o in menu["options"] if json.loads(o["value"])["s"] == "small"][0]
+        out = t.main({"action_id": t.SIZE_ACTION, "selected_option": value, "user_id": HOST, "channel": self.CHANNEL,
+                      "action_ts": w.tick(), "slack_bot_token": "xoxb-test", "workato_api_token": "wk-test",
+                      "response_url": HOOK + HOST})
+        self.assertTrue(out["ok"], out)
+        self.assertEqual(chosen_size(w.last_note(HOST)["blocks"]), "small")
 
     def test_a_large_game_is_what_it_always_was(self):
         ids = self.people(4)
         self.open_game(ids)
-        self.assertIn("Game size: *Large*", self.setup_text)
+        self.assertEqual((self.opened_on, chosen_size(self.setup_blocks)), ("large", "large"))
         self.assertIn("15 numbers in 3 rows", self.lobby_text)
         self.assertNotIn(" game: numbers", self.lobby_text)
         for user in ids:
             blocks = self.world.ticket_of(user)[2]
-            self.assertEqual([len(b["elements"]) for b in blocks if b["type"] == "actions"], [5, 5, 5])
+            self.assertEqual(row_widths(blocks), [9, 9, 9], "a printed row has a cell for each of nine columns")
+            self.assertEqual(len(ticket_numbers_on(blocks)), 15)
         game = t.game_from_row(self.world.rows_of(t.GAME_ROW)[0])
         self.assertEqual((game["cfg"]["size"], t.numbers_of(game)), ("large", 90))
         out = self.next_number()
@@ -973,7 +2100,7 @@ class TestGames(unittest.TestCase):
     # -- the review, with a hundred players
     def test_the_review_of_a_hundred_players_is_a_short_table(self):
         ids = self.people(100)
-        self.open_game(ids, "itambola", max_players=100)
+        self.open_game(ids, max_players=100)
         self.assertEqual(len(self.world.rows_of(t.PLAYER_ROW)), 100)
         called = []
         for _ in range(14):
@@ -1016,7 +2143,7 @@ class TestGames(unittest.TestCase):
 
     def test_top_n_from_the_recipe(self):
         ids = self.people(30)
-        self.open_game(ids, "itambola small", top_n=4)
+        self.open_game(ids, "small", top_n=4)
         self.next_number()
         self.world.click(HOST, button_named(self.world.panel(HOST), "review"), self.CHANNEL)
         self.assertEqual(len(code_table(self.board())) - 1, 4)
@@ -1056,8 +2183,10 @@ class TestGames(unittest.TestCase):
             with self.subTest(size=size):
                 self.use_world()
                 ids = self.people(4)
-                self.open_game(ids, "itambola " + size, test=True)
+                self.open_game(ids, size, test=True)
                 self.assertEqual(self.world.rows, {}, "a test game writes nothing to the table")
+                for button in buttons_of(self.setup_blocks):             # a test game's card carries its whole state
+                    self.assertTrue(button["value"].startswith(t.TEST_PREFIX + "|set|"))
                 self.assertIn("{} numbers in 3 rows".format(3 * spec["row"]), self.lobby_text)
                 out = self.next_number()
                 self.assertIn("1 of {} called".format(spec["numbers"]), all_text(self.board()).replace("*", ""))
@@ -1085,7 +2214,7 @@ class TestGames(unittest.TestCase):
             with self.subTest(size=size):
                 self.use_world()
                 ids = self.people(3)
-                self.open_game(ids, "itambola " + size)
+                self.open_game(ids, size)
                 mine = ticket_numbers_on(self.world.ticket_of(HOST)[2])
                 number = 0
                 while number not in mine:                         # call numbers until one is on the organizer's ticket
@@ -1095,14 +2224,19 @@ class TestGames(unittest.TestCase):
                 card = self.world.panel(HOST)
                 rows = [b for b in card if b["type"] == "actions" and any(
                     e["action_id"].startswith(t.ACTION_PREFIX + "hmark_") for e in b["elements"])]
-                self.assertEqual([len(r["elements"]) for r in rows], [spec["row"]] * 3)
-                self.assertEqual(sorted(int(e["action_id"].rsplit("_", 1)[1]) for r in rows for e in r["elements"]),
-                                 sorted(mine))
+                self.assertEqual([len(r["elements"]) for r in rows], [columns_of(size)] * 3)
+                self.assertEqual(sorted(int(e["action_id"].rsplit("_", 1)[1]) for r in rows for e in r["elements"]
+                                        if e["action_id"].startswith(t.ACTION_PREFIX + "hmark_")), sorted(mine))
                 press = [e for r in rows for e in r["elements"] if e["action_id"].endswith("_{}".format(number))][0]
                 out = self.world.click(HOST, press, self.CHANNEL)
                 self.assertTrue(out["ok"], out)
                 self.assertEqual(out["marked"], number)
                 self.assertIn(":white_check_mark: {}".format(number), all_text(self.world.panel(HOST)))
+
+
+class TestGamesByPayload(TestGames):
+    """Every game above again, with each press sent as one `payload` and nothing else mapped but the tokens."""
+    via = "payload"
 
 
 if __name__ == "__main__":

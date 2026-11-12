@@ -81,11 +81,19 @@
   },
   {
     "control_type": "text",
+    "label": "Payload",
+    "name": "payload",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The whole interaction payload as JSON text (map the trigger's block_actions object in formula mode with .to_json). With it the click recipe needs nothing else but the two tokens: the user, channel, message, button, menu picks, response_url and the size dropdown's current choice (state) are all read from it. The trigger's own {\"block_actions:button\": {...}} wrapper is fine. Anything mapped by hand in the fields below is kept; the payload only fills what is blank. Leave it empty on the typed recipe."
+  },
+  {
+    "control_type": "text",
     "label": "Action value",
     "name": "action_value",
     "type": "string",
     "optional": true,
-    "hint": "[click] The pressed button's value (actions[0].value): tb|<kind>|<game>|<arg> for a real game, tbt|<kind>|<json> for a test game. Its presence (or action_id's) is what makes this call a click instead of the typed word. Leave it empty on the typed recipe."
+    "hint": "[click] The pressed button's value (actions[0].value): tb|<kind>|<game>|<arg> for a real game, tbt|<kind>|<json> for a test game. Its presence (or action_id's) is what makes this call a click instead of the typed word. Not needed when payload is mapped. Leave it empty on the typed recipe."
   },
   {
     "control_type": "text",
@@ -110,6 +118,14 @@
     "type": "string",
     "optional": true,
     "hint": "[click] actions[0].selected_options: the people chosen on the organizer's player menu when it is the channel's own list (a list of {text, value} options; only the values, Slack user ids, are read). Map it next to selected_users: the menu is the channel's list unless the channel has more people than one menu holds, when it is Slack's people picker and its picks arrive in selected_users. Leave it empty if absent."
+  },
+  {
+    "control_type": "text",
+    "label": "State",
+    "name": "state",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The interaction's state (top level, next to actions): what every dropdown on the message shows right now. Only for mapping field by field: the setup card's Game size, Board style and Ticket layout dropdowns are read from it when a way of joining is pressed. Not needed when payload is mapped. Leave it empty if absent."
   },
   {
     "control_type": "text",
@@ -193,7 +209,7 @@
     "name": "size",
     "type": "string",
     "optional": true,
-    "hint": "[typed] Game size: small (numbers 1 to 30, 9 on a ticket: a quick game), medium (1 to 60, 12 on a ticket) or large (1 to 90, 15 on a ticket: the classic game). Blank = large. Quick, mini and short mean small, full means large. Whoever types the word can choose another size for their game by typing it after the word, itambola small, and what they type wins over this."
+    "hint": "[typed] The game size the setup card's Game size dropdown opens on: small (numbers 1 to 30, 9 on a ticket: a quick game), medium (1 to 60, 12 on a ticket) or large (1 to 90, 15 on a ticket: the classic game). Blank = large. The organizer chooses the size on that dropdown, which is what counts; this only sets where it starts, for a channel that mostly plays quick games."
   },
   {
     "control_type": "number",
@@ -204,5 +220,21 @@
     "optional": true,
     "hint": "[typed] Players the Review ranks, 1 to 50. Default 10. The review is a short table of the players with the most numbers marked, then a count of the rest, so a hundred players still make one short card.",
     "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Board style",
+    "name": "board_style",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] The board style the setup card's Board style dropdown opens on: emoji (a square for every number, number emojis where called: the default), numbers (every number in a plain grid, the called ones in [brackets]) or list (just the numbers called so far). Blank = emoji. The organizer chooses on the dropdown, which is what counts; this only sets where it starts."
+  },
+  {
+    "control_type": "text",
+    "label": "Ticket layout",
+    "name": "ticket_layout",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] The ticket layout the setup card's Ticket layout dropdown opens on: printed (every number in its own column with blanks between, like a paper ticket: the default) or compact (just the numbers, in rows of five, four or three). Blank = printed. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack folds a long row of buttons on a narrow screen, compact avoids it."
   }
 ]
