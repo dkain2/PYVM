@@ -1,0 +1,208 @@
+[
+  {
+    "control_type": "text",
+    "label": "Workato api token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Workato Data Tables API token. Needed on a press of a real game (never of a test game), and on the typed-word recipe so that typing the word again can find the game the person already runs or plays in. Without it on the typed recipe the word always opens the setup card."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bot token. Scopes: chat:write and users:read; channels:read (groups:read in a private channel) for Everyone in this channel; channels:history (groups:history) for test games only; im:write as a fallback for private messages."
+  },
+  {
+    "control_type": "text",
+    "label": "Text",
+    "name": "text",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] The Slack message text. A message with itambola or ihousie in it is the word; anything else is skipped. Leave it empty on the click recipe."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": false,
+    "hint": "[both] Slack id of whoever typed the word [typed] or pressed the control [click]."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel",
+    "name": "channel",
+    "type": "string",
+    "optional": false,
+    "hint": "[both] Channel id the message [typed] or the button [click] is in. A ticket press arrives from the player's private message, so there it is that message's channel; the game's own channel is read from the game."
+  },
+  {
+    "control_type": "text",
+    "label": "Message ts",
+    "name": "message_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] ts of the message that holds the word. The game's id is made from it, so one typed word is one game."
+  },
+  {
+    "control_type": "text",
+    "label": "Thread ts",
+    "name": "thread_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Parent ts if the word was typed in a thread. The setup card then appears in that thread; a top-level word gets its card in the channel."
+  },
+  {
+    "control_type": "text",
+    "label": "Bot user ID",
+    "name": "bot_user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] The bot's own user id, so it never starts a game for itself."
+  },
+  {
+    "control_type": "text",
+    "label": "Subtype",
+    "name": "subtype",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Slack message subtype. Edits, joins and so on are skipped."
+  },
+  {
+    "control_type": "text",
+    "label": "Bot ID",
+    "name": "bot_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Present on bot messages -- skipped."
+  },
+  {
+    "control_type": "text",
+    "label": "Action value",
+    "name": "action_value",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The pressed button's value (actions[0].value): tb|<kind>|<game>|<arg> for a real game, tbt|<kind>|<json> for a test game. Its presence (or action_id's) is what makes this call a click instead of the typed word. Leave it empty on the typed recipe."
+  },
+  {
+    "control_type": "text",
+    "label": "Action ID",
+    "name": "action_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].action_id. Needed for the organizer's player menu, which has no value: its action_id is tambola_click_pick_<game>. Harmless on every other press."
+  },
+  {
+    "control_type": "text",
+    "label": "Selected users",
+    "name": "selected_users",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].selected_users: the people chosen on the organizer's player menu when it is Slack's people picker (used when the channel has more people than the channel's own list can hold). A list or text; Slack user ids are picked out of whatever arrives. Leave it empty if absent."
+  },
+  {
+    "control_type": "text",
+    "label": "Selected options",
+    "name": "selected_options",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].selected_options: the people chosen on the organizer's player menu when it is the channel's own list (a list of {text, value} options; only the values, Slack user ids, are read). Map it next to selected_users: the menu is the channel's list unless the channel has more people than one menu holds, when it is Slack's people picker and its picks arrive in selected_users. Leave it empty if absent."
+  },
+  {
+    "control_type": "text",
+    "label": "Source ts",
+    "name": "source_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] ts of the message that holds the button (container.message_ts). For a ticket press it is the ticket message, which is redrawn."
+  },
+  {
+    "control_type": "text",
+    "label": "Action ts",
+    "name": "action_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] Slack's own click time (actions[0].action_ts). A prize goes to the earliest click, a second Next number within about a second of the last is taken as a double press, and a menu pick processed late is told from a newer one by it."
+  },
+  {
+    "control_type": "text",
+    "label": "Response URL",
+    "name": "response_url",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The press's response_url (the top-level response_url of the interaction payload, not inside actions). Optional but recommended: with it the organizer's private controls are UPDATED IN PLACE, one note for the whole game (Start turns the lobby's controls into the game's, each Next number shows what was just called, Review and Resume swap the buttons, a stale button turns into the right ones), instead of a new private note each time the game moves on. Only Slack's own response URLs are used; anything else is ignored with a warning."
+  },
+  {
+    "control_type": "text",
+    "label": "Testing",
+    "name": "testing",
+    "type": "string",
+    "optional": true,
+    "hint": "\"yes\" for a test game: the lobby, board, tickets and controls are all real and work, but nothing is written to the data table. The game is kept in the messages it posts (the bot needs channels:history, or groups:history, to read them back). Set it on the typed-word recipe only: later presses recognise a test game by its buttons."
+  },
+  {
+    "control_type": "text",
+    "label": "Skip post",
+    "name": "skip_post",
+    "type": "string",
+    "optional": true,
+    "hint": "\"yes\" to post nothing and write nothing: the cards come back in preview_json (paste a \"blocks\" list into Slack's Block Kit Builder)."
+  },
+  {
+    "control_type": "text",
+    "label": "Announce",
+    "name": "announce",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Where a won prize is announced: channel (the default), thread (a reply under the board) or off. The board shows who holds each prize either way."
+  },
+  {
+    "control_type": "text",
+    "label": "Prizes",
+    "name": "prizes",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Comma separated prizes in play, from early5, top, middle, bottom, full (early five, top line, full house and so on also work). Blank = all five."
+  },
+  {
+    "control_type": "number",
+    "label": "Board columns",
+    "parse_output": "integer_conversion",
+    "name": "board_columns",
+    "type": "integer",
+    "optional": true,
+    "hint": "[typed] Squares in a row of the board, 3 to 10. Default 10, the traditional nine rows. 5 gives eighteen shorter rows, kinder to a phone.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Max players",
+    "parse_output": "integer_conversion",
+    "name": "max_players",
+    "type": "integer",
+    "optional": true,
+    "hint": "[typed] Most players a game holds. Default 60, never more than 100. Each player costs a table write and a private message, and a Workato Python step is stopped at 90 seconds.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Size",
+    "name": "size",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] Game size: small (numbers 1 to 30, 9 on a ticket: a quick game), medium (1 to 60, 12 on a ticket) or large (1 to 90, 15 on a ticket: the classic game). Blank = large. Quick, mini and short mean small, full means large. Whoever types the word can choose another size for their game by typing it after the word, itambola small, and what they type wins over this."
+  },
+  {
+    "control_type": "number",
+    "label": "Top N",
+    "parse_output": "integer_conversion",
+    "name": "top_n",
+    "type": "integer",
+    "optional": true,
+    "hint": "[typed] Players the Review ranks, 1 to 50. Default 10. The review is a short table of the players with the most numbers marked, then a count of the rest, so a hundred players still make one short card.",
+    "render_input": "integer_conversion"
+  }
+]

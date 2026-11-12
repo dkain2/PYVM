@@ -1,0 +1,254 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Ok",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when the call did what it was meant to, including a press that was answered with a private note.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Ok",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "ok",
+      "type": "boolean",
+      "optional": true,
+      "hint": "True when the call did what it was meant to, including a press that was answered with a private note."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Error",
+    "name": "error",
+    "type": "string",
+    "optional": true,
+    "hint": "What went wrong, when something did. Empty otherwise."
+  },
+  {
+    "label": "Warnings",
+    "name": "warnings",
+    "type": "array",
+    "optional": true,
+    "hint": "Things that did not stop the call: a ticket that could not be sent, a message that could not be redrawn, a table write that failed.",
+    "of": "string"
+  },
+  {
+    "control_type": "text",
+    "label": "Skipped",
+    "name": "skipped",
+    "type": "string",
+    "optional": true,
+    "hint": "Non-empty when nothing happened and that was right: not a person typing / no keyword / only the host can do that / the game is not running / already in / the same press made twice / another press is starting this game / game not available."
+  },
+  {
+    "control_type": "text",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true,
+    "hint": "What the call was: setup (the word was typed), panel (the word brought the organizer's controls back), ticket (the word sent a player their ticket again; or a press of Show my card / Hide my card), set, pick, join, start, cancel, next, review, resume, end, mark (a number tapped, on a ticket in a private message or on the organizer's card in their note), or click when the press could not be read."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Testing",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "testing",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True for a test game or a press on one: nothing was written to the data table.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Testing",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "testing",
+      "type": "boolean",
+      "optional": true,
+      "hint": "True for a test game or a press on one: nothing was written to the data table."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Preview",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "preview",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when nothing was posted (skip_post = yes): the cards are in preview_json.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Preview",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "preview",
+      "type": "boolean",
+      "optional": true,
+      "hint": "True when nothing was posted (skip_post = yes): the cards are in preview_json."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Game ID",
+    "name": "game_id",
+    "type": "string",
+    "optional": true,
+    "hint": "The game's id: tb_<channel>_<message ts>. Also the id of every row of the game."
+  },
+  {
+    "control_type": "text",
+    "label": "Status",
+    "name": "status",
+    "type": "string",
+    "optional": true,
+    "hint": "The game's status after the call: lobby, starting, running, paused, done or cancelled."
+  },
+  {
+    "control_type": "text",
+    "label": "Controls",
+    "name": "controls",
+    "type": "string",
+    "optional": true,
+    "hint": "What became of the organizer's private note on this press: \"in place\" (replaced through response_url), \"new note\" (a new private note was sent: response_url is not mapped, or it was turned down, see warnings), \"new note without buttons\" (Slack turned the buttons down, see warnings), \"not delivered\" (neither worked) or empty (nothing was said to the organizer, as for a Next number without response_url)."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel",
+    "name": "channel",
+    "type": "string",
+    "optional": true,
+    "hint": "The channel of the call."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Whoever typed the word or pressed the control."
+  },
+  {
+    "control_type": "text",
+    "label": "User name",
+    "name": "user_name",
+    "type": "string",
+    "optional": true,
+    "hint": "Their name, when the call looked it up."
+  },
+  {
+    "control_type": "text",
+    "label": "Message ts",
+    "name": "message_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[set] ts of the lobby. [start] ts of the board."
+  },
+  {
+    "control_type": "number",
+    "label": "Players",
+    "parse_output": "integer_conversion",
+    "name": "players",
+    "type": "integer",
+    "optional": true,
+    "hint": "[set, pick, join, start] How many players the game has.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Called",
+    "parse_output": "integer_conversion",
+    "name": "called",
+    "type": "integer",
+    "optional": true,
+    "hint": "How many numbers have been called.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Number",
+    "parse_output": "integer_conversion",
+    "name": "number",
+    "type": "integer",
+    "optional": true,
+    "hint": "[next] The number just called. 0 when no number was called.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Marked",
+    "parse_output": "integer_conversion",
+    "name": "marked",
+    "type": "integer",
+    "optional": true,
+    "hint": "[mark] The number the player just marked. 0 when the press marked nothing (not called yet, already marked).",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Prize",
+    "name": "prize",
+    "type": "string",
+    "optional": true,
+    "hint": "[mark] The prize or prizes this press won, as Early Five, Top Line ... Empty when none."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Finished",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "finished",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when the call ended the game: Full House, the 90th number, or End game.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Finished",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "finished",
+      "type": "boolean",
+      "optional": true,
+      "hint": "True when the call ended the game: Full House, the 90th number, or End game."
+    }
+  },
+  {
+    "control_type": "number",
+    "label": "Dm sent",
+    "parse_output": "integer_conversion",
+    "name": "dm_sent",
+    "type": "integer",
+    "optional": true,
+    "hint": "[start] How many players were sent their ticket.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "label": "Dm failed",
+    "name": "dm_failed",
+    "type": "array",
+    "optional": true,
+    "hint": "[start] Names of players whose ticket could not be sent, or was not reached in time. They get theirs by typing the word again (the organizer, with My ticket).",
+    "of": "string"
+  },
+  {
+    "control_type": "number",
+    "label": "Rows written",
+    "parse_output": "integer_conversion",
+    "name": "rows_written",
+    "type": "integer",
+    "optional": true,
+    "hint": "Table rows written or updated by this call. 0 for a test game.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Preview json",
+    "name": "preview_json",
+    "type": "string",
+    "optional": true,
+    "hint": "[skip_post] JSON of every card, each a list of blocks: setup, lobby, organizer_lobby, organizer_pick, board, organizer_running, organizer_card, review, organizer_paused, ticket, board_over."
+  }
+]

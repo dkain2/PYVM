@@ -1,0 +1,360 @@
+[
+  {
+    "control_type": "text",
+    "label": "today",
+    "name": "today",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "activity",
+    "name": "activity",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "row_type",
+    "name": "row_type",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "snapshot_row_type",
+    "name": "snapshot_row_type",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "channel_id",
+    "name": "channel_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "top_n",
+    "parse_output": "integer_conversion",
+    "name": "top_n",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "min_days",
+    "parse_output": "integer_conversion",
+    "name": "min_days",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "min_total_percent",
+    "parse_output": "float_conversion",
+    "name": "min_total_percent",
+    "type": "number",
+    "optional": true,
+    "render_input": "float_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "max_total_gap",
+    "parse_output": "integer_conversion",
+    "name": "max_total_gap",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "leader",
+    "name": "leader",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "leader_total",
+    "parse_output": "integer_conversion",
+    "name": "leader_total",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "crew_total",
+    "parse_output": "integer_conversion",
+    "name": "crew_total",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "participants",
+    "parse_output": "integer_conversion",
+    "name": "participants",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "total_participants",
+    "parse_output": "integer_conversion",
+    "name": "total_participants",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "hidden_participants",
+    "parse_output": "integer_conversion",
+    "name": "hidden_participants",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "ok",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "ok",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "ok",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "dry_run",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "dry_run",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "dry_run",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "dry_run",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "message_ts",
+    "name": "message_ts",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "thread_ts",
+    "name": "thread_ts",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "posted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "posted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "posted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "posted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "thread_posted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "thread_posted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "thread_posted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "thread_posted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "had_previous_snapshot",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "had_previous_snapshot",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "had_previous_snapshot",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "had_previous_snapshot",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "snapshot_saved",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "snapshot_saved",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "snapshot_saved",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "snapshot_saved",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "snapshot_chars",
+    "parse_output": "integer_conversion",
+    "name": "snapshot_chars",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "history_runs_stored",
+    "parse_output": "integer_conversion",
+    "name": "history_runs_stored",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "journey_km",
+    "parse_output": "float_conversion",
+    "name": "journey_km",
+    "type": "number",
+    "optional": true,
+    "render_input": "float_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "journey_lap",
+    "parse_output": "integer_conversion",
+    "name": "journey_lap",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "journey_leg",
+    "parse_output": "integer_conversion",
+    "name": "journey_leg",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "next_stop",
+    "name": "next_stop",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "carousel_posted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "carousel_posted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "carousel_posted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "carousel_posted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "categories_posted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "categories_posted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "categories_posted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "categories_posted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "walkers_active",
+    "parse_output": "integer_conversion",
+    "name": "walkers_active",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "stops_passed",
+    "parse_output": "integer_conversion",
+    "name": "stops_passed",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "error",
+    "name": "error",
+    "type": "string",
+    "optional": true
+  }
+]

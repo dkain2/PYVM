@@ -1,0 +1,515 @@
+[
+  {
+    "control_type": "text",
+    "label": "Workato API token",
+    "name": "workato_dev_api",
+    "type": "string",
+    "optional": true,
+    "hint": "Bearer token for the Workato data table. Used to read the activity rows and to save the leaderboard snapshot. Required in Workato; optional locally with local_data_file.",
+    "details": {
+      "real_name": "workato_dev_api"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack channel ID",
+    "name": "channel_id",
+    "type": "string",
+    "optional": false,
+    "hint": "Slack channel where the leaderboard is posted, for example C0ASWC1C11Q. The bot must be a member.",
+    "details": {
+      "real_name": "channel_id"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bot token (xoxb-...) with chat:write. The script posts the message itself. Always required (a dry run posts too).",
+    "details": {
+      "real_name": "slack_bot_token"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Activity",
+    "name": "activity",
+    "type": "string",
+    "optional": false,
+    "hint": "Activity key without _users. Current values from the data table: step, pushup, plank, yoga, meditate, swim, cardio, read, workout. For the games use imemory, iadd, isub or imultiple (imultiply also works): the row type, title and icon are filled in from the name, and the board ranks on best score (faster run breaks a tie). Nothing else is needed to switch between activities and games. The three maths games also show each player's top level reached. challenge (or challenges, weekly_challenge, wc) posts the weekly challenge board: who has cleared the most weekly challenges, all time, added up across all of a person’s activity and game rows. Nothing else is needed; people who have cleared none are not listed, the columns are name, cleared, added and taken, and show_average is off by default there. greatwalk (or great_walk) posts the Great Walk dashboard: a shared view of where the channel is on the route, what was added since the last post, a one-line route strip, and a carousel that tells the walk in five cards (in a thread reply by default; see Walk layout). Nobody is ranked or named, and there is no table or thread (top_n, thread_full_list and the filters do not apply). It reads the step rows and keeps its own snapshot (greatwalk_leaderboard); min_days defaults to 0 there.",
+    "details": {
+      "real_name": "activity"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Rows to show",
+    "parse_output": "integer_conversion",
+    "name": "top_n",
+    "type": "integer",
+    "optional": true,
+    "hint": "Rows shown in the channel message. Default is 10, allowed 1 to 50. Everyone else goes in the thread reply.",
+    "details": {
+      "real_name": "top_n"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Post the rest in thread",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "thread_full_list",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on (never for greatwalk). Reply in the message thread with everyone the channel message does not show: ranks after Rows to show, then people still getting started. The top rows are not repeated.",
+    "details": {
+      "real_name": "thread_full_list"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Post the rest in thread",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "thread_full_list",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on (never for greatwalk). Reply in the message thread with everyone the channel message does not show: ranks after Rows to show, then people still getting started. The top rows are not repeated.",
+      "details": {
+        "real_name": "thread_full_list"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show daily average",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_average",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on for activity boards, off for the challenge board (games and greatwalk have no such column). Adds an avg/day column: total divided by days logged. On the challenge board it adds a clear-rate column instead: the share of the challenges a person took on that they cleared.",
+    "details": {
+      "real_name": "show_average"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show daily average",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_average",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on for activity boards, off for the challenge board (games and greatwalk have no such column). Adds an avg/day column: total divided by days logged. On the challenge board it adds a clear-rate column instead: the share of the challenges a person took on that they cleared.",
+      "details": {
+        "real_name": "show_average"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show this-week column (challenges)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_week",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Challenge board only. Default off. Adds a week column: challenges each person has cleared since Monday (UTC). Shows a dash for none.",
+    "details": {
+      "real_name": "show_week"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show this-week column (challenges)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_week",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Challenge board only. Default off. Adds a week column: challenges each person has cleared since Monday (UTC). Shows a dash for none.",
+      "details": {
+        "real_name": "show_week"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show categories (challenges)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_categories",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Challenge board only. Default on. Adds a cats column (how many different categories each person has cleared a challenge in) and a Most cleared line under the table naming the crew's biggest categories.",
+    "details": {
+      "real_name": "show_categories"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show categories (challenges)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_categories",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Challenge board only. Default on. Adds a cats column (how many different categories each person has cleared a challenge in) and a Most cleared line under the table naming the crew's biggest categories.",
+      "details": {
+        "real_name": "show_categories"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Category thread (challenges)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "category_thread",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Challenge board only. Default on. Posts a thread reply, Who cleared what: each category with who cleared it and how many, biggest first, up to five names each.",
+    "details": {
+      "real_name": "category_thread"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Category thread (challenges)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "category_thread",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Challenge board only. Default on. Posts a thread reply, Who cleared what: each category with who cleared it and how many, biggest first, up to five names each.",
+      "details": {
+        "real_name": "category_thread"
+      }
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Daily average minimum days",
+    "parse_output": "integer_conversion",
+    "name": "average_min_days",
+    "type": "integer",
+    "optional": true,
+    "hint": "Default 14. People with fewer logged days than this show a dash in the avg/day column, so a few big days do not top it. Applies to every activity. 0 shows the average for everyone. Ignored when Show daily average is off.",
+    "details": {
+      "real_name": "average_min_days"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Save snapshot",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "save_snapshot",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Turn off to post to Slack without writing the snapshot row to the data table, for testing. Rank changes still compare against the existing snapshot.",
+    "details": {
+      "real_name": "save_snapshot"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Save snapshot",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "save_snapshot",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Turn off to post to Slack without writing the snapshot row to the data table, for testing. Rank changes still compare against the existing snapshot.",
+      "details": {
+        "real_name": "save_snapshot"
+      }
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Snapshot row type override",
+    "name": "snapshot_row_type",
+    "type": "string",
+    "optional": true,
+    "hint": "Leave blank in production (uses <activity>_leaderboard). For testing set e.g. workout_leaderboard_test to keep a separate snapshot and try rank changes and trend without touching the real one.",
+    "details": {
+      "real_name": "snapshot_row_type"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "History runs kept",
+    "parse_output": "integer_conversion",
+    "name": "history_runs",
+    "type": "integer",
+    "optional": true,
+    "hint": "Past runs stored in the snapshot row for the trend column. Default 12, allowed 1 to 26.",
+    "details": {
+      "real_name": "history_runs"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Rank up marker",
+    "name": "up_marker",
+    "type": "string",
+    "optional": true,
+    "hint": "Character shown before places gained. Default is the up triangle. Use Unicode, not a Slack :shortcode:, which does not render inside the table's code block.",
+    "details": {
+      "real_name": "up_marker"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Rank down marker",
+    "name": "down_marker",
+    "type": "string",
+    "optional": true,
+    "hint": "Character shown before places lost. Default is the red down triangle emoji.",
+    "details": {
+      "real_name": "down_marker"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Unit",
+    "name": "unit",
+    "type": "string",
+    "optional": true,
+    "hint": "How totals should be formatted. Use seconds for plank, minutes for yoga/meditate/swim/cardio/workout, pages for read, and leave blank or use count for step/pushup. Ignored for games.",
+    "details": {
+      "real_name": "unit"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Leaderboard title",
+    "name": "title",
+    "type": "string",
+    "optional": true,
+    "hint": "Display name in the Slack heading. Leave blank for defaults such as Steps, Pushup, Plank, Yoga, Meditation.",
+    "details": {
+      "real_name": "title"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Footer noun",
+    "name": "noun",
+    "type": "string",
+    "optional": true,
+    "hint": "Text used in summary lines, for example steps, pushups, plank time, swim time, pages, workout time. Leave blank for known activity defaults. Ignored for games.",
+    "details": {
+      "real_name": "noun"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack icon",
+    "name": "icon",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional Slack emoji shortcode shown before the heading, for example :athletic_shoe:, :plank-3:, :books:. Leave blank for known activity defaults.",
+    "details": {
+      "real_name": "icon"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Header image URL",
+    "name": "header_image_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional banner image shown as a Slack image block just above the leaderboard. When set, it replaces the text heading (the icon + \"<Activity> leaderboard\" line) since the banner already carries that. Leave blank to keep the text heading. On the Great Walk this is the banner above the dashboard; it must be a public https URL.",
+    "details": {
+      "real_name": "header_image_url"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Walk layout (Great Walk)",
+    "name": "walk_layout",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Strip in the post, carousel in the thread",
+        "thread"
+      ],
+      [
+        "Strip only",
+        "strip"
+      ],
+      [
+        "Carousel in the post",
+        "carousel"
+      ]
+    ],
+    "hint": "Great Walk only. thread (default): the post carries a one-line route strip (reached, the walkers, the next stop, how many more, home) and the carousel of cards goes in a thread reply, so the post stays short. strip: the strip only. carousel: the carousel in the post itself, with no strip.",
+    "details": {
+      "real_name": "walk_layout"
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Carousel on (Great Walk)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "use_carousel",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Great Walk only. Turn off to post the route strip only, with no carousel anywhere (same as Walk layout = strip). Default on.",
+    "details": {
+      "real_name": "use_carousel"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Carousel on (Great Walk)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "use_carousel",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Great Walk only. Turn off to post the route strip only, with no carousel anywhere (same as Walk layout = strip). Default on.",
+      "details": {
+        "real_name": "use_carousel"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Set-based activity",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "set_based",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Turn on for rep activities where the board should show both best day and best set. Pushup is treated as set-based automatically. Ignored for games.",
+    "details": {
+      "real_name": "set_based"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Set-based activity",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "set_based",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Turn on for rep activities where the board should show both best day and best set. Pushup is treated as set-based automatically. Ignored for games.",
+      "details": {
+        "real_name": "set_based"
+      }
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Best effort phrase",
+    "name": "best_phrase",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional phrase for the footer highlight, for example Longest single hold, Biggest single set, Longest single session. Leave blank for known activity defaults. Ignored for games.",
+    "details": {
+      "real_name": "best_phrase"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Minimum logged days",
+    "parse_output": "integer_conversion",
+    "name": "min_days",
+    "type": "integer",
+    "optional": true,
+    "hint": "Only show people who logged at least this many distinct days. Default is 5. Use 6 if you want strictly more than 5 days. For a game this is the minimum games played, and the default is 1.",
+    "details": {
+      "real_name": "min_days"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Minimum total percent",
+    "parse_output": "float_conversion",
+    "name": "min_total_percent",
+    "type": "number",
+    "optional": true,
+    "hint": "Optional stricter filter. Only show people with at least this percent of the qualified leader's total. Example: 40 means at least 40% of the leader. Leave blank to disable.",
+    "details": {
+      "real_name": "min_total_percent"
+    },
+    "render_input": "float_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Maximum total gap",
+    "parse_output": "integer_conversion",
+    "name": "max_total_gap",
+    "type": "integer",
+    "optional": true,
+    "hint": "Optional stricter filter. Only show people whose total is within this absolute gap from the qualified leader. Example for pushup: 200 means no more than 200 reps behind. Leave blank to disable.",
+    "details": {
+      "real_name": "max_total_gap"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Row type override",
+    "name": "row_type",
+    "type": "string",
+    "optional": true,
+    "hint": "Advanced override for the Workato row_type. Usually leave blank because activity step maps to step_users, plank maps to plank_users, etc. Games map automatically: imemory = object_memory_user, iadd = math_add_user, isub = math_sub_user, imultiple = math_mul_user.",
+    "details": {
+      "real_name": "row_type"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Local data file",
+    "name": "local_data_file",
+    "type": "string",
+    "optional": true,
+    "hint": "Local testing only. Path to an exported Workato JSON file such as data_table.json. Leave blank in the Workato recipe.",
+    "details": {
+      "real_name": "local_data_file"
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Dry run",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "dry_run",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Posts the board to Slack as usual but stores nothing: the snapshot row is not written, so the next real run still compares against the last saved board. The payloads also come back in preview. Same effect on storage as turning Save snapshot off.",
+    "details": {
+      "real_name": "dry_run"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Dry run",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "dry_run",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Posts the board to Slack as usual but stores nothing: the snapshot row is not written, so the next real run still compares against the last saved board. The payloads also come back in preview. Same effect on storage as turning Save snapshot off.",
+      "details": {
+        "real_name": "dry_run"
+      }
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Local snapshot file",
+    "name": "local_snapshot_file",
+    "type": "string",
+    "optional": true,
+    "hint": "Local testing only. JSON file used instead of the data table for the rank-change snapshot. Leave blank in the Workato recipe.",
+    "details": {
+      "real_name": "local_snapshot_file"
+    }
+  }
+]
