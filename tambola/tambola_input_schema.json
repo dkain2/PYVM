@@ -125,7 +125,7 @@
     "name": "state",
     "type": "string",
     "optional": true,
-    "hint": "[click] The interaction's state (top level, next to actions): what every dropdown on the message shows right now. Only for mapping field by field: the setup card's Game size, Board style and Ticket layout dropdowns are read from it when a way of joining is pressed. Not needed when payload is mapped. Leave it empty if absent."
+    "hint": "[click] The interaction's state (top level, next to actions): what every dropdown on the message shows right now. Only for mapping field by field: the setup card's Game size, Board style, Ticket layout and Winners dropdowns are read from it when a way of joining is pressed. Not needed when payload is mapped. Leave it empty if absent."
   },
   {
     "control_type": "text",
@@ -227,7 +227,7 @@
     "name": "board_style",
     "type": "string",
     "optional": true,
-    "hint": "[typed] The board style the setup card's Board style dropdown opens on: emoji (a square for every number, number emojis where called: the default), numbers (every number in a plain grid, the called ones in [brackets]) or list (just the numbers called so far). Blank = emoji. The organizer chooses on the dropdown, which is what counts; this only sets where it starts."
+    "hint": "[typed] The board style the setup card's Board style dropdown opens on: emoji (a square for every number, number emojis where called: the default), numbers (a plain grid with ?? for each number until it is called) or list (just the numbers called so far). Blank = emoji. The organizer chooses on the dropdown, which is what counts; this only sets where it starts."
   },
   {
     "control_type": "text",
@@ -236,5 +236,21 @@
     "type": "string",
     "optional": true,
     "hint": "[typed] The ticket layout the setup card's Ticket layout dropdown opens on: printed (every number in its own column with blanks between, like a paper ticket: the default) or compact (just the numbers, in rows of five, four or three). Blank = printed. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack folds a long row of buttons on a narrow screen, compact avoids it."
+  },
+  {
+    "control_type": "text",
+    "label": "Winners style",
+    "name": "winners_style",
+    "type": "string",
+    "optional": true,
+    "hint": "[typed] The winners display the setup card's Winners dropdown opens on: names (who holds each prize, in a list: the default), carousel (a Slack carousel card for each winner with their profile picture, the first winner on the right and each new one added to the left), strip (small profile pictures in one line) or none (the board does not list winners). Blank = names. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack refuses the carousel the board shows names instead."
+  },
+  {
+    "control_type": "text",
+    "label": "Banners",
+    "name": "banners",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] Optional pictures shown above prize announcements, as a JSON object of public https image addresses, as text: {\"early5\": \"https://.../early-five.png\", \"top\": \"https://.../top-line.png\", \"middle\": \"https://.../middle-line.png\", \"bottom\": \"https://.../bottom-line.png\", \"full\": \"https://.../full-house.png\"}. Name only the prizes that have one; \"lines\" gives all three lines one picture. Set it as a fixed value on the click recipe, where prizes are won. A bad address or prize name is left out and listed in warnings, and a picture Slack cannot load is left out too: the announcement still goes. Without it the announcement is its header and emojis. Make Full House the tallest."
   }
 ]

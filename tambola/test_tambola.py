@@ -16,7 +16,9 @@ THE GROUPS
     TestPrizes               prizes, progress and the review's steps at every ticket size
     TestBoardStyles          the three board styles: emoji, plain number grid, called list
     TestTicketLayout         printed (a number in its column, blanks between) and compact tickets
+    TestWinners              the board's winners: names, a carousel of profile pictures, a strip, or none
     TestClaims               a prize is won, and announced, once: even if one player's click is handled twice
+    TestCelebrations         announcements that grow with the prize, and the banners that can top them
     TestCards                every card of every size, checked against Slack's Block Kit limits
     TestReview               the ranked table of the review: a hundred players, ties, top_n, odd names
     TestButtons              what a button carries and how it is read back, test games included
@@ -76,13 +78,44 @@ def check_blocks(blocks):
         elif kind == "context":
             assert 1 <= len(block["elements"]) <= 10, "context needs 1 to 10 elements"
             for element in block["elements"]:
-                assert len(element["text"]) <= 3000, "context text over 3000 characters"
+                if element["type"] == "image":
+                    check_image(element)
+                else:
+                    assert len(element["text"]) <= 3000, "context text over 3000 characters"
+        elif kind == "carousel":
+            assert 1 <= len(block["elements"]) <= 10, "a carousel holds 1 to 10 cards, not {}".format(
+                len(block["elements"]))
+            for card in block["elements"]:
+                check_card(card)
         elif kind == "actions":
             assert 1 <= len(block["elements"]) <= 25, "actions need 1 to 25 elements"
             for element in block["elements"]:
                 check_element(element)
+        elif kind == "divider":
+            pass
+        elif kind == "image":
+            check_image(block)
         else:
             raise AssertionError("unexpected block type {!r}".format(kind))
+
+
+def check_image(image):
+    assert image["image_url"].startswith("https://") and len(image["image_url"]) <= 3000, "bad image url"
+    assert 1 <= len(image["alt_text"]) <= 2000, "an image needs alt text"
+
+
+def check_card(card):
+    """A card of a carousel: Slack's limits are 150 characters for a title and a subtitle and 200 for a body."""
+    assert card["type"] == "card"
+    for part, limit in (("title", 150), ("subtitle", 150), ("body", 200)):
+        if card.get(part):
+            assert card[part]["type"] == "mrkdwn" and len(card[part]["text"]) <= limit, "card {} over {}".format(
+                part, limit)
+    for part in ("hero_image", "icon"):
+        if card.get(part):
+            assert card[part]["type"] == "image"
+            check_image(card[part])
+    assert len(card.get("actions") or []) <= 5
 
 
 def check_element(element):
@@ -121,6 +154,8 @@ def all_text(blocks):
         parts += [f["text"] for f in block.get("fields") or []]
         parts += [e.get("text") if isinstance(e.get("text"), str) else (e.get("text") or {}).get("text", "")
                   for e in block.get("elements") or []]
+        for card in (block.get("elements") or []) if block.get("type") == "carousel" else []:
+            parts += [card[part]["text"] for part in ("title", "subtitle", "body") if card.get(part)]
     return "\n".join(parts)
 
 
@@ -141,6 +176,21 @@ def board_menu_of(blocks):
 
 def layout_menu_of(blocks):
     return menu_of(blocks, t.LAYOUT_ACTION)
+
+
+def winners_menu_of(blocks):
+    return menu_of(blocks, t.WINNERS_ACTION)
+
+
+def chosen_winners(blocks):
+    """The winners style a setup card's dropdown stands on."""
+    return json.loads(winners_menu_of(blocks)["initial_option"]["value"])["s"]
+
+
+def carousel_of(blocks):
+    """The cards of the board's carousel, left to right; [] if it has none."""
+    found = [b for b in blocks if b["type"] == "carousel"]
+    return found[0]["elements"] if found else []
 
 
 def chosen_size(blocks):
@@ -354,21 +404,21 @@ class TestSizes(unittest.TestCase):
 
     def test_what_an_option_carries_fits_what_slack_allows(self):
         """The worst case: the longest channel id, every setting at its longest, a test game."""
-        g = make_game("medium", test=True, prizes="early5,top,middle,bottom", announce="thread",
-                      board_columns=10, max_players=100, top_n=50, board_style="numbers", ticket_layout="compact")
-        g["id"] = "tb_C0123456789_1700000000000100"
-        g["channel"], g["word"] = "C0123456789", "Tambola"
-        for key in list(t.SIZES) + list(t.BOARD_STYLES):
-            value = t.choice_value(g, key)
-            self.assertLessEqual(len(value), t.OPTION_VALUE_MAX, "{}: {}".format(len(value), value))
-        for key in t.LAYOUTS:
-            self.assertLessEqual(len(t.choice_value(g, key)), t.OPTION_VALUE_MAX)
-        check_blocks(t.setup_blocks(g))
+        for word in ("Tambola", "Housie"):
+            g = make_game("medium", test=True, prizes="early5,top,middle,bottom", announce="thread",
+                          board_columns=9, max_players=100, top_n=50, board_style="numbers", ticket_layout="compact",
+                          winners_style="carousel")
+            g["id"] = "tb_C0123456789_1700000000000100"
+            g["channel"], g["word"] = "C0123456789", word
+            for key in list(t.SIZES) + list(t.BOARD_STYLES) + list(t.LAYOUTS) + list(t.WINNERS_STYLES):
+                value = t.choice_value(g, key)
+                self.assertLessEqual(len(value), t.OPTION_VALUE_MAX, "{} {}: {}".format(word, len(value), value))
+            check_blocks(t.setup_blocks(g))
 
     def test_an_option_comes_back_however_the_recipe_hands_it_over(self):
         g = make_game("small")
         value = t.choice_value(g, "medium")
-        want = {"s": "medium", "m": "1700000000000100", "w": "Tambola", "f": t.cfg_list(g["cfg"])}
+        want = {"s": "medium", "m": "1700000000000100", "f": t.cfg_list(g["cfg"])}      # Tambola is the usual word
         slack_shape = {"text": {"type": "plain_text", "text": "Medium"}, "value": value}
         for given in (value, slack_shape, json.dumps(slack_shape), [slack_shape], json.dumps([slack_shape])):
             self.assertEqual(t.option_choice(given), want, repr(given)[:60])
@@ -522,27 +572,28 @@ class TestBoardStyles(unittest.TestCase):
         self.assertEqual(t.game_config({"board_style": "plain"})["board"], "numbers")
         self.assertEqual(t.game_config({"board_style": "huh"})["board"], "emoji")
 
-    def test_the_plain_grid(self):
+    def test_the_plain_grid_shows_a_number_only_once_it_is_called(self):
         for size, spec in t.SIZES.items():
             for columns in (10, 7, 5):
                 grid = t.number_grid([], columns, spec["numbers"])
                 lines = grid.strip("`\n").split("\n")
                 self.assertEqual(len(lines), -(-spec["numbers"] // columns), (size, columns))
-                self.assertEqual(sorted(int(n) for n in re.findall(r"\d+", grid)), list(range(1, spec["numbers"] + 1)))
-                self.assertNotIn("[", grid)
-                self.assertLessEqual(max(len(line) for line in lines), 4 * columns)
+                self.assertEqual(grid.count("??"), spec["numbers"], "every number is hidden to begin with")
+                self.assertEqual(re.findall(r"\d", grid), [], "no digit shows before a number is called")
+                self.assertTrue(all(len(line) <= 4 * columns for line in lines))
         called = [4, 17, 90, 1]
         grid = t.number_grid(called, 10, 90)
-        self.assertEqual(sorted(int(n) for n in re.findall(r"\[(\d+)\]", grid)), [1, 4, 17, 90])
-        self.assertEqual(len(re.findall(r"\[", grid)), 4)
+        self.assertEqual(sorted(int(n) for n in re.findall(r"\d\d", grid)), [1, 4, 17, 90])
+        self.assertEqual(grid.count("??"), 90 - 4)
+        self.assertNotIn("[", grid, "no brackets: they would push the columns out of line")
         self.assertTrue(grid.startswith("```\n") and grid.endswith("\n```"))
-        # a number is two digits, so the columns line up
-        self.assertIn("[04]", grid)
-        self.assertIn(" 05 ", grid)
+        self.assertTrue(grid.startswith("```\n01  ??  ??  04"))
+        # a number takes the place of the ?? it was, so nothing moves: every cell is two characters, every gap two
         for line in grid.strip("`\n").split("\n"):
-            columns = {m.start() % 4 for m in re.finditer(r"\d\d", line)}
-            self.assertEqual(columns, {1}, line)                       # every digit pair sits in its own column
-            self.assertLessEqual(len(line), 40)
+            self.assertEqual(len(line), 10 * 2 + 9 * 2, line)
+            self.assertEqual([m.start() % 4 for m in re.finditer(r"\?\?|\d\d", line)], [0] * 10, line)
+        before, after = t.number_grid([1, 2], 10, 30), t.number_grid([1, 2, 3], 10, 30)
+        self.assertEqual(before.replace("??", "03", 1), after, "calling 3 changes only the cell of 3")
 
     def test_the_called_list_is_smallest_first(self):
         self.assertEqual(t.called_lines([30, 4, 17, 1]), "1  \u00b7  4  \u00b7  17  \u00b7  30")
@@ -586,7 +637,8 @@ class TestBoardStyles(unittest.TestCase):
             elif style == "numbers":
                 table = code_table(blocks)
                 self.assertEqual(len(table), 3)
-                self.assertEqual(sorted(int(n) for n in re.findall(r"\[(\d+)\]", "\n".join(table))), sorted(called))
+                self.assertEqual(sorted(int(n) for n in re.findall(r"\d+", "\n".join(table))), sorted(called))
+                self.assertEqual("\n".join(table).count("??"), 30 - 9)
                 self.assertEqual(grid_sections(blocks), [])
             else:
                 self.assertEqual(grid_sections(blocks), [])
@@ -608,7 +660,7 @@ class TestBoardStyles(unittest.TestCase):
             reviews.append(all_text(t.review_blocks(g, t.review_stats(g, make_players(g, 8)))))
         self.assertEqual(len(set(reviews)), 1)
 
-    def test_the_setup_card_has_all_three_dropdowns(self):
+    def test_the_setup_card_has_all_four_dropdowns(self):
         for style in t.BOARD_STYLES:
             for size in t.SIZES:
                 g = make_game(size, board_style=style)
@@ -621,7 +673,7 @@ class TestBoardStyles(unittest.TestCase):
                     self.assertIn(t.BOARD_STYLES[json.loads(option["value"])["s"]]["label"], option["text"]["text"])
                 kinds = [b["type"] for b in blocks]
                 self.assertEqual([b["accessory"]["action_id"] for b in blocks if b.get("accessory")],
-                                 [t.SIZE_ACTION, t.BOARD_ACTION, t.LAYOUT_ACTION])
+                                 [t.SIZE_ACTION, t.BOARD_ACTION, t.LAYOUT_ACTION, t.WINNERS_ACTION])
                 self.assertLess(max(i for i, b in enumerate(blocks) if b.get("accessory")), kinds.index("actions"))
                 for button in buttons_of(blocks):                       # every way of joining carries both
                     parsed = t.parse_value(button["value"])
@@ -646,6 +698,180 @@ class TestBoardStyles(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# Winners on the board
+# --------------------------------------------------------------------------
+
+def game_with_winners(style, keys=("early5", "top", "middle"), photos=True, **cfg):
+    """A running game whose first prizes have been won one after another, a minute apart."""
+    g = make_game("large", n=30, board_style="emoji", winners_style=style, **cfg)
+    for i, key in enumerate(keys):
+        uid = "U%07d" % (i + 1)
+        g["wins"][key] = {"uid": uid, "name": "Winner {}".format(i + 1), "ts": "{:.6f}".format(1700000100 + 60 * i),
+                          "ref": "", "img": AVATAR.format(uid, 512) if photos else ""}
+    return g
+
+
+class TestWinners(unittest.TestCase):
+    def test_names_and_aliases(self):
+        for word, want in (("names", "names"), ("List", "names"), ("carousel", "carousel"), ("photos", "carousel"),
+                           ("Cards", "carousel"), ("strip", "strip"), ("avatars", "strip"), ("none", "none"),
+                           ("off", "none"), ("", "names"), (None, "names"), ("huh", "names")):
+            self.assertEqual(t.parse_winners(word), want, repr(word))
+        self.assertEqual(t.DEFAULT_WINNERS, "names")
+
+    def test_settings(self):
+        self.assertEqual(t.game_config({})["winners"], "names")
+        self.assertEqual(t.game_config({"winners_style": "photos"})["winners"], "carousel")
+        cfg = t.game_config({"winners_style": "strip", "size": "small", "ticket_layout": "compact"})
+        self.assertEqual(t.cfg_from(json.loads(json.dumps(t.cfg_list(cfg)))), cfg)
+        for old in ([], ["", "", "", "", "small", "", "list", "printed"], ["full", "off", 10, 60]):
+            self.assertEqual(t.cfg_from(old)["winners"], "names", old)
+
+    def test_a_setting_at_its_usual_value_is_written_blank_and_read_back(self):
+        usual = t.game_config({})
+        saved = t.cfg_list(usual)
+        self.assertEqual(saved[:4] + saved[5:6], ["", "", "", "", ""])
+        self.assertEqual(t.cfg_from(saved), usual)
+        odd = t.game_config({"announce": "off", "board_columns": 6, "max_players": 30, "top_n": 3, "prizes": "top"})
+        self.assertEqual(t.cfg_list(odd)[:6], ["top", "off", 6, 30, "large", 3])
+        self.assertEqual(t.cfg_from(t.cfg_list(odd)), odd)
+
+    def test_names_is_the_boards_original_list(self):
+        g = game_with_winners("names")
+        blocks = t.winners_blocks(g)
+        self.assertEqual([b["type"] for b in blocks], ["section"])
+        text = all_text(blocks)
+        self.assertIn("Winner 1", text)
+        self.assertIn("open", text)
+        self.assertEqual(blocks, [t._section(fields=t.prize_fields(g))])
+
+    def test_none_lists_no_winners_at_all(self):
+        g = game_with_winners("none")
+        self.assertEqual(t.winners_blocks(g), [])
+        self.assertNotIn("Winner 1", all_text(t.board_blocks(g)))
+
+    def test_the_carousel_has_the_newest_winner_on_the_left_and_the_first_on_the_right(self):
+        g = game_with_winners("carousel", ("early5", "top", "middle"))
+        blocks = t.winners_blocks(g)
+        check_blocks(blocks)
+        cards = carousel_of(blocks)
+        self.assertEqual([c["subtitle"]["text"] for c in cards], ["Winner 3", "Winner 2", "Winner 1"])
+        self.assertEqual([c["title"]["text"] for c in cards],
+                         [":left_right_arrow: *Middle Line*", ":arrow_up: *Top Line*", ":zap: *Early Five*"])
+        self.assertEqual(cards[-1]["body"]["text"], t.WINNER_BODY["early5"])
+        for card, uid in zip(cards, ("U0000003", "U0000002", "U0000001")):
+            self.assertEqual(card["hero_image"]["image_url"], AVATAR.format(uid, 512))
+            self.assertIn("winner of the", card["hero_image"]["alt_text"])
+        self.assertEqual(all_text(blocks).count("Still to win"), 1)
+        self.assertIn("Bottom Line  ·  Full House", all_text(blocks))
+        self.assertNotIn("Early Five  ·", all_text(blocks).split("Still to win")[1], "only what is still open")
+
+    def test_the_order_is_the_order_they_were_won_not_the_prizes(self):
+        g = game_with_winners("carousel", ("full", "early5"))
+        g["wins"]["full"]["ts"] = "1700000500.000000"
+        g["wins"]["early5"]["ts"] = "1700000100.000000"
+        self.assertEqual([c["title"]["text"] for c in carousel_of(t.winners_blocks(g))],
+                         [":trophy: *Full House*", ":zap: *Early Five*"])
+        g["wins"]["full"]["ts"] = "1700000050.000000"                            # Full House first this time
+        self.assertEqual([c["title"]["text"] for c in carousel_of(t.winners_blocks(g))],
+                         [":zap: *Early Five*", ":trophy: *Full House*"])
+
+    def test_a_winner_without_a_picture_is_a_card_without_one(self):
+        g = game_with_winners("carousel", ("early5", "top"), photos=False)
+        cards = carousel_of(t.winners_blocks(g))
+        self.assertEqual(len(cards), 2)
+        self.assertTrue(all("hero_image" not in c for c in cards))
+        check_blocks(t.winners_blocks(g))
+
+    def test_every_prize_won_is_five_cards_and_no_still_to_win_line(self):
+        g = game_with_winners("carousel", t.PRIZE_KEYS)
+        blocks = t.winners_blocks(g)
+        check_blocks(blocks)
+        self.assertEqual(len(carousel_of(blocks)), 5)
+        self.assertEqual([b["type"] for b in blocks], ["carousel"])
+
+    def test_nobody_has_won_yet(self):
+        for style in ("carousel", "strip"):
+            blocks = t.winners_blocks(game_with_winners(style, ()))
+            self.assertEqual([b["type"] for b in blocks], ["context"], style)
+            self.assertIn("*Still to win:*  Early Five  ·  Top Line  ·  Middle Line  ·  Bottom Line  ·  Full House",
+                          all_text(blocks))
+            check_blocks(blocks)
+
+    def test_only_prizes_in_play_are_listed(self):
+        g = game_with_winners("carousel", ("top",), prizes="top,full")
+        blocks = t.winners_blocks(g)
+        self.assertEqual(len(carousel_of(blocks)), 1)
+        self.assertIn("*Still to win:*  Full House", all_text(blocks))
+        self.assertNotIn("Early Five", all_text(blocks))
+
+    def test_the_strip_is_one_line_of_small_pictures_newest_first(self):
+        g = game_with_winners("strip", t.PRIZE_KEYS)
+        blocks = t.winners_blocks(g)
+        check_blocks(blocks)
+        strip = blocks[0]["elements"]
+        self.assertEqual(len(strip), 10, "five pictures and five names fill a context block")
+        self.assertEqual([e["type"] for e in strip], ["image", "mrkdwn"] * 5)
+        self.assertEqual(strip[0]["image_url"], AVATAR.format("U0000005", 512))
+        self.assertEqual(strip[-1]["text"], "*Early Five* Winner 1")
+        g = game_with_winners("strip", ("top",), photos=False)
+        self.assertEqual([e["type"] for e in t.winners_blocks(g)[0]["elements"]], ["mrkdwn"])
+
+    def test_names_cannot_break_a_card(self):
+        g = game_with_winners("carousel", ("top",))
+        g["wins"]["top"]["name"] = "A & B <team> " + "x" * 400
+        blocks = t.winners_blocks(g)
+        check_blocks(blocks)
+        card = carousel_of(blocks)[0]
+        self.assertIn("A &amp; B &lt;team&gt;", card["subtitle"]["text"])
+        self.assertLessEqual(len(card["subtitle"]["text"]), 150)
+        g["wins"]["top"]["name"] = ""
+        self.assertEqual(carousel_of(t.winners_blocks(g))[0]["subtitle"]["text"], "Someone")
+
+    def test_the_board_carries_the_winners_in_every_style_and_size(self):
+        for size in t.SIZES:
+            for style in t.WINNERS_STYLES:
+                for board in t.BOARD_STYLES:
+                    g = make_game(size, n=7, board_style=board, winners_style=style)
+                    g["wins"] = game_with_winners(style, ("early5", "top", "full"))["wins"]
+                    blocks = t.board_blocks(g)
+                    try:
+                        check_blocks(blocks)
+                    except AssertionError as error:
+                        self.fail("{} {} {}: {}".format(size, style, board, error))
+                    kinds = [b["type"] for b in blocks]
+                    self.assertEqual("carousel" in kinds, style == "carousel", (size, style, board))
+
+    def test_a_test_games_state_still_fits_with_a_carousel(self):
+        for size in t.SIZES:
+            for style in t.WINNERS_STYLES:
+                ids = ["U" + "".join(random.Random(i).choice("ABCDEFGHJKLMNPQRSTUVWXYZ0123456789") for _ in range(10))
+                       for i in range(t.TEST_PLAYERS)]
+                g = make_game(size, test=True, n=9, players=2, status=t.RUNNING, winners_style=style,
+                              board_style="list")
+                g.update(roster=ids, host=ids[0], names={})
+                g["wins"] = {k: {"uid": ids[1], "name": "A Long Name Here", "ts": "1700000100.000100",
+                                 "img": AVATAR.format(ids[1], 512)} for k in t.PRIZE_KEYS}
+                back = t.carried_state({"blocks": t.board_blocks(g)})
+                self.assertEqual(back["f"], t.cfg_list(g["cfg"]), (size, style))
+                self.assertNotIn("avatars.example.com", json.dumps(back), "no picture addresses in the message's state")
+
+    def test_the_setup_card_has_the_winners_dropdown(self):
+        for style in t.WINNERS_STYLES:
+            g = make_game("large", winners_style=style)
+            blocks = t.setup_blocks(g)
+            check_blocks(blocks)
+            self.assertEqual(chosen_winners(blocks), style)
+            menu = winners_menu_of(blocks)
+            self.assertEqual([json.loads(o["value"])["s"] for o in menu["options"]], list(t.WINNERS_STYLES))
+            for button in buttons_of(blocks):
+                parsed = t.parse_value(button["value"])
+                cfg = (t.game_from_state(parsed["state"], False)["cfg"] if parsed["test"]
+                       else t.cfg_from(json.loads(parsed["arg"])["f"]))
+                self.assertEqual(cfg["winners"], style)
+
+
+# --------------------------------------------------------------------------
 # Ticket layouts
 # --------------------------------------------------------------------------
 
@@ -653,8 +879,9 @@ class TestTicketLayout(unittest.TestCase):
     USERS = ("UAAAAAAA1", "UBBBBBBB2", "UCCCCCCC3", "UDDDDDDD4", "UHOST0001")
 
     def test_names_and_aliases(self):
-        for word, want in (("printed", "printed"), ("Paper", "printed"), ("physical", "printed"), ("compact", "compact"),
-                           ("rows", "compact"), ("", "printed"), (None, "printed"), ("huh", "printed")):
+        for word, want in (("printed", "printed"), ("Paper", "printed"), ("physical", "printed"),
+                           ("compact", "compact"), ("rows", "compact"), ("", "printed"), (None, "printed"),
+                           ("huh", "printed")):
             self.assertEqual(t.parse_layout(word), want, repr(word))
         self.assertEqual(t.parse_layout("huh", "compact"), "compact")
         self.assertEqual(t.DEFAULT_LAYOUT, "printed")
@@ -696,7 +923,8 @@ class TestTicketLayout(unittest.TestCase):
                         for column, number in enumerate(cells):
                             if number:
                                 low, high = ranges[column]
-                                self.assertTrue(low <= number <= high, "{} in column {} of {}".format(number, column, where))
+                                self.assertTrue(low <= number <= high,
+                                                "{} in column {} of {}".format(number, column, where))
                     for column in range(columns):                                      # and down a column, ascending
                         down = [r[column] for r in rows if r[column]]
                         self.assertEqual(down, sorted(down), where)
@@ -742,8 +970,8 @@ class TestTicketLayout(unittest.TestCase):
                         blanks = [b for b in buttons if b["action_id"].startswith(t.BLANK_ACTION)]
                         numbers = [b for b in buttons if not b["action_id"].startswith(t.BLANK_ACTION)]
                         self.assertEqual(len(numbers), 3 * spec["row"], where)
-                        self.assertEqual(len(blanks), 3 * (columns_of(size) - spec["row"]) if layout == "printed" else 0,
-                                         where)
+                        want_blanks = 3 * (columns_of(size) - spec["row"]) if layout == "printed" else 0
+                        self.assertEqual(len(blanks), want_blanks, where)
                         for blank in blanks:
                             parsed = t.parse_value(blank["value"], blank["action_id"])
                             self.assertEqual((parsed["kind"], parsed["test"]), ("blank", True))
@@ -1052,6 +1280,7 @@ class TestButtons(unittest.TestCase):
 # The world: Slack and the data table, as the step sees them
 # --------------------------------------------------------------------------
 
+AVATAR = "https://avatars.example.com/{}_{}.png"          # a profile picture of a made-up person
 HOOK = "https://hooks.slack.com/actions/T0TEST/1/"          # a response_url: the person it answers is the last part
 CONTROLS = ("start", "cancel", "next", "review", "resume", "end", "myticket")
 
@@ -1101,6 +1330,9 @@ class World(object):
         endpoint = parsed.path.rsplit("/", 1)[1]
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         if endpoint == "chat.postMessage":
+            if any("bad.example" in b.get("image_url", "") for b in payload.get("blocks") or []):
+                return {"ok": False, "error": "invalid_blocks",
+                        "response_metadata": {"messages": ["downloading image failed"]}}, None
             channel = payload["channel"]
             if channel[0] in "UW":                       # a message to a person lands in their private message
                 channel = "D" + channel
@@ -1112,6 +1344,8 @@ class World(object):
             key = (payload["channel"], payload["ts"])
             if key not in self.messages:
                 return {"ok": False, "error": "message_not_found"}, None
+            if self.refuse_carousel and any(b.get("type") == "carousel" for b in payload.get("blocks") or []):
+                return {"ok": False, "error": "invalid_blocks"}, None
             self.messages[key].update(text=payload.get("text"), blocks=self._checked(payload))
             return {"ok": True}, None
         if endpoint == "chat.delete":
@@ -1124,7 +1358,9 @@ class World(object):
         if endpoint == "users.info":
             user = query["user"]
             return {"ok": True, "user": {"id": user, "is_bot": False, "deleted": False,
-                                         "profile": {"real_name": self.names.get(user, "")}}}, None
+                                         "profile": {"real_name": self.names.get(user, ""),
+                                                     "image_192": AVATAR.format(user, 192),
+                                                     "image_512": AVATAR.format(user, 512)}}}, None
         if endpoint == "conversations.members":
             return {"ok": True, "members": list(self.members.get(query["channel"], [])),
                     "response_metadata": {"next_cursor": ""}}, None
@@ -1197,6 +1433,8 @@ class World(object):
 
     # -- what people do
     via = "fields"                    # "fields": the recipe maps each field; "payload": it maps the whole interaction
+    settings = {}                     # inputs the click recipe always has (its banners): added to every press
+    refuse_carousel = False           # a workspace whose Slack turns the carousel block down
 
     def _press(self, user, action, channel, source_ts, response, state, extra):
         """Run a press through main(), the way the click recipe hands it over: field by field, or as `payload`, the
@@ -1222,6 +1460,7 @@ class World(object):
                 given["response_url"] = HOOK + user
             if state is not None:
                 given["state"] = {"values": state}
+        given.update(self.settings)
         given.update(extra)
         return t.main(given)
 
@@ -1352,6 +1591,122 @@ class TestClaims(unittest.TestCase):
                          (["early5"], []))
         self.assertEqual(t.claim_prizes(self.table, g, ["early5"], "UHOST0001", "Priya", "1.6", self.result),
                          ([], []))
+
+
+# --------------------------------------------------------------------------
+# Celebrations
+# --------------------------------------------------------------------------
+
+def emoji_count(blocks):
+    return len(re.findall(r":[a-z0-9_+-]+:", all_text(blocks)))
+
+
+class TestCelebrations(unittest.TestCase):
+    def blocks(self, key, banner=""):
+        g = make_game("large", n=20)
+        ticket = t.deal_ticket(g, HOST)
+        return t.win_blocks(g, key, "Priya Sharma", ticket, banner), ticket
+
+    def test_each_tier_is_bigger_than_the_one_before(self):
+        self.assertEqual({k: t.PRIZE_TIER[k] for k in t.PRIZE_KEYS},
+                         {"early5": 1, "top": 2, "middle": 2, "bottom": 2, "full": 3})
+        early, _ = self.blocks("early5")
+        line, _ = self.blocks("top")
+        house, _ = self.blocks("full")
+        self.assertEqual([b["type"] for b in early], ["section"], "Early Five is one quiet line")
+        self.assertEqual([b["type"] for b in line], ["header", "section"], "a line gets a header, Slack's big text")
+        self.assertEqual([b["type"] for b in house], ["header", "section", "divider"])
+        self.assertLess(emoji_count(early), emoji_count(line))
+        self.assertLess(emoji_count(line), emoji_count(house))
+        self.assertLess(len(all_text(early)), len(all_text(line)))
+        self.assertLess(len(all_text(line)), len(all_text(house)))
+        self.assertEqual((emoji_count(early), emoji_count(line)), (1, 7), "one, then a header and a few more")
+        self.assertGreaterEqual(emoji_count(house), 16)
+
+    def test_what_each_announcement_says(self):
+        for key in t.PRIZE_KEYS:
+            blocks, ticket = self.blocks(key)
+            check_blocks(blocks)
+            text = all_text(blocks)
+            self.assertIn("Priya Sharma", text)
+            self.assertIn("goes to" if key != "full" else "Full House!", text)
+            if key in t.LINES:
+                made_it = "  ·  ".join(str(n) for n in ticket[t.LINES[key]])
+                self.assertIn(made_it, text, "the numbers that made the line")
+                self.assertIn(t.PRIZE_NAME[key], [b for b in blocks if b["type"] == "header"][0]["text"]["text"])
+        full, _ = self.blocks("full")
+        self.assertIn("FULL HOUSE", full[0]["text"]["text"])
+        self.assertIn("That is the game", all_text(full))
+
+    def test_a_banner_goes_on_top_and_is_not_needed(self):
+        for key in t.PRIZE_KEYS:
+            plain, _ = self.blocks(key)
+            with_banner, _ = self.blocks(key, "https://img.example.com/{}.png".format(key))
+            self.assertNotIn("image", [b["type"] for b in plain])
+            url = "https://img.example.com/{}.png".format(key)
+            self.assertEqual(with_banner[0],
+                             {"type": "image", "image_url": url, "alt_text": t.PRIZE_NAME[key] + " won"})
+            self.assertEqual(with_banner[1:], plain)
+            check_blocks(with_banner)
+
+    def test_names_cannot_break_the_announcement(self):
+        g = make_game("small", n=5)
+        blocks = t.win_blocks(g, "top", "A & B <everyone>", t.deal_ticket(g, HOST))
+        self.assertIn("A &amp; B &lt;everyone&gt;", all_text(blocks))
+        check_blocks(blocks)
+        self.assertIn("Someone", all_text(t.win_blocks(g, "full", "", t.deal_ticket(g, HOST))))
+
+    def test_the_banners_input_is_a_json_object_of_addresses(self):
+        every = {"early5": "https://cdn.example.com/early-five.png", "top": "https://cdn.example.com/top-line.png",
+                 "middle": "https://cdn.example.com/middle-line.png",
+                 "bottom": "https://cdn.example.com/bottom-line.png",
+                 "full": "https://cdn.example.com/full-house.png"}
+        for given in (json.dumps(every), every, "  " + json.dumps(every, indent=2) + "\n"):
+            self.assertEqual(t.read_banners(given), (every, []), repr(given)[:40])
+        self.assertEqual(t.read_banners('{"full": "https://cdn.example.com/f.png"}'),
+                         ({"full": "https://cdn.example.com/f.png"}, []), "name only the prizes that have one")
+        for nothing in (None, "", "   ", "{}", {}):
+            self.assertEqual(t.read_banners(nothing), ({}, []), repr(nothing))
+
+    def test_a_prize_can_be_named_the_way_prizes_are(self):
+        url = "https://cdn.example.com/a.png"
+        for name, key in (("five", "early5"), ("Early Five", "early5"), ("early_five", "early5"), ("house", "full"),
+                          ("Full-House", "full"), ("topline", "top"), ("Middle Line", "middle"),
+                          ("bottomrow", "bottom")):
+            self.assertEqual(t.read_banners({name: url}), ({key: url}, []), name)
+
+    def test_lines_gives_all_three_lines_one_picture_unless_one_is_named(self):
+        a, b = "https://cdn.example.com/lines.png", "https://cdn.example.com/middle.png"
+        self.assertEqual(t.read_banners({"lines": a})[0], {"top": a, "middle": a, "bottom": a})
+        for order in ({"lines": a, "middle": b}, {"middle": b, "lines": a}):
+            self.assertEqual(t.read_banners(order)[0], {"top": a, "middle": b, "bottom": a}, order)
+
+    def test_a_bad_address_or_name_is_left_out_and_said(self):
+        good = "https://cdn.example.com/full.png"
+        for bad in ("http://cdn.example.com/a.png", "ftp://x/a.png", "javascript:alert(1)", "cdn.example.com/a.png",
+                    "https://x.com/a b.png", "https://x.com/" + "a" * 3000, "", None, 5):
+            found, problems = t.read_banners({"full": good, "top": bad})
+            self.assertEqual(found, {"full": good}, repr(bad)[:40])
+            self.assertEqual(len(problems), 1, bad)
+            self.assertIn("'top'", problems[0])
+        found, problems = t.read_banners({"full": good, "jackpot": good})
+        self.assertEqual((found, len(problems)), ({"full": good}, 1))
+        self.assertIn("'jackpot' is not a prize", problems[0])
+
+    def test_a_banners_input_that_cannot_be_read_is_said(self):
+        for bad in ("not json", "{'full': 'https://x.com/a.png'}", '{"full": "https://x.com/a.png",}', "[1, 2]", "5",
+                    '"https://x.com/a.png"', 5, ["https://x.com/a.png"]):
+            found, problems = t.read_banners(bad)
+            self.assertEqual(found, {}, repr(bad))
+            self.assertEqual(len(problems), 1, repr(bad))
+            self.assertIn("banners could not be read", problems[0])
+
+    def test_the_text_that_goes_with_it_is_the_plain_line(self):
+        g = make_game("small", n=5)
+        for key in t.PRIZE_KEYS:
+            text = t.win_text(g, key, "Priya", t.deal_ticket(g, HOST))
+            self.assertIn("Priya", text)
+            self.assertNotIn("\n:", text)
 
 
 # --------------------------------------------------------------------------
@@ -1497,7 +1852,7 @@ class TestGames(unittest.TestCase):
         self.world.names[HOST] = "Priya Sharma"
         return ids
 
-    def open_game(self, ids, choose=None, test=False, board=None, layout=None, **extra):
+    def open_game(self, ids, choose=None, test=False, board=None, layout=None, winners=None, **extra):
         """Type the word, choose a size (`choose`) and a board style (`board`) on the dropdowns (none leaves it where
         the card opened), choose 'Everyone in this channel', press Start. The result of Start. `extra` are the recipe's
         other inputs."""
@@ -1509,6 +1864,14 @@ class TestGames(unittest.TestCase):
         setup = w.last_note(HOST)
         self.opened_on, self.opened_board = chosen_size(setup["blocks"]), chosen_board(setup["blocks"])
         self.opened_layout = chosen_layout(setup["blocks"])
+        self.opened_winners = chosen_winners(setup["blocks"])
+        if winners:
+            out = w.select(HOST, winners_menu_of(setup["blocks"]), winners, self.CHANNEL)
+            self.assertTrue(out["ok"], out)
+            self.assertEqual(out["mode"], "winners")
+            setup = w.last_note(HOST)
+            self.assertEqual(setup["how"], "in place")
+            self.assertEqual(chosen_winners(setup["blocks"]), winners)
         if layout:
             out = w.select(HOST, layout_menu_of(setup["blocks"]), layout, self.CHANNEL)
             self.assertTrue(out["ok"], out)
@@ -1773,6 +2136,223 @@ class TestGames(unittest.TestCase):
         self.assertEqual(len(early_five()), 1, "the channel heard of it once")
         self.assertEqual(len(self.announcements()), heard)
 
+    # -- winners on the board
+    def play_until(self, ids, prize_name, limit=30):
+        """Call numbers with everybody tapping until `prize_name` is won (a name, "Early Five"), and stop there."""
+        for _ in range(limit):
+            out = self.next_number()
+            for user in ids:
+                result = self.world.tap(user, out["number"])
+                if result and prize_name in result["prize"]:
+                    return user
+        self.fail("{} was never won".format(prize_name))
+
+    def users_lookups(self):
+        return len([c for c in self.world.calls if "users.info" in c[1]])
+
+    def test_the_carousel_grows_to_the_left_as_prizes_are_won(self):
+        for test in (False, True):
+            with self.subTest(test=test):
+                self.use_world()
+                ids = self.people(4)
+                self.open_game(ids, "small", winners="carousel", test=test)
+                self.assertEqual((self.opened_winners, chosen_winners(self.setup_blocks)), ("names", "carousel"))
+                self.assertEqual(carousel_of(self.board()), [], "nobody has won yet")
+                self.assertIn("Still to win", all_text(self.board()))
+                seen = []
+                for prize in ("Early Five", "Top Line"):
+                    winner = self.play_until(ids, prize)
+                    cards = carousel_of(self.board())
+                    seen.append([c["title"]["text"] for c in cards])
+                    self.assertEqual(cards[0]["subtitle"]["text"], self.world.names[winner],
+                                     "the newest is on the left")
+                    self.assertEqual(cards[0]["hero_image"]["image_url"], AVATAR.format(winner, 512))
+                self.assertEqual(len(seen[0]), 1)
+                self.assertEqual(seen[1][-1], ":zap: *Early Five*", "the first winner stays on the right")
+                self.assertEqual(seen[1][0], ":arrow_up: *Top Line*")
+                calls, won = self.play_out(ids, 30)
+                final = carousel_of(self.board())
+                self.assertEqual(len(final), 5, "every prize has a card")
+                self.assertEqual(final[0]["title"]["text"], ":trophy: *Full House*")
+                self.assertEqual(final[-1]["title"]["text"], ":zap: *Early Five*")
+                self.assertNotIn("Still to win", all_text(self.board()))
+                check_blocks(self.board())
+
+    def test_a_winners_picture_is_looked_up_once_and_kept_with_the_win(self):
+        ids = self.people(3)
+        self.open_game(ids, "small", winners="carousel")
+        winner = self.play_until(ids, "Early Five")
+        rows = [r for r in self.world.rows_of(t.WIN_ROW) if r["grant_type"] == "early5"]
+        self.assertEqual(json.loads(rows[0]["content"]), {"img": AVATAR.format(winner, 512)})
+        before = self.users_lookups()
+        for _ in range(3):                                   # the board is redrawn on every number: no more lookups
+            self.next_number()
+        self.assertEqual(self.users_lookups(), before)
+        self.assertEqual(carousel_of(self.board())[0]["hero_image"]["image_url"], AVATAR.format(winner, 512))
+
+    def test_every_winners_style_plays_through(self):
+        for style in t.WINNERS_STYLES:
+            for test in (False, True):
+                with self.subTest(style=style, test=test):
+                    self.use_world()
+                    ids = self.people(3)
+                    self.open_game(ids, "small", winners=style, test=test)
+                    calls, won = self.play_out(ids, 30)
+                    self.assertEqual(won[-1] if won else "", "full", won)
+                    board = self.board()
+                    kinds = [b["type"] for b in board]
+                    text = all_text(board)
+                    self.assertEqual(len(self.announcements()), 5, "announced whatever the board shows")
+                    if style == "none":
+                        self.assertNotIn("carousel", kinds)
+                        self.assertFalse([b for b in board if b.get("fields")], "no list of prizes")
+                        self.assertNotIn("Still to win", text)
+                    elif style == "names":
+                        self.assertTrue([b for b in board if b.get("fields")])
+                        self.assertNotIn("carousel", kinds)
+                    elif style == "strip":
+                        strip = [b for b in board if b["type"] == "context" and any(
+                            e["type"] == "image" for e in b["elements"])]
+                        self.assertEqual(len(strip), 1)
+                        self.assertEqual(len(strip[0]["elements"]), 10)
+                    else:
+                        self.assertEqual(len(carousel_of(board)), 5)
+
+    def test_a_carousel_slack_refuses_falls_back_to_names_and_the_board_still_updates(self):
+        self.world.refuse_carousel = True
+        ids = self.people(3)
+        self.open_game(ids, "small", winners="carousel")
+        warnings = []
+        for _ in range(30):
+            out = self.next_number()
+            warnings += out["warnings"]
+            results = [r for r in (self.world.tap(u, out["number"]) for u in ids) if r]
+            for r in results:
+                warnings += r["warnings"]
+            if any(r["finished"] for r in results):
+                break
+        board = self.board()
+        self.assertEqual(carousel_of(board), [])
+        self.assertTrue([b for b in board if b.get("fields")], "names took its place")
+        self.assertIn("Game over", all_text(board), "and the game's board kept up to the end")
+        self.assertTrue(any("pictures were refused" in w for w in warnings), warnings)
+        self.assertEqual(len(self.announcements()), 5)
+
+    def test_the_lobby_follows_the_winners_dropdown_whatever_the_buttons_were_drawn_with(self):
+        w = self.world
+        ids = self.people(3)
+        w.type_word(HOST, self.CHANNEL, "itambola")
+        card = w.last_note(HOST)["blocks"]
+        state = dropdown_state(winners_menu_of(card), "carousel", "BLOCKW")
+        out = w.click(HOST, button_named(card, "set_all"), self.CHANNEL, state=state)
+        self.assertTrue(out["ok"], out)
+        self.assertTrue(w.click(HOST, button_named(w.panel(HOST), "start"), self.CHANNEL)["ok"])
+        game = t.game_from_row(w.rows_of(t.GAME_ROW)[0])
+        self.assertEqual(game["cfg"]["winners"], "carousel")
+        self.assertIn("Still to win", all_text(w.messages[(self.CHANNEL, game["board_ts"])]["blocks"]))
+
+    # -- celebrations
+    def prize_messages(self):
+        """The channel's announcements by the prize they are about."""
+        found = {}
+        for m in self.announcements():
+            text = all_text(m["blocks"])
+            for key in t.PRIZE_KEYS:
+                if (t.PRIZE_NAME[key] in text and "goes to" in text) or (key == "full" and "Full House!" in text):
+                    found[key] = m
+        return found
+
+    def test_the_channel_hears_each_prize_bigger_than_the_one_before(self):
+        ids = self.people(4)
+        self.open_game(ids, "small")
+        calls, won = self.play_out(ids, 30)
+        self.assertEqual(sorted(won), sorted(t.PRIZE_KEYS))
+        heard = self.prize_messages()
+        self.assertEqual(sorted(heard), sorted(t.PRIZE_KEYS), "one announcement for each prize")
+        shape = {key: [b["type"] for b in m["blocks"]] for key, m in heard.items()}
+        self.assertEqual(shape["early5"], ["section"])
+        for key in ("top", "middle", "bottom"):
+            self.assertEqual(shape[key], ["header", "section"], key)
+        self.assertEqual(shape["full"], ["header", "section", "divider"])
+        counts = {key: emoji_count(m["blocks"]) for key, m in heard.items()}
+        self.assertLess(counts["early5"], min(counts["top"], counts["middle"], counts["bottom"]))
+        self.assertLess(max(counts["top"], counts["middle"], counts["bottom"]), counts["full"])
+
+    def test_banners_from_the_click_recipe_top_each_announcement(self):
+        self.world.settings = {"banners": json.dumps(
+            {k: "https://cdn.example.com/{}.png".format(k) for k in t.PRIZE_KEYS})}
+        ids = self.people(4)
+        self.open_game(ids, "small")
+        calls, won = self.play_out(ids, 30)
+        heard = self.prize_messages()
+        self.assertEqual(sorted(heard), sorted(t.PRIZE_KEYS))
+        for key, message in heard.items():
+            self.assertEqual(message["blocks"][0]["type"], "image", key)
+            self.assertEqual(message["blocks"][0]["image_url"], "https://cdn.example.com/{}.png".format(key))
+        self.assertEqual(len(self.announcements()), 5)
+
+    def test_a_banner_slack_cannot_load_never_costs_the_announcement(self):
+        self.world.settings = {"banners": json.dumps({"early5": "https://bad.example.com/early.png",
+                                                      "full": "https://bad.example.com/full.png"})}
+        ids = self.people(4)
+        self.open_game(ids, "small")
+        warnings = []
+        for call in range(1, 31):
+            out = self.next_number()
+            if out["finished"]:
+                break
+            done = False
+            for user in ids:
+                result = self.world.tap(user, out["number"])
+                if result:
+                    warnings += result["warnings"]
+                    done = done or result["finished"]
+            if done:
+                break
+        heard = self.prize_messages()
+        self.assertEqual(sorted(heard), sorted(t.PRIZE_KEYS), "every prize was still announced")
+        self.assertNotIn("image", [b["type"] for b in heard["early5"]["blocks"]])
+        self.assertNotIn("image", [b["type"] for b in heard["full"]["blocks"]])
+        self.assertTrue(any("banner for the Early Five was not taken" in w for w in warnings), warnings)
+        self.assertEqual(len(self.announcements()), 5, "and each only once")
+
+    def test_a_mistake_in_banners_is_in_the_warnings_and_the_game_goes_on(self):
+        self.world.settings = {"banners": json.dumps({"full": "http://not-secure.example.com/f.png",
+                                                      "jackpot": "https://x.com/a.png"})}
+        ids = self.people(2)
+        self.open_game(ids, "small")
+        warnings = []
+        for _ in range(30):
+            out = self.next_number()
+            if out["finished"]:
+                break
+            results = [r for r in (self.world.tap(u, out["number"]) for u in ids) if r]
+            for r in results:
+                warnings += r["warnings"]
+            if any(r["finished"] for r in results):
+                break
+        self.assertTrue(any("'full' is not a public https address" in w for w in warnings), warnings)
+        self.assertTrue(any("'jackpot' is not a prize" in w for w in warnings), warnings)
+        self.assertEqual(sorted(self.prize_messages()), sorted(t.PRIZE_KEYS), "every prize still announced, no banner")
+
+    def test_the_organizers_own_card_celebrates_the_same_way(self):
+        self.world.settings = {"banners": '{"five": "https://cdn.example.com/early.png"}'}
+        ids = self.people(1)
+        self.open_game(ids, "small")
+        number = 0
+        for _ in range(30):
+            out = self.next_number()
+            self.world.click(HOST, button_named(self.world.panel(HOST), "myticket"), self.CHANNEL)
+            card = self.world.panel(HOST)
+            mine = [b for b in buttons_of(card) if b["action_id"] == t.ACTION_PREFIX + "hmark_{}".format(out["number"])]
+            if mine:
+                result = self.world.click(HOST, mine[0], self.CHANNEL)
+                if "Early Five" in result["prize"]:
+                    break
+        heard = self.prize_messages()
+        self.assertIn("early5", heard)
+        self.assertEqual(heard["early5"]["blocks"][0]["image_url"], "https://cdn.example.com/early.png")
+
     # -- ticket layouts, on the third dropdown
     def test_a_printed_ticket_has_every_number_in_its_column(self):
         w = self.world
@@ -1850,7 +2430,7 @@ class TestGames(unittest.TestCase):
                             self.assertEqual(row_widths(self.world.ticket_of(user)[2]), [width] * 3)
                         calls, won = self.play_out(ids, t.SIZES[size]["numbers"])
                         self.assertEqual(won[-1] if won else "", "full", won)
-                        for user in ids:                      # the tickets are still laid out the same after all the taps
+                        for user in ids:                  # laid out the same after all the taps
                             self.assertEqual(row_widths(self.world.ticket_of(user)[2]), [width] * 3)
                         self.assertIn("Game over", all_text(self.board()))
 
@@ -1928,7 +2508,8 @@ class TestGames(unittest.TestCase):
 
         out = w.type_word("U0000009", self.CHANNEL, "itambola")              # someone who is not playing: a new game
         self.assertEqual(out["mode"], "setup", out)
-        self.assertIn(t.ACTION_PREFIX + "set_all", [b["action_id"] for b in buttons_of(w.last_note("U0000009")["blocks"])])
+        late = [b["action_id"] for b in buttons_of(w.last_note("U0000009")["blocks"])]
+        self.assertIn(t.ACTION_PREFIX + "set_all", late)
 
         out = w.type_word(sam, self.CHANNEL, "itambola", workato_api_token="")   # no table token on the typed recipe
         self.assertEqual(out["mode"], "setup", "without it the word cannot find the game, so it always opens the setup")
@@ -1988,8 +2569,9 @@ class TestGames(unittest.TestCase):
                     if style == "emoji":
                         self.assertEqual(len(grid_sections(self.board())), 3)
                     elif style == "numbers":
-                        self.assertEqual(len(re.findall(r"\[\d\d\]", text)), 1)
-                        self.assertIn("[{:02d}]".format(out["number"]), text)
+                        grid = "\n".join(code_table(self.board()))
+                        self.assertEqual(re.findall(r"\d\d", grid), ["{:02d}".format(out["number"])])
+                        self.assertEqual(grid.count("??"), 29)
                     else:
                         self.assertIn("Called so far", text)
                         self.assertIn(str(out["number"]), text)
