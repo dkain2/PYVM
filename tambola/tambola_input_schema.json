@@ -125,7 +125,7 @@
     "name": "state",
     "type": "string",
     "optional": true,
-    "hint": "[click] The interaction's state (top level, next to actions): what every dropdown on the message shows right now. Only for mapping field by field: the setup card's Game size, Board style, Ticket layout and Winners dropdowns are read from it when a way of joining is pressed. Not needed when payload is mapped. Leave it empty if absent."
+    "hint": "[click] The interaction's state (top level, next to actions): what every dropdown on the message shows right now. Only for mapping field by field: the setup card's Game size, Board style and Winners dropdowns are read from it when a way of joining is pressed. Not needed when payload is mapped. Leave it empty if absent."
   },
   {
     "control_type": "text",
@@ -231,19 +231,11 @@
   },
   {
     "control_type": "text",
-    "label": "Ticket layout",
-    "name": "ticket_layout",
-    "type": "string",
-    "optional": true,
-    "hint": "[typed] The ticket layout the setup card's Ticket layout dropdown opens on: printed (every number in its own column with blanks between, like a paper ticket: the default) or compact (just the numbers, in rows of five, four or three). Blank = printed. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack folds a long row of buttons on a narrow screen, compact avoids it."
-  },
-  {
-    "control_type": "text",
     "label": "Winners style",
     "name": "winners_style",
     "type": "string",
     "optional": true,
-    "hint": "[typed] The winners display the setup card's Winners dropdown opens on: names (who holds each prize, in a list: the default), carousel (a Slack carousel card for each winner with their profile picture, the first winner on the right and each new one added to the left), strip (small profile pictures in one line) or none (the board does not list winners). Blank = names. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack refuses the carousel the board shows names instead."
+    "hint": "[typed] The winners display the setup card's Winners dropdown opens on: names (who holds each prize, in a list on the board: the default), carousel (a Slack carousel card for each winner with their profile picture, the first winner on the right and each new one added to the left), strip (small profile pictures in one line) or none. The carousel or strip is the board's winners list: it is hidden until the organizer presses Show winners (and Hide winners takes it off again). In a photo style each prize's announcement also shows the person who has just won on a small card (their profile photo on top, then the prize, their name and the numbers that made the line), after the banner, until the next number is called. The Show winners / Hide winners button appears on the organizer's controls once somebody has won. Blank = names. The organizer chooses on the dropdown, which is what counts; this only sets where it starts. If Slack refuses the carousel the board shows names instead."
   },
   {
     "control_type": "text",
@@ -251,6 +243,16 @@
     "name": "banners",
     "type": "string",
     "optional": true,
-    "hint": "[click] Optional pictures shown above prize announcements, as a JSON object of public https image addresses, as text: {\"early5\": \"https://.../early-five.png\", \"top\": \"https://.../top-line.png\", \"middle\": \"https://.../middle-line.png\", \"bottom\": \"https://.../bottom-line.png\", \"full\": \"https://.../full-house.png\"}. Name only the prizes that have one; \"lines\" gives all three lines one picture. Set it as a fixed value on the click recipe, where prizes are won. A bad address or prize name is left out and listed in warnings, and a picture Slack cannot load is left out too: the announcement still goes. Without it the announcement is its header and emojis. Make Full House the tallest."
+    "hint": "[click] Optional pictures that open the announcement of a prize, as a JSON object of public https image addresses, as text: {\"early5\": \"https://.../early-five.png\", \"top\": \"https://.../top-line.png\", \"middle\": \"https://.../middle-line.png\", \"bottom\": \"https://.../bottom-line.png\", \"full\": \"https://.../full-house.png\"}. In a photo winners style the winner's own profile photo follows the banner, on a small card with the prize, their name and the numbers that made the line. Pressing Next number deletes the announcements of the prizes won since the number before (where the board lists winners; with the none style each stays as its plain line, as the only record); Full House's stays up for celebration_seconds when the game ends, and is then cleared with every other announcement. Name only the prizes that have one; \"lines\" gives all three lines one picture. Set it as a fixed value on the click recipe, where prizes are won. A bad address or prize name is left out and listed in warnings, and a picture Slack cannot load is left out too: the announcement still goes. Without it the announcement is its header and emojis. Make Full House the tallest."
+  },
+  {
+    "control_type": "number",
+    "label": "Celebration seconds",
+    "parse_output": "integer_conversion",
+    "name": "celebration_seconds",
+    "type": "integer",
+    "optional": true,
+    "hint": "[click] How long Full House's celebration (its announcement, banner and winner's card) stays up before the game's screen is cleared: when Full House ends the game, the job waits this many seconds, then deletes the announcements, leaving the board with its final winners list. Default 20, 0 clears it at once, never more than 60 (a Workato step is stopped at 90 seconds). Set it as a fixed value on the click recipe.",
+    "render_input": "integer_conversion"
   }
 ]

@@ -49,7 +49,7 @@
     "name": "mode",
     "type": "string",
     "optional": true,
-    "hint": "What the call was: setup (the word was typed), panel (the word brought the organizer's controls back), ticket (the word sent a player their ticket again; or a press of Show my card / Hide my card), set, size, board, layout or winners (a choice on one of the setup card's dropdowns), pick, join, start, cancel, next, review, resume, end, blank (a blank square of a printed ticket was pressed: nothing happens), mark (a number tapped, on a ticket in a private message or on the organizer's card in their note), or click when the press could not be read."
+    "hint": "What the call was: setup (the word was typed), panel (the word brought the organizer's controls back), ticket (the word sent a player their ticket again; or a press of Show my card / Hide my card), set, size, board or winners (a choice on one of the setup card's dropdowns), pick, join, start, cancel, next, review, resume, end, blank (a blank square of a printed ticket was pressed: nothing happens), winners (Show winners / Hide winners pressed), mark (a number tapped, on a ticket in a private message or on the organizer's card in their note), or click when the press could not be read."
   },
   {
     "control_type": "checkbox",
@@ -222,7 +222,7 @@
     "name": "dm_sent",
     "type": "integer",
     "optional": true,
-    "hint": "[start] How many players were sent their ticket.",
+    "hint": "[start] How many players were sent their ticket by private message. The organizer is not one of them: their ticket opens in their controls (Show my card), so this is the number of players minus one.",
     "render_input": "integer_conversion"
   },
   {

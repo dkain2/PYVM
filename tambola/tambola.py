@@ -12,11 +12,12 @@ WHO SEES WHAT
     organizer, whoever typed the word, and is a PRIVATE NOTE that only they see (Slack cannot show a button
     to one person inside a public message):
 
-        the setup card    dropdowns for Game size, Board style, Ticket layout and Winners; Everyone in this channel /
+        the setup card    dropdowns for Game size, Board style and Winners; Everyone in this channel /
                           I will pick the players / Anyone who wants to play
         lobby controls    Start game, Cancel; for "I will pick the players" also a menu of people
-        game controls     Next number, Review, Show my card, End game, and what was last called
-        while paused      Resume, Show my card, End game
+        game controls     Next number, Review, Show my card, End game, and what was last called; once somebody has
+                          won, Show winners / Hide winners as well (see WINNERS)
+        while paused      Resume, Show my card, End game (and that winners button)
 
     ONE NOTE FOR THE WHOLE GAME. Slack cannot edit a private note, but a press on it can replace it through
     the press's `response_url`, so the organizer's controls are one note that changes in place: the setup card
@@ -27,13 +28,13 @@ WHO SEES WHAT
     game moves on (never for Next number), and they pile up. Map it.
 
     The organizer PLAYS TOO: they are always one of the players and get a ticket of their own, even when
-    nobody else is in the game, whichever of the three ways of joining was chosen. Like everyone's it is sent by
-    private message at the start, but they need not leave the channel for it: Show my card opens it inside
-    their note, under the controls, and Hide my card tucks it away again. Tapping a number there follows the
-    same rules as a ticket in a private message (a number not called yet is refused, a called one turns green
-    and can win a prize) and the ticket they were sent stays in step. The note says on every button whether the
-    card is open, so the next press draws it the same way. Opening it redraws the note in place, so it needs
-    `response_url` mapped; without it Show my card sends the ticket by private message, as before.
+    nobody else is in the game, whichever of the three ways of joining was chosen. It is NOT sent to them by private
+    message (they are in the channel with their controls, and a second place to play would only be in the way): Show
+    my card opens it inside their note, under the controls, and Hide my card tucks it away again. Tapping a number
+    there follows the same rules as a ticket in a private message (a number not called yet is refused, a called one
+    turns green and can win a prize). The note says on every button whether the card is open, so the next press
+    draws it the same way. Opening it redraws the note in place, so it needs `response_url` mapped; without it Show
+    my card sends a new private note with the card in it, never a message.
     Slack drops private notes when it reloads. Typing the word again sends the organizer a fresh note with
     their controls (for the game they run in this channel); for anybody else playing in one it sends their
     ticket again; for everyone else it starts a new game. A game older than ACTIVE_HOURS counts as abandoned, and
@@ -45,12 +46,13 @@ HOW A GAME GOES
     2  The channel gets a LOBBY: three short rules, the prizes, who is in and, for an open game, a Join
        button. The organizer gets the lobby controls. "I will pick the players" gives them a menu of people
        and the lobby follows it. Each player is a row in the data table, name included.
-    3  Start (the organizer) posts the BOARD and sends every player a TICKET by private message. The lobby
-       shrinks to one line and who is in (the board below it has the title and the prizes: nothing is said twice).
+    3  Start (the organizer) posts the BOARD and sends every player but the organizer a TICKET by private message
+       (the organizer's opens in their controls). The lobby shrinks to one line and who is in (the board below it has
+       the title and the prizes: nothing is said twice).
     4  The board is a grid of 90 white squares (in the default emoji style, see BOARD STYLE). Each Next number
        turns one into its number (two keycap digits) in the same message and says it in words, with the caller's
        name for it where there is one: "47: Forty-seven", "22: Twenty-two, two little ducks" (CALLS).
-    5  A ticket is 3 rows of numbers, each a button, laid out like a printed ticket (see TICKET LAYOUT). When a
+    5  A ticket is 3 rows of numbers, each a button, laid out like a printed ticket (see THE TICKET). When a
        number is called the
        player taps it on their ticket and it turns green. A number that has NOT been called is refused on the
        ticket ("47 has not been called yet"). Any number that HAS been called can be tapped later: nobody loses
@@ -64,19 +66,14 @@ HOW A GAME GOES
     1 to 3 numbers in each, 5 in every row, in ascending order down a column and along a row (a smaller game has
     fewer columns, see GAME SIZE).
 
-TICKET LAYOUT  (printed, compact: LAYOUTS)
-    How those numbers sit on the buttons, chosen on a third dropdown of the setup card:
-
-        printed  every number in its own column, as on paper: a cell for each column (9 for a large game), the
-                 numbers where their tens put them and a quiet blank button where the ticket has a blank, so a
-                 number is found by its tens (the default; the ticket says which tens its columns are)
-        compact  just the numbers, in rows of five (four, three), no blanks: the ticket this step dealt before
-
-    A blank is a button that does nothing (Slack has no inert one). A row of printed cells is a row of buttons, 9 for a
-    large game, and a long row may be folded by Slack on a narrow screen: if so, compact is one choice away. A small
-    game's three columns are full either way, so its layouts look alike. The layout is chosen like the size (read from
-    the press's `state`, the card redrawn when it is used), starts on the recipe's `ticket_layout` input (printed when
-    blank) and is kept with the game. A game saved before layouts existed keeps compact tickets, as it was dealt them.
+THE TICKET  (laid out as a printed one)
+    The numbers sit on the buttons as they do on a paper ticket: every number in its own column, a cell for each
+    column (9 for a large game), the numbers where their tens put them and a quiet blank button where the ticket has
+    a blank, so a number is found by its tens (the ticket says which tens its columns are). A blank is a button that
+    does nothing (Slack has no inert one). A row of cells is a row of buttons, 9 for a large game, and Slack may fold
+    a long one on a narrow screen. A small game's three columns are full, so it has no blanks. There is one layout and
+    nothing to choose, and the organizer's card in their note is laid out the same way. (A ticket that did not fit the
+    columns, which this step never deals, would be drawn as its rows of numbers rather than lose one.)
 
 GAME SIZE  (small, medium, large: SIZES)
     One setting sets both how many numbers are called and how big a ticket is, so a quick game is quick:
@@ -110,22 +107,34 @@ BOARD STYLE  (emoji, numbers, list: BOARD_STYLES)
     the recipe's `board_style` input (emoji when blank) and is kept with the game. A game made before board styles
     existed has the emoji board.
 
-WINNERS ON THE BOARD  (names, carousel, strip, none: WINNERS_STYLES)
-    How the board shows who has won each prize, chosen on a fourth dropdown of the setup card:
+WINNERS  (names, carousel, strip, none: WINNERS_STYLES)
+    How winners are shown, chosen on a fourth dropdown of the setup card:
 
         names     the prizes with who holds each, or "open" (the board's original list)
         carousel  a Slack carousel with a card for each winner: the prize, their name, what it took and their Slack
-                  profile picture. The first winner is on the RIGHT and each new winner is added to the LEFT of the
-                  others, so the newest is what you see first; a line under it names the prizes still to win
+                  profile picture, with cheer (emojis) round the title and after the line, more for a bigger prize.
+                  The first winner is on the RIGHT and each new winner is added to the LEFT of the others, so the
+                  newest is what you see first
         strip     the same, as one line of small profile pictures with the prize and name beside each
-        none      winners are not listed on the board (the announcements still tell the channel)
+        none      winners are not listed anywhere, and there is no winners button (the announcements still tell the
+                  channel)
+
+    The list belongs to the BOARD, and to the organizer's Show winners / Hide winners button, the fifth of their
+    controls, which is not on their note until somebody has won (before that there is nothing to show or hide, and the
+    note does not talk about it): the names list is there from the start, and a photo style's list waits until the
+    button puts it on the board, in the style chosen at the start; the button takes it off again as often as they like,
+    it is kept with the game, and it works while the game is paused. A button left on a note drawn before the first
+    win is answered with a line at the top of their controls saying nobody has won yet, and changes nothing. A
+    prize's own announcement shows only the winner who has just won, on one card (see CELEBRATIONS), so the winners
+    together never take the spotlight off the current one. When the game is over the board lists its winners, in the
+    style chosen at the start, whatever was shown or hidden before ("not won" for a prize nobody took).
 
     A winner's picture is looked up once, when they win, and kept with the win (the win's row, in a real game), so
     redrawing the board on every number costs nothing; a test game keeps its state in a message with no room for
     addresses, so it looks them up again. A card without a picture is still a card. If Slack refuses the carousel (a
-    workspace without it) the board is drawn with names instead and the warnings say so, so the game never stops
-    updating. It starts on the recipe's `winners_style` input (names when blank), is read from the press's `state`
-    like the other dropdowns and is kept with the game; a game saved before it existed shows names.
+    workspace without it) the board is drawn with names instead and the warnings say so, so the game never stops. It
+    starts on the recipe's `winners_style` input (names when blank), is read from the press's `state` like the other
+    dropdowns and is kept with the game; a game saved before it existed shows names.
 
 CELEBRATIONS  (PRIZE_TIER: the bigger the prize, the bigger the announcement)
     The channel hears of each prize the moment it is won (`announce`: channel, thread or off), and the announcement
@@ -136,8 +145,14 @@ CELEBRATIONS  (PRIZE_TIER: the bigger the prize, the bigger the announcement)
                                        and a few emojis around them
         Full House         a header, a long row of emojis above and below, and a divider
 
-    Each prize can also have a BANNER, a picture above its announcement: set `banners` on the recipe that takes the
-    presses (the click recipe, where the prizes are won) to a JSON object of public https image addresses,
+    It opens with the celebration: the prize's BANNER, a picture, and (in a photo winners style) the winner who has just
+    won on a CARD, Slack's block for a picture with its words: their profile PHOTO on top and under it the prize, their
+    name and the numbers that made the line, and nothing of the other winners. It is a carousel of one card, the card
+    the board's winners list shows for them, and far smaller than a picture block of its own would be. The card carries
+    the words, so a line and Full House keep their header above it, and Full House its rows of cheers round it. Without
+    a photo (the names and none styles, or a winner with no picture) the words are lines of text, as listed above.
+    Set `banners` on the recipe that takes the presses (the click recipe, where the prizes are won) to a JSON object of
+    public https image addresses,
 
         {"early5": "https://.../early-five.png", "top": "https://.../top-line.png",
          "middle": "https://.../middle-line.png", "bottom": "https://.../bottom-line.png",
@@ -147,8 +162,26 @@ CELEBRATIONS  (PRIZE_TIER: the bigger the prize, the bigger the announcement)
     three lines one picture unless one is named on its own. A bad address or name is left out and said in the job's
     warnings. Banners are optional; without them the header and emojis are the celebration. The height of the picture
     is what makes the bigger prizes bigger, so give Full House the tallest.
-    If Slack will not load a banner the announcement goes without it, and the job's warnings say so: a banner can
-    never cost a win its announcement. A prize is announced once, however many times a click is handled.
+
+    THE NEXT NUMBER TAKES THE CELEBRATION DOWN: pressing it DELETES the announcements of the prizes won since the
+    number before, banner, card and words, so the channel is not left with a line for every prize (each win keeps where
+    it was announced, to do this): the board says who has won what. Where the board lists no winners (the none style)
+    an announcement is the only record of its prize, so it is cut down to its plain line instead, with the numbers that
+    made it (each win keeps those too).
+
+    THE END OF A GAME CLEARS THE SCREEN. Full House ends the game, and nothing is pressed after it, so its celebration,
+    banner and card, stays up for `celebration_seconds` (a setting of the click recipe: 20 by default, 0 for none, 60
+    at most; the job waits that long) and is then cleared, as it is at once when the last number is called or the
+    organizer presses End game. Where the board lists winners (names, carousel or strip) every announcement that is
+    still up is deleted, banner, card and words: the board's final list, in the style chosen at the start, is the
+    record, and a screen of "goes to" lines would only be in its way (one the next number deleted already is no
+    trouble). With no winners list (the none style) the announcements are the only record, so they stay, each as its
+    plain line.
+
+    If one tap wins several prizes the card goes on the last announcement only. If Slack will not load a banner the
+    announcement goes without it, and without the card if it will not take that (a workspace without carousels), and
+    the job's warnings say so: neither can ever cost a win its announcement. A prize is announced once, however many
+    times a click is handled.
 
 REVIEW AND RESUME  (the organizer's controls)
     Review pauses the game and puts a summary in the board's place, for everyone: the numbers called (in
@@ -164,10 +197,11 @@ REVIEW AND RESUME  (the organizer's controls)
 THE CARDS (kept short, as iMath's rules card is)
     Lobby      header (the one place the title and :tickets: are said, with the board's), host, 3 bullets,
                prizes, players, [ Join game ] on an open game and nothing else
-    Board      header, the number just called, the grid in its style, the prizes, a line on getting a lost
-               ticket back. No button.
+    Board      header, the number just called, the grid in its style, the winners (names, or what the
+               organizer showed), a line on getting a lost ticket back. No button.
     Review     header, counts, the numbers called, prizes, the top of the ranking as one table, the spread
-    Ticket     a private message to each player: 3 rows of buttons in the game's layout and a line of progress
+    Ticket     a private message to each player but the organizer (whose opens in their controls): 3 rows of
+               buttons laid out like a printed ticket and a line of progress
 
 TWO PRESSES AT ONCE
     Next number is the organizer's alone, and what it reveals is fixed in advance: the order of the numbers
@@ -210,8 +244,8 @@ THE TWO RECIPES
              this step. Map text, user_id, channel, message_ts, thread_ts (and bot_id, subtype if you like)
              plus slack_bot_token and workato_api_token (the token lets the word find the game the person
              already runs or plays in). Optional settings: testing, skip_post, announce, prizes,
-             board_columns, max_players, top_n, and size / board_style / ticket_layout / winners_style (what the
-             setup card's four dropdowns open on).
+             board_columns, max_players, top_n, and size / board_style / winners_style (what the setup
+             card's three dropdowns open on).
     Click    Slack interactivity trigger, filtered to action_id CONTAINING `tambola_click_` -> this step.
              Simplest: map `payload`, the whole interaction as JSON (the trigger's block_actions object, in
              formula mode its `.to_json`; the trigger's own {"block_actions:button": {...}} wrapper is fine), plus
@@ -232,17 +266,17 @@ THE TWO RECIPES
                  source_ts      <- container.message_ts
                  action_ts      <- actions[0].action_ts
                  response_url   <- response_url               (top level; keeps the organizer to ONE note)
-             plus slack_bot_token and workato_api_token. Nothing else but the optional `banners` of CELEBRATIONS. A
-             ticket press arrives from the player's private message, so `channel` there is that message's channel, not
-             the game's.
+             plus slack_bot_token and workato_api_token. Nothing else but the optional `banners` and
+             `celebration_seconds` of CELEBRATIONS. A ticket press arrives from the player's private message, so
+             `channel` there is that message's channel, not the game's.
 
 SLACK SCOPES   chat:write, users:read; channels:read (groups:read) for "Everyone in this channel";
                channels:history (groups:history) only for test games; im:write is a fallback for DMs.
 
 BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<kind>|<game>|<arg>)
-    size | board | layout | winners  the setup card's dropdowns of game size, board style, ticket layout and
-                                     winners display (selects: no value, the choice is the selected_option, and
-                                     in `state` on every later press)
+    size | board | winners           the setup card's dropdowns of game size, board style and winners display
+                                     (selects: no value, the choice is the selected_option, and in `state` on every
+                                     later press)
     set_all | set_pick | set_open    the three choices on the setup card (private)
     pick_<game>                      the organizer's menu of people (a select: no value): a list of the
                                      channel's members, the organizer in it, or Slack's people picker when
@@ -250,6 +284,7 @@ BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<ki
     start | cancel                   the organizer's lobby controls (private)
     join                             the lobby of an open game (public, everybody)
     next | review | resume | end     the organizer's game controls (private)
+    showwinners                      Show winners / Hide winners, the organizer's (private)
     myticket                         Show my card / Hide my card, on the organizer's note (private)
     hmark_<number>                   a number on the organizer's card, in their note (private)
     mark_<number>                    a number on a ticket (private message to the player)
@@ -365,16 +400,7 @@ BOARD_STYLES = {
 }
 DEFAULT_BOARD_STYLE = next(iter(BOARD_STYLES))
 
-# TICKET LAYOUTS: how the numbers sit on a player's ticket, chosen on a third dropdown of the setup card. Printed is the
-# paper ticket: a cell for every column (1-9, 10s, 20s ... 80s), each number in its own column and the rest blank, so a
-# number is found by its tens. Compact keeps just the numbers, in ascending rows (the ticket this step always dealt).
-# A blank is a quiet button that does nothing. A row of cells is a row of buttons, and Slack may fold a long one on a
-# narrow screen, which is why the plainer layout stays on offer. The first key is the default.
-LAYOUTS = {
-    "printed": {"label": "Printed ticket", "text": "numbers in their column (1-9, 10s, 20s ...), blanks between"},
-    "compact": {"label": "Compact ticket", "text": "just the numbers, in short rows"},
-}
-# WINNERS: how the board shows who has won each prize, chosen on a fourth dropdown of the setup card. Names is the list
+# WINNERS: how the board shows who has won each prize, chosen on a third dropdown of the setup card. Names is the list
 # of prizes with their holders (the board's original look); the photo styles show each winner's Slack profile picture,
 # the first winner on the right and each new one added to the left of it (a carousel of cards, or a strip of small
 # pictures in one line); none leaves winners off the board (the announcements still tell the channel). A photo style
@@ -393,11 +419,11 @@ WINNER_BODY = {"early5": "First to mark five numbers", "top": "Completed the top
                "middle": "Completed the middle row", "bottom": "Completed the bottom row",
                "full": "Marked every number on the ticket"}
 CARD_LIMIT = 150                  # Slack's limit on a card's title and subtitle (a body: 200)
+CELEBRATION_SECONDS = 20          # how long Full House's celebration stays up before the screen is cleared (0: at once)
+CELEBRATION_MAX = 60              # the most the celebration_seconds input allows: a step is stopped at 90 seconds
+CARD_FLAIR = {1: ":zap:", 2: ":tada::sparkles:", 3: ":trophy::tada::sparkles:"}     # round a card's title, by tier
+CARD_CHEER = {1: ":clap:", 2: ":clap::tada:", 3: ":clap::tada::fireworks:"}         # after a card's line
 
-DEFAULT_LAYOUT = next(iter(LAYOUTS))
-LEGACY_LAYOUT = "compact"         # a game saved before layouts existed was dealt compact tickets, and keeps them
-LAYOUT_ALIASES = {"paper": "printed", "physical": "printed", "columns": "printed", "real": "printed",
-                  "short": "compact", "rows": "compact", "plain": "compact", "simple": "compact"}
 BOARD_ALIASES = {"emojis": "emoji", "tiles": "emoji", "plain": "numbers", "number": "numbers", "normal": "numbers",
                  "text": "numbers", "called": "list", "calls": "list", "compact": "list"}
 
@@ -493,18 +519,18 @@ MODES = tuple(MODE_BUTTONS)
 
 SETUP_TEXT = ":tickets: *{word}*: set the game up below, then choose how people join. Only you can see this."
 SETUP_NOTE = ("The lobby opens in the channel. Your controls, Start game included, stay here in a note only you "
-              "can see. Tickets go out as private messages when you press Start.")
+              "can see, and so does your own ticket (Show my card). Everyone else's ticket goes out as a private "
+              "message when you press Start.")
 SETUP_SIZE = "*Game size*\nA smaller game has fewer numbers and a smaller ticket, so it is quicker."
 SETUP_BOARD = "*Board style*\nHow the numbers called are shown on the board."
-SETUP_LAYOUT = "*Ticket layout*\nHow the numbers sit on each player's ticket."
 SETUP_WINNERS = "*Winners*\nHow the board shows who has won each prize."
-SETUP_MENU = {"size": SETUP_SIZE, "board": SETUP_BOARD, "layout": SETUP_LAYOUT, "winners": SETUP_WINNERS}
-MENU_PLACEHOLDER = {"size": "Game size", "board": "Board style", "layout": "Ticket layout", "winners": "Winners"}
+SETUP_MENU = {"size": SETUP_SIZE, "board": SETUP_BOARD, "winners": SETUP_WINNERS}
+MENU_PLACEHOLDER = {"size": "Game size", "board": "Board style", "winners": "Winners"}
 WINNERS_OPTION = "{label}: {text}"
 STILL_TO_WIN = "*Still to win:*  {prizes}"
+NOT_WON = "*Not won:*  {prizes}"
 SIZE_OPTION = "{label}{tag}: numbers 1 to {numbers}, {ticket} on a ticket"
 BOARD_OPTION = "{label}: {text}"
-LAYOUT_OPTION = "{label}: {text}"
 BLANK_TEXT = "\u00b7"             # a blank square of a printed ticket: a button that does nothing
 TICKET_COLUMNS = "Each number sits in its column, as on a printed ticket: {columns}."
 RULES = ("• Every player gets a ticket in a private message: {ticket} numbers in 3 rows.\n"
@@ -533,10 +559,11 @@ TEST_NOTE = ":test_tube: Test game: nothing is saved."
 # (never for Next number), and they pile up.
 PANEL_HEAD = ":gear: *Your controls.* Only you can see this."
 PANEL_LOBBY = (":gear: *Your controls for {word}.* Only you can see this. You are in the game too, with a "
-               "ticket of your own, even if nobody else joins. Press *Start game* when everyone is in.")
+               "ticket of your own, even if nobody else joins: it opens in this note, with *Show my card*, once the "
+               "game has started. Press *Start game* when everyone is in.")
 PANEL_LOBBY_PICK = (":gear: *Your controls for {word}.* Only you can see this. Choose the players below: the "
-                    "lobby follows your choices, and you are always in, with a ticket of your own. Press "
-                    "*Start game* when everyone is in.")
+                    "lobby follows your choices, and you are always in, with a ticket of your own that opens in this "
+                    "note once the game has started. Press *Start game* when everyone is in.")
 PANEL_NO_MENU = (" The player menu could not be shown just now: type `{word}` in the channel to try again, or press "
                  "*Start game* to play with just yourself.")
 PANEL_NO_NUMBER = ":game_die: No number called yet. Press *Next number* to call the first one."
@@ -544,6 +571,7 @@ PANEL_LAST = ":game_die: Last called *{number}*  ({said})  \u00b7  *{called}* of
 PANEL_PAUSED_LINE = ":pause_button: *Paused* at *{called}* of {numbers} called. The board shows the review."
 PANEL_HINT_RUNNING = ("*Review* pauses the game and shows everyone where it stands. *Show my card* opens your own "
                       "card here, so you can tap your numbers without leaving the channel.")
+PANEL_HINT_WINNERS = " The winners button puts the winners on the board or takes them off."
 PANEL_HINT_PAUSED = "*Resume* puts the board back and carries on."
 CARD_HEAD = ":tickets: *Your card.* Tap a number when it is called."
 
@@ -571,6 +599,8 @@ REVIEW_TEXT = "Review :bar_chart:"
 RESUME_TEXT = "Resume :arrow_forward:"
 SHOW_CARD_TEXT = "Show my card :tickets:"
 HIDE_CARD_TEXT = "Hide my card"
+SHOW_WINNERS_TEXT = "Show winners :trophy:"
+HIDE_WINNERS_TEXT = "Hide winners"
 END_TEXT = "End game"
 END_CONFIRM = "End the game for everyone? The board stays, the numbers stop."
 JOIN_TEXT = "Join game :raised_hand:"
@@ -592,6 +622,8 @@ SAID_JOINED = (":white_check_mark: You are in. Your ticket arrives in a private 
                "starts the game.")
 SAID_FULL = ":warning: This game already has {count} players, which is the most it holds."
 SAID_OVER = ":checkered_flag: This game has finished."
+SAID_NO_WINNERS = (":information_source: Nobody has won a prize yet, so there are no winners to show. Press "
+                   "*Show winners* again once someone has.")
 SAID_NOT_STARTED = ":information_source: This game has not started yet."
 SAID_STARTED = ":information_source: This game has already started."
 SAID_HAVE_GAME = (":information_source: You already have a {word} game open in this channel, so these are its "
@@ -603,8 +635,8 @@ SAID_MEMBERS = (":warning: I could not read this channel's members ({error}). Pi
                 "or let anyone join.")
 SAID_TOO_MANY = (":warning: This channel has {count} people, and a game holds {max} players at most. Pick "
                  "the players yourself or let anyone join.")
-SAID_NO_TICKET = (":warning: I could not message {names}. Typing `{word}` in the channel sends a ticket "
-                  "again; for you, the host, there is the *My ticket* button.")
+SAID_NO_TICKET = (":warning: I could not message {names}. Typing `{word}` in the channel sends them a ticket "
+                  "again.")
 SAID_TICKET_SENT = ":tickets: Your ticket is in a private message."
 SAID_TICKET_FAILED = ":warning: I could not message you just now. Please try again."
 SAID_TEST_FULL = ":warning: A test game holds up to {count} players. Start a fresh test with fewer."
@@ -693,13 +725,6 @@ def parse_board_style(value, default=DEFAULT_BOARD_STYLE):
     word = re.sub(r"[^a-z]", "", str(value or "").lower())
     word = BOARD_ALIASES.get(word, word)
     return word if word in BOARD_STYLES else default
-
-
-def parse_layout(value, default=DEFAULT_LAYOUT):
-    """A ticket layout key from its name or an alias (paper, rows ...); `default` when it is none of them."""
-    word = re.sub(r"[^a-z]", "", str(value or "").lower())
-    word = LAYOUT_ALIASES.get(word, word)
-    return word if word in LAYOUTS else default
 
 
 def parse_winners(value, default=DEFAULT_WINNERS):
@@ -922,13 +947,9 @@ def number_column(number, numbers):
 
 
 def ticket_cells(g, ticket):
-    """The rows of a ticket as its layout draws them, [[number or None, ...], ...]: printed gives a cell for each column
-    of the printed ticket, a number in its own column and the rest None (blank); compact gives just the numbers. A
-    ticket that does not fit the printed layout (two numbers in one column: not one this step deals) is drawn compact
-    rather than lose a number."""
-    compact = [list(row) for row in ticket]
-    if parse_layout(g["cfg"].get("layout")) == "compact":
-        return compact
+    """The rows of a ticket as a printed ticket draws them, [[number or None, ...], ...]: a cell for each column, a
+    number in its own column and the rest None (blank). A ticket that does not fit the columns (two numbers in one
+    column: not one this step deals) is drawn as its rows of numbers rather than lose a number."""
     columns, numbers = layout_columns(numbers_of(g)), numbers_of(g)
     rows = []
     for row in ticket:
@@ -936,7 +957,7 @@ def ticket_cells(g, ticket):
         for number in row:
             column = number_column(number, numbers)
             if cells[column] is not None:
-                return compact
+                return [list(r) for r in ticket]
             cells[column] = number
         rows.append(cells)
     return rows
@@ -1011,13 +1032,13 @@ ACTION_PREFIX = "tambola_click_"
 PICK_ACTION = ACTION_PREFIX + "pick_"
 SIZE_ACTION = ACTION_PREFIX + "size"
 BOARD_ACTION = ACTION_PREFIX + "board"
-LAYOUT_ACTION = ACTION_PREFIX + "layout"
 WINNERS_ACTION = ACTION_PREFIX + "winners"
 BLANK_ACTION = ACTION_PREFIX + "blank_"
-MENUS = ("size", "board", "layout", "winners")    # the setup card's dropdowns in the order they are drawn, named
-MENU_ACTION = {"size": SIZE_ACTION, "board": BOARD_ACTION, "layout": LAYOUT_ACTION, "winners": WINNERS_ACTION}
+WINNERS_BUTTON = ACTION_PREFIX + "showwinners"    # the organizer's Show / Hide winners (not the setup dropdown's id)
+MENUS = ("size", "board", "winners")              # the setup card's dropdowns in the order they are drawn, named
+MENU_ACTION = {"size": SIZE_ACTION, "board": BOARD_ACTION, "winners": WINNERS_ACTION}
 MENU_OF_ACTION = {action: kind for kind, action in MENU_ACTION.items()}
-MENU_PARSE = {"size": parse_size, "board": parse_board_style, "layout": parse_layout, "winners": parse_winners}
+MENU_PARSE = {"size": parse_size, "board": parse_board_style, "winners": parse_winners}
 HARD_MAX_PLAYERS = 100
 LOBBY_KINDS = ("join", "start", "cancel", "pick")      # these belong to the lobby message; the rest, to the board
 LIVE = (RUNNING, PAUSED)          # numbers are being called: a ticket can be marked
@@ -1038,7 +1059,6 @@ def game_config(input):
         "size": parse_size(input.get("size")),
         "top": _int(input.get("top_n"), REVIEW_PLAYERS, 1, REVIEW_PLAYERS_MAX),
         "board": parse_board_style(input.get("board_style")),
-        "layout": parse_layout(input.get("ticket_layout")),
         "winners": parse_winners(input.get("winners_style")),
     }
 
@@ -1046,7 +1066,9 @@ def game_config(input):
 def cfg_list(cfg):
     """The settings as the short list a game saves and a button carries. Anything at its usual value is left blank (a
     blank reads as the usual value), which keeps what a dropdown's option carries inside Slack's 150 characters. The
-    layout is always written: a game saved without one is read as compact, which is what it was dealt."""
+    eighth place was the ticket layout, which is not a choice any more (tickets are laid out as a printed one is): it
+    is still written, as the one layout there is, so that a game saved here reads the same in an earlier version of
+    this step, and one saved by an earlier version still has the winners style where this reads it."""
     prizes, top = list(cfg["prizes"]), cfg.get("top", REVIEW_PLAYERS)
     return [",".join(prizes) if prizes != list(PRIZE_KEYS) else "",
             "" if cfg["announce"] == ANNOUNCE[0] else cfg["announce"],
@@ -1055,14 +1077,14 @@ def cfg_list(cfg):
             parse_size(cfg.get("size")),
             "" if top == REVIEW_PLAYERS else top,
             parse_board_style(cfg.get("board")),
-            parse_layout(cfg.get("layout")),
+            "printed",
             parse_winners(cfg.get("winners"))]
 
 
 def cfg_from(raw):
-    """The settings back from what a game saved. A game saved before sizes, top_n, board styles, layouts or winners
-    styles existed has fewer, and plays as it always did: a large game, ten players on the review, the emoji board,
-    compact tickets (the layout of the tickets it has already dealt) and the names of the winners."""
+    """The settings back from what a game saved. A game saved before sizes, top_n, board styles or winners styles
+    existed has fewer, and plays as it always did: a large game, ten players on the review, the emoji board and the
+    names of the winners. The eighth place, once the ticket layout, is not read."""
     raw = list(raw) if isinstance(raw, (list, tuple)) else []
     raw += [""] * (9 - len(raw))
     return {"prizes": parse_prizes(raw[0]),
@@ -1072,7 +1094,6 @@ def cfg_from(raw):
             "size": parse_size(raw[4]),
             "top": _int(raw[5], REVIEW_PLAYERS, 1, REVIEW_PLAYERS_MAX),
             "board": parse_board_style(raw[6]),
-            "layout": parse_layout(raw[7], LEGACY_LAYOUT),
             "winners": parse_winners(raw[8])}
 
 
@@ -1093,6 +1114,7 @@ def new_game(game_id, channel, host, word, cfg, test):
         "claim": "",                   # the click time of the press that is starting the game
         "last_next": 0.0,              # the click time of the last Next number, to catch a press made twice
         "host_mask": None,             # [test game] the numbers marked on the organizer's card, as their note has them
+        "winners_open": None,          # whether the board lists its winners: None until chosen (see winners_open)
     }
 
 
@@ -1109,8 +1131,12 @@ def state_dict(g, wins=True):
     names = {u: g["names"][u][:NAME_MAX] for u in g["roster"] if g["names"].get(u)}
     if names and g["status"] in (LOBBY, STARTING):
         state["p"] = names
+    if g.get("winners_open") is not None:
+        state["o"] = 1 if g["winners_open"] else 0
     if wins and g["wins"]:
-        state["x"] = [[k, w["uid"], w["name"][:NAME_MAX], w["ts"]] for k, w in g["wins"].items()]
+        # a win also carries where its announcement is (to take its banner down later) and the numbers of its line
+        state["x"] = [[k, w["uid"], w["name"][:NAME_MAX], w["ts"], w.get("ann", ""),
+                       ",".join(str(n) for n in w.get("nums") or [])] for k, w in g["wins"].items()]
     return state
 
 
@@ -1126,9 +1152,16 @@ def game_from_state(state, test):
              last_next=as_ts(state.get("u")))
     g["roster"] = unique(str(u) for u in (state.get("r") or []))
     g["names"] = {str(u): str(n) for u, n in (state.get("p") or {}).items()}
+    if "o" in state:
+        g["winners_open"] = bool(_int(state.get("o"), 0, 0, 1))
     for item in state.get("x") or []:
         if isinstance(item, (list, tuple)) and len(item) >= 4 and item[0] in PRIZE_KEYS:
-            g["wins"][item[0]] = {"uid": str(item[1]), "name": str(item[2]), "ts": str(item[3])}
+            win = {"uid": str(item[1]), "name": str(item[2]), "ts": str(item[3])}
+            if len(item) > 4 and item[4]:
+                win["ann"] = str(item[4])
+            if len(item) > 5 and item[5]:
+                win["nums"] = [int(n) for n in str(item[5]).split(",") if n.isdigit()]
+            g["wins"][item[0]] = win
     return g
 
 
@@ -1283,8 +1316,8 @@ def blank_button(row, column):
 
 
 def ticket_rows(g, ticket, marks, make):
-    """A ticket as rows of buttons, in the game's layout: `make(number, marked)` is a number's button, a blank square
-    is a quiet one."""
+    """A ticket as rows of buttons, laid out as a printed ticket: `make(number, marked)` is a number's button, a blank
+    square is a quiet one."""
     marks = set(marks)
     return [_actions([make(number, number in marks) if number else blank_button(r, c)
                       for c, number in enumerate(cells)])
@@ -1328,8 +1361,6 @@ def menu_choices(kind):
     if kind == "board":
         return [(key, BOARD_OPTION.format(label=spec["label"], text=spec["text"]))
                 for key, spec in BOARD_STYLES.items()]
-    if kind == "layout":
-        return [(key, LAYOUT_OPTION.format(label=spec["label"], text=spec["text"])) for key, spec in LAYOUTS.items()]
     return [(key, WINNERS_OPTION.format(label=spec["label"], text=spec["text"]))
             for key, spec in WINNERS_STYLES.items()]
 
@@ -1348,8 +1379,8 @@ def setting_menu(g, kind):
 
 
 def setup_blocks(g):
-    """The card only the person who typed the word sees: the game's size, the board's style and the tickets' layout on
-    dropdowns, then how people join."""
+    """The card only the person who typed the word sees: the game's size, the board's style and how winners are shown
+    on dropdowns, then how people join."""
     blocks = [_section(SETUP_TEXT.format(word=g["word"]))]
     blocks += [dict(_section(SETUP_MENU[kind]), accessory=setting_menu(g, kind)) for kind in MENUS]
     blocks += [
@@ -1471,6 +1502,10 @@ def panel_blocks(g, note="", mine=None, menu=None, form="full"):
     mask = mask_of(*mine) if mine else None
     card_button = _button(HIDE_CARD_TEXT if mine else SHOW_CARD_TEXT, ACTION_PREFIX + "myticket",
                           value_for("ticket", g, arg, mask))
+    # no button until somebody has won: until then there is nothing to show or hide (none at all with no winners list)
+    winners_button = [] if parse_winners(g["cfg"].get("winners")) == "none" or not g["wins"] else [
+        _button(HIDE_WINNERS_TEXT if winners_open(g) else SHOW_WINNERS_TEXT, WINNERS_BUTTON,
+                value_for("winners", g, arg, mask))]
     if status in (LOBBY, STARTING):
         words = (PANEL_LOBBY_PICK if g["mode"] == "pick" else PANEL_LOBBY).format(word=g["word"])
         if g["mode"] == "pick" and form == "none":
@@ -1486,16 +1521,16 @@ def panel_blocks(g, note="", mine=None, menu=None, form="full"):
     elif status == PAUSED:
         blocks += [_section(PANEL_HEAD)] + ([] if form == "minimal" else [_section(panel_status_line(g))])
         buttons = [_button(RESUME_TEXT, ACTION_PREFIX + "resume", value_for("resume", g, arg, mask), "primary"),
-                   card_button,
+                   card_button] + winners_button + [
                    _button(END_TEXT, ACTION_PREFIX + "end", value_for("end", g, arg, mask), confirm=END_CONFIRM)]
         hint = PANEL_HINT_PAUSED
     else:
         blocks += [_section(PANEL_HEAD)] + ([] if form == "minimal" else [_section(panel_status_line(g))])
         buttons = [_button(NEXT_TEXT, ACTION_PREFIX + "next", value_for("next", g, arg, mask), "primary"),
                    _button(REVIEW_TEXT, ACTION_PREFIX + "review", value_for("review", g, arg, mask)),
-                   card_button,
+                   card_button] + winners_button + [
                    _button(END_TEXT, ACTION_PREFIX + "end", value_for("end", g, arg, mask), confirm=END_CONFIRM)]
-        hint = PANEL_HINT_RUNNING
+        hint = PANEL_HINT_RUNNING + (PANEL_HINT_WINNERS if winners_button else "")
     if form == "minimal":
         buttons = [plain_button(b) for b in buttons]
         mine = hint = None
@@ -1537,19 +1572,24 @@ def prize_fields(g, closest=None):
         elif closest and key in closest:
             who = "_open  ·  nobody yet_"
         else:
-            who = "_open_"
+            who = "_not won_" if g["status"] == DONE else "_open_"
         fields.append("*{} {}*\n{}".format(icon, name, who))
     return fields
 
 
-def winner_card(key, win):
-    """One winner as a card of the carousel: the prize, who won it, what it took, and their profile picture as the
-    card's picture when there is one (a card without one is still a card)."""
-    name = win["name"] or ANONYMOUS
+def winner_card(key, win, numbers=None):
+    """One winner as a card, the block with a picture on top and its words under it (a card of the board's carousel, or
+    the one card of an announcement): the prize, who won it, what it took, and their profile picture as the card's
+    picture when there is one (a card without one is still a card). The bigger the prize the more cheer round its
+    title and after its line. `numbers`, the numbers of the line that won, are put after what it took."""
+    name, tier = win["name"] or ANONYMOUS, PRIZE_TIER.get(key, 1)
+    flair = CARD_FLAIR[tier]
+    mirrored = "".join(reversed(re.findall(r":[a-z0-9_+-]+:", flair)))
+    took = WINNER_BODY[key] + (" ({})".format("  ·  ".join(str(n) for n in numbers)) if numbers else "")
     card = {"type": "card",
-            "title": _mrkdwn("{} *{}*".format(PRIZE_ICON[key], PRIZE_NAME[key])[:CARD_LIMIT]),
+            "title": _mrkdwn("{} *{}* {}".format(flair, PRIZE_NAME[key], mirrored)[:CARD_LIMIT]),
             "subtitle": _mrkdwn(esc(name)[:CARD_LIMIT]),
-            "body": _mrkdwn(WINNER_BODY[key])}
+            "body": _mrkdwn("{} {}".format(took, CARD_CHEER[tier]))}
     if win.get("img"):
         card["hero_image"] = {"type": "image", "image_url": win["img"],
                               "alt_text": "{}, winner of the {}".format(name, PRIZE_NAME[key])}
@@ -1568,26 +1608,51 @@ def winners_strip(won):
     return {"type": "context", "elements": elements[:10]}
 
 
-def winners_blocks(g):
-    """Who has won what, in the board's winners style (see WINNERS_STYLES). The photo styles put the first winner on the
-    right and each new one to the left of it, so the newest is the first thing seen; the prizes still to win are named
-    in a line under them."""
+def winners_newest_first(g):
+    """[(prize, win)] of the prizes won, the newest first (by the click that won it), as the photo styles lay them out:
+    the first winner ends up on the right and each new one is added to the left of the others."""
+    held = [(key, g["wins"][key]) for key in PRIZE_KEYS if key in g["cfg"]["prizes"] and key in g["wins"]]
+    return sorted(held, key=lambda item: (as_ts(item[1]["ts"]), PRIZE_KEYS.index(item[0])), reverse=True)
+
+
+def photo_block(g):
+    """The winners as pictures in the game's winners style (a carousel of cards, or a strip), or None when the style is
+    not a photo one or nobody has won."""
+    won = winners_newest_first(g)
     style = parse_winners(g["cfg"].get("winners"))
-    if style == "none":
+    if not won or style not in PHOTO_STYLES:
+        return None
+    if style == "carousel":
+        return {"type": "carousel", "elements": [winner_card(key, win) for key, win in won]}
+    return winners_strip(won)
+
+
+def winners_open(g):
+    """Whether the board lists its winners now. The names list is there from the start, as the board always had it. The
+    photo styles are the celebration's (they come with each win's announcement and go at the next number), so on the
+    board they wait until the organizer asks with Show winners. Their button sets it either way, and it is kept."""
+    shown = g.get("winners_open")
+    if shown is None:
+        return parse_winners(g["cfg"].get("winners")) == "names"
+    return bool(shown)
+
+
+def winners_blocks(g):
+    """Who has won what on the board, in the board's winners style (see WINNERS_STYLES), when the winners are shown
+    (winners_open): the names with each prize, or the photos with the first winner on the right and each new one to its
+    left, and under the photos the prizes still to win."""
+    style = parse_winners(g["cfg"].get("winners"))
+    if style == "none" or not winners_open(g):
         return []
     if style == "names":
         fields = prize_fields(g)
         return [_section(fields=fields)] if fields else []
-    held = [(key, g["wins"][key]) for key in PRIZE_KEYS if key in g["cfg"]["prizes"] and key in g["wins"]]
-    won = sorted(held, key=lambda item: (as_ts(item[1]["ts"]), PRIZE_KEYS.index(item[0])), reverse=True)
-    blocks = []
-    if won and style == "carousel":
-        blocks.append({"type": "carousel", "elements": [winner_card(key, win) for key, win in won]})
-    elif won:
-        blocks.append(winners_strip(won))
+    block = photo_block(g)
+    blocks = [block] if block else []
     open_prizes = [PRIZE_NAME[k] for k in PRIZE_KEYS if k in g["cfg"]["prizes"] and k not in g["wins"]]
     if open_prizes:
-        blocks.append(_context(STILL_TO_WIN.format(prizes="  \u00b7  ".join(open_prizes))))
+        blocks.append(_context((NOT_WON if g["status"] == DONE else STILL_TO_WIN).format(
+            prizes="  \u00b7  ".join(open_prizes))))
     return blocks
 
 
@@ -1743,11 +1808,11 @@ def review_blocks(g, stats):
 
 
 def ticket_blocks(g, ticket, marks, note="", over=False):
-    """A player's ticket: three rows, each number a button, laid out as the game's ticket layout says; a marked one is
-    green with a tick."""
+    """A player's ticket: three rows, each number a button, laid out as a printed ticket is; a marked one is green with
+    a tick."""
     marks = set(marks)
     where = TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g))
-    if parse_layout(g["cfg"].get("layout")) == "printed" and layout_columns(numbers_of(g)) > row_size_of(g):
+    if layout_columns(numbers_of(g)) > row_size_of(g):                 # there are blanks: say where the columns are
         where += "\n" + TICKET_COLUMNS.format(columns=column_names(numbers_of(g)))
     blocks = [_section(TICKET_HEAD.format(word=g["word"])), _context(where)]
     blocks += ticket_rows(g, ticket, marks, lambda number, marked: _button(
@@ -1761,30 +1826,48 @@ def ticket_blocks(g, ticket, marks, note="", over=False):
     return blocks
 
 
-def win_text(g, key, name, ticket):
+def line_numbers(ticket, key):
+    """The numbers of the line a line prize is for, from a ticket; none for the other prizes."""
+    return list(ticket[LINES[key]]) if ticket and key in LINES else []
+
+
+def win_text(g, key, name, ticket, numbers=None):
     name = esc(name or ANONYMOUS)
     if key == "full":
         return ":trophy: *Full House!* *{}* has the whole ticket. That is the game.".format(name)
     if key == "early5":
         return ":zap: *Early Five* goes to *{}*!".format(name)
-    numbers = "  ·  ".join(str(n) for n in ticket[LINES[key]]) if ticket else ""
-    return ":tada: *{}* goes to *{}*!{}".format(PRIZE_NAME[key], name, "\n_{}_".format(numbers) if numbers else "")
+    shown = "  ·  ".join(str(n) for n in (line_numbers(ticket, key) if numbers is None else numbers))
+    return ":tada: *{}* goes to *{}*!{}".format(PRIZE_NAME[key], name, "\n_{}_".format(shown) if shown else "")
 
 
-def win_blocks(g, key, name, ticket, banner=""):
+def win_blocks(g, key, name, ticket, banner="", numbers=None, photo=""):
     """The announcement of a prize, bigger for a bigger prize (see PRIZE_TIER): Early Five a single line; a line a
     header and a line of emojis either side of the winner's name and the numbers that made it; Full House a header, two
-    rows of emojis and a divider. `banner`, a public https image url, goes on top when there is one."""
+    rows of emojis and a divider. `banner`, a public https image url, opens it. `photo`, the winner's profile picture
+    (in a photo winners style), turns the words into one card, as the board's winners list shows each winner: the
+    picture on top and the prize, the winner and the numbers under it. That is the block for a picture with words,
+    where an image block of its own is far bigger than the words it goes with. The banner and the card are taken away
+    at the next number (retire_celebrations)."""
     tier, who = PRIZE_TIER.get(key, 1), esc(name or ANONYMOUS)
     flair, icon, prize = TIER_FLAIR[tier], PRIZE_ICON.get(key, ":tada:"), PRIZE_NAME[key]
     blocks = [{"type": "image", "image_url": banner, "alt_text": "{} won".format(prize)}] if banner else []
+    numbers = line_numbers(ticket, key) if numbers is None else numbers
+    if photo:
+        card = {"type": "carousel", "elements": [winner_card(key, {"name": name, "img": photo}, numbers)]}
+        if tier == 1:
+            return blocks + [card]
+        if tier == 2:
+            return blocks + [_header("{} {}!".format(icon, prize)), card]
+        return blocks + [_header(":trophy: FULL HOUSE! :trophy:"), _section(flair), card, _section(flair),
+                         {"type": "divider"}]
     if tier == 1:
         return blocks + [_section("{} *{}* goes to *{}*!".format(icon, prize, who))]
     if tier == 2:
-        numbers = "  ·  ".join(str(n) for n in ticket[LINES[key]]) if ticket else ""
+        shown = "  ·  ".join(str(n) for n in numbers)
         return blocks + [_header("{} {}!".format(icon, prize)),
                          _section("{0} *{1}* goes to *{2}*! {0}{3}".format(flair, prize, who,
-                                                                       "\n_{}_".format(numbers) if numbers else ""))]
+                                                                       "\n_{}_".format(shown) if shown else ""))]
     return blocks + [_header(":trophy: FULL HOUSE! :trophy:"),
                      _section("{0}\n*Full House!* *{1}* has the whole ticket. That is the game.\n{0}".format(
                          flair, who)),
@@ -2219,9 +2302,11 @@ def wins_from_rows(rows):
             extra = json.loads(row.get("content") or "{}")
         except ValueError:
             extra = {}
+        extra = extra if isinstance(extra, dict) else {}
         entry = {"uid": row["group_id"], "name": row.get("member_name") or "",
                  "ts": row.get("last_processed_ts") or "", "ref": str(row.get("source_ref") or ""),
-                 "img": str(extra.get("img") or "") if isinstance(extra, dict) else ""}
+                 "img": str(extra.get("img") or ""), "ann": str(extra.get("ann") or ""),
+                 "nums": [n for n in extra.get("nums") or [] if isinstance(n, int)]}
         held = best.get(key)
         if held is None or (as_ts(entry["ts"]), entry["uid"], entry["ref"]) < \
                 (as_ts(held["ts"]), held["uid"], held["ref"]):
@@ -2301,7 +2386,14 @@ def lobby_people(table, g):
     return True
 
 
-def claim_prizes(table, g, keys, user_id, name, stamp, result, photo=""):
+def win_content(win):
+    """What a win's row keeps in its content: the winner's picture, the numbers of the line they completed and where its
+    announcement was posted (so the next number can take its banner down), each only when there is one."""
+    kept = {"img": win.get("img"), "nums": win.get("nums"), "ann": win.get("ann")}
+    return json.dumps({k: v for k, v in kept.items() if v}) if any(kept.values()) else None
+
+
+def claim_prizes(table, g, keys, user_id, name, stamp, result, photo="", numbers=None):
     """(won, lost): the prizes in `keys` that this press holds, and those another click had first as
     [(prize, their name)]. A prize is a row; the earliest click time holds it, whoever reads.
 
@@ -2313,7 +2405,8 @@ def claim_prizes(table, g, keys, user_id, name, stamp, result, photo=""):
         won = []
         for key in keys:
             if key not in g["wins"]:
-                g["wins"][key] = {"uid": user_id, "name": name, "ts": stamp, "ref": "", "img": photo}
+                g["wins"][key] = {"uid": user_id, "name": name, "ts": stamp, "ref": "", "img": photo,
+                                  "nums": list((numbers or {}).get(key) or [])}
                 won.append(key)
         return won, []
     # time first, so of two attempts at the same click the one made earlier is the earlier row (the later one cannot
@@ -2325,7 +2418,8 @@ def claim_prizes(table, g, keys, user_id, name, stamp, result, photo=""):
             "record_key": "tambola_win_{}_{}_{}".format(g["id"], key, user_id), "row_type": WIN_ROW,
             "id": g["id"], "slack_channel_id": g["channel"], "group_id": user_id, "grant_type": key,
             "member_name": name, "status": "won", "day": today_text(), "last_processed_ts": stamp,
-            "source_ref": token, "content": json.dumps({"img": photo}) if photo else None})
+            "source_ref": token,
+            "content": win_content({"img": photo, "nums": list((numbers or {}).get(key) or [])})})
         if ok:
             created.append(key)
         else:
@@ -2337,6 +2431,8 @@ def claim_prizes(table, g, keys, user_id, name, stamp, result, photo=""):
     if rows is LOOKUP_FAILED:
         return created, []                                         # cannot compare: as far as is known, first
     kept = any(str(r.get("source_ref") or "") == token for r in rows)    # the table gave the token back
+    g["win_rows"] = {r.get("grant_type"): r.get("$record_id") or ""      # where this attempt's rows are, to add to them
+                     for r in rows if str(r.get("source_ref") or "") == token}
     g["wins"] = wins_from_rows(rows)
     won, lost = [], []
     for key in created:
@@ -2603,7 +2699,8 @@ def find_active(table, channel, user):
 
 def resend_ticket(token, table, result, g, user, stamp, say):
     """Send a player their ticket again, with the numbers they had marked. `say(text)` gives them the private note
-    that answers (a new note for the typed word, the organizer's own note replaced for My ticket). True when sent."""
+    that answers (a new private note, for the typed word). True when sent. Never used for the organizer, whose ticket
+    is in their controls."""
     mine = ticket = None
     marks, name = set(), ""
     if not g["test"]:
@@ -2659,6 +2756,9 @@ def start_setup(input, result, token, table, flags):
                 menu = menu_options(token, game)[0] if game["mode"] == "pick" and game["status"] == LOBBY else None
                 note = SAID_HAVE_GAME.format(word=game["word"], done=CANCEL_TEXT if game["status"] in (LOBBY, STARTING)
                                              else END_TEXT)
+                rows = table.wins(game["id"], game["channel"]) if game["status"] in LIVE else []
+                if rows is not LOOKUP_FAILED:                       # the winners button shows once one has won
+                    game["wins"] = wins_from_rows(rows)
                 send_panel(result, token, game, user, note=note, menu=menu)
                 result["ok"] = True
             else:
@@ -2875,7 +2975,7 @@ def with_payload(input):
 
 
 def click_menu(input, result, token, table, parsed):
-    """A choice was made on one of the setup card's dropdowns (size, board style, ticket layout): the card is drawn
+    """A choice was made on one of the setup card's dropdowns (size, board style, winners): the card is drawn
     again, in place, standing on it and on whatever the others show. Nothing is saved: the game is only made when the
     organizer chooses how people join, and those buttons now carry them all."""
     clicker, channel = result["user_id"], result["channel"]
@@ -2917,6 +3017,37 @@ def click_menu(input, result, token, table, parsed):
 def click_blank(input, result, token, table, parsed):
     """A blank square of a printed ticket was pressed. There is nothing on it: nothing changes, and nobody is told."""
     result["mode"], result["ok"], result["skipped"] = "blank", True, "a blank square"
+
+
+def click_winners(input, result, token, table, parsed):
+    """Show winners / Hide winners, on the organizer's controls: the board lists its winners in the style chosen at the
+    start, or stops listing them. It is kept with the game until pressed again."""
+    clicker = result["user_id"]
+    result["mode"], result["testing"] = "winners", parsed["test"]
+    g, row, problem = open_game(token, table, parsed, input, with_wins=True)
+    if problem:
+        problem_note(result, token, input, clicker, problem)
+        return
+    result["game_id"], result["status"] = g["id"], g["status"]
+    if not host_only(result, token, g, clicker):
+        return
+    mine = note_ticket(table, g, clicker, parsed)
+    if g["status"] not in LIVE:
+        reply(result, token, input, clicker, status_note(g), g, mine=mine)
+        result["ok"], result["skipped"] = True, "the game is not running"
+        return
+    if not winners_open(g) and not g["wins"]:                      # asked to show them, and there are none to show
+        show_controls(result, token, input, g, clicker, note=SAID_NO_WINNERS, mine=mine)
+        result["ok"], result["skipped"] = True, "nobody has won yet"
+        return
+    g["winners_open"] = not winners_open(g)
+    if not g["test"] and not save_game(table, row, g):
+        tell(result, token, result["channel"], clicker, SAID_AGAIN)
+        result["error"] = "could not save that; the winners are as they were"
+        return
+    redraw_board(token, g, result)
+    show_controls(result, token, input, g, clicker, mine=mine)
+    result["ok"] = True
 
 
 def click_pick(input, result, token, table, parsed):
@@ -3016,14 +3147,19 @@ def click_join(input, result, token, table, parsed):
 
 
 def deal_tickets(token, table, g, ids, existing, stamp, deadline, result):
-    """Send every player their ticket and write their row. (seated, no_ticket, waiting): the ones dealt in,
+    """Send every player their ticket and write their row. (seated, no_ticket, waiting): the ones sent theirs,
     the ones Slack would not message, and the ones not reached before `deadline`. The last two get theirs by
-    typing the word again (the host, with My ticket)."""
-    def deal(user_id):
+    typing the word again.
+
+    The organizer is dealt a ticket (and a row, so the review counts them) but is NOT sent it: theirs opens in their
+    own controls note, with Show my card, and a private message of it would only be a second copy to look after."""
+    def deal(user_id, send=True):
         name = g["names"].get(user_id) or ANONYMOUS
         ticket = deal_ticket(g, user_id)
-        dm_channel, dm_ts, dm_error = slack_dm(token, user_id, fallback_text(g, "your ticket"),
-                                               ticket_blocks(g, ticket, set()))
+        dm_channel = dm_ts = dm_error = ""
+        if send:
+            dm_channel, dm_ts, dm_error = slack_dm(token, user_id, fallback_text(g, "your ticket"),
+                                                   ticket_blocks(g, ticket, set()))
         saved = True
         if not g["test"]:
             saved = save_player(table, g, user_id, name, ticket, set(), dm_channel, dm_ts,
@@ -3031,6 +3167,10 @@ def deal_tickets(token, table, g, ids, existing, stamp, deadline, result):
         return {"dm_error": dm_error, "saved": saved}
 
     seated, no_ticket, waiting = [], [], []
+    if g["host"] in ids:
+        if not deal(g["host"], send=False)["saved"]:
+            result["warnings"].append("the row of {} was not saved".format(g["host"]))
+        ids = [u for u in ids if u != g["host"]]
     for user_id, out in zip(ids, run_parallel(deal, ids, deadline)):
         if out is SKIPPED:
             waiting.append(user_id)
@@ -3217,21 +3357,104 @@ def redraw_board(token, g, result, over=""):
     return not error
 
 
-def announce(token, g, key, name, ticket, result):
-    """Tell the channel (or the board's thread, or nobody) about a prize, as big as the prize is (win_blocks), with its
-    banner when the recipe gave one. If Slack will not take the banner the announcement goes without it."""
+def winner_picture(g, key):
+    """The address of the winner's profile picture for a prize's announcement, which shows it on a card of its own with
+    the words (win_blocks). Only the winner who has just won is shown there: the carousel of every winner is the
+    board's winners list and would take the spotlight off them. "" when the winners style has no photos or there is no
+    picture to be had."""
+    return ((g["wins"].get(key) or {}).get("img") or "") if wants_photos(g) else ""
+
+
+def announce(token, g, key, name, ticket, result, with_photo=False):
+    """Tell the channel (or the board's thread, or nobody) about a prize, as big as the prize is (win_blocks). The
+    celebration comes first: the prize's banner when the recipe gave one, then (`with_photo`, in a photo winners
+    style) the winner's own photo, which turns the words into a card. If Slack will not take the banner the
+    announcement goes without it, and without the photo if it will not take that. Returns the announcement's ts ("" if
+    it was not posted)."""
     how = g["cfg"]["announce"]
     if how == "off":
-        return
+        return ""
     text, thread = win_text(g, key, name, ticket), g["board_ts"] if how == "thread" else None
     banner = (g.get("banners") or {}).get(key, "")
-    _ts, error = slack_post(token, g["channel"], text, win_blocks(g, key, name, ticket, banner), thread)
-    if error and banner:
-        result["warnings"].append("the banner for the {} was not taken, so it went without: {}".format(
-            PRIZE_NAME[key], error))
-        _ts, error = slack_post(token, g["channel"], text, win_blocks(g, key, name, ticket), thread)
+    photo = winner_picture(g, key) if with_photo else ""
+    attempts = [(banner, photo, "")]
+    if banner:
+        attempts.append(("", photo, "the banner for the {} was not taken, so it went without: "
+                                    .format(PRIZE_NAME[key])))
+    if photo:
+        attempts.append(("", "", "the winner's photo in the {} announcement was refused, so it went without it: "
+                                 .format(PRIZE_NAME[key])))
+    ts, error = "", ""
+    for index, (use_banner, use_photo, why) in enumerate(attempts):
+        if index:
+            result["warnings"].append(why + error)
+        ts, error = slack_post(token, g["channel"], text, win_blocks(g, key, name, ticket, use_banner, photo=use_photo),
+                               thread)
+        if not error:
+            break
     if error:
         result["warnings"].append("announcement: " + error)
+        return ""
+    if key in g["wins"]:
+        g["wins"][key]["ann"] = ts
+    return ts
+
+
+def keep_announcement(table, g, key, ts, result):
+    """Write where a prize's announcement is to the win's row, so a later press (the next number) can find it. A test
+    game keeps it in the message that holds its state instead."""
+    if not ts or g["test"] or key not in g["wins"]:
+        return
+    row_id = (g.get("win_rows") or {}).get(key)
+    if not row_id or not table.update(row_id, {"content": win_content(g["wins"][key])}):
+        result["warnings"].append("could not keep where the {} was announced: it will stay up".format(
+            PRIZE_NAME[key]))
+
+
+def finish_winners(g):
+    """A game that is over shows who won, in the winners style chosen at the start: whatever the organizer had shown or
+    hidden, the final board lists the winners (unless the style is none)."""
+    if parse_winners(g["cfg"].get("winners")) != "none":
+        g["winners_open"] = True
+
+
+def keeps_record(g):
+    """Whether the announcements are all the channel has of who won what: the none winners style puts no list of winners
+    on the board, so there its announcements stay as the record, once their celebration is over."""
+    return parse_winners(g["cfg"].get("winners")) == "none"
+
+
+def tidy_up(token, g, result):
+    """The game is over, so the screen is cleared of its celebration: every announcement goes, banner, card and words,
+    Full House's too. Where the board lists the winners (names, a carousel or a strip) its list says it all, and a
+    screen of "goes to" lines would only be in its way. With no winners list (the none style) the announcements are the
+    only record, so they stay, as the plain line each is cut down to. A message that cannot be removed is a warning,
+    never the end of anything."""
+    retire_celebrations(token, g, 0.0, result, final=True)
+
+
+def retire_celebrations(token, g, since, result, final=False):
+    """The next number takes the celebration down: the announcements of the prizes won since the number before (`since`,
+    the click time of the last Next number) are deleted, banner, photo and words, for the board shows who has won. With
+    no winners list on the board (keeps_record) an announcement is the only record of its prize, so it is cut down to
+    its plain line instead. Full House is the end of the game: its celebration is cleared by tidy_up when the game ends,
+    so only a race (a number called just as Full House is won) could bring it here, and it is left alone, unless `final`
+    (the game is over: every announcement is dealt with, whenever it was won)."""
+    keep = keeps_record(g)
+    for key, win in g["wins"].items():
+        if not win.get("ann") or (not final and (key == "full" or as_ts(win.get("ts")) <= since)):
+            continue
+        if keep:
+            line = win_text(g, key, win["name"], None, win.get("nums") or [])
+            error = slack_update(token, g["channel"], win["ann"], line, [_section(line)])
+            task = "take the {} celebration down"
+        else:
+            error = slack_delete(token, g["channel"], win["ann"])
+            if error and "message_not_found" in error:        # it is gone already, which is all that was asked
+                error = None
+            task = "clear the {} announcement"
+        if error:
+            result["warnings"].append("could not {}: {}".format(task.format(PRIZE_NAME[key]), error))
 
 
 def click_next(input, result, token, table, parsed):
@@ -3256,17 +3479,23 @@ def click_next(input, result, token, table, parsed):
     if g["last_next"] and 0 <= as_ts(stamp) - g["last_next"] < DEBOUNCE:
         result["ok"], result["skipped"] = True, "the same press made twice"
         return
+    previous = g["last_next"]
     g["n"] += 1
     g["last_next"] = as_ts(stamp)
     number = draw_order(g["seed"], numbers_of(g))[g["n"] - 1]
     over = ""
     if g["n"] >= numbers_of(g):
         g["status"], over = DONE, OVER_NUMBERS.format(numbers=numbers_of(g))
+        finish_winners(g)
     if not g["test"] and not save_game(table, row, g):
         tell(result, token, result["channel"], clicker, SAID_AGAIN)
         result["error"] = "could not save the number; the board was not changed"
         return
     redraw_board(token, g, result, over)
+    if over:
+        tidy_up(token, g, result)                                    # the game is over: the screen is cleared
+    else:
+        retire_celebrations(token, g, previous, result)              # a banner and photo last until the next number
     show_controls(result, token, input, g, clicker, fresh=False, mine=mine)   # the note says what was just called
     result["number"], result["called"], result["finished"] = number, g["n"], bool(over)
     result["status"], result["ok"] = g["status"], True
@@ -3360,11 +3589,13 @@ def click_end(input, result, token, table, parsed):
         result["ok"], result["skipped"] = True, "the game is not running"
         return
     g["status"] = DONE
+    finish_winners(g)
     if not g["test"] and not save_game(table, row, g):
         tell(result, token, result["channel"], clicker, SAID_AGAIN)
         result["error"] = "could not end the game"
         return
     redraw_board(token, g, result, OVER_ENDED.format(host=host_name_of(g)))
+    tidy_up(token, g, result)
     reply(result, token, input, clicker, SAID_OVER, fresh=False)    # the controls have nothing left to do
     result["called"], result["status"], result["finished"], result["ok"] = g["n"], g["status"], True, True
 
@@ -3410,25 +3641,41 @@ def settle_tap(result, token, table, g, row, ticket, marks, name, mine, number, 
     if earned:
         who = name or name_of(slack_user_info(token, user))
         photo = user_photo(token, user) if wants_photos(g) else ""        # kept with the win, for every board after
-        won, lost = claim_prizes(table, g, earned, user, who, stamp, result, photo)
+        won, lost = claim_prizes(table, g, earned, user, who, stamp, result, photo,
+                                 {k: line_numbers(ticket, k) for k in earned})
     lines = ([note] if note else []) + [TICKET_WON.format(prize=PRIZE_NAME[k]) for k in won] \
         + [TICKET_LOST.format(name=esc(w or ANONYMOUS), prize=PRIZE_NAME[k]) for k, w in lost]
     show(g, marks_now, lines, g["status"] not in LIVE or "full" in won)
     result["prize"] = ", ".join(PRIZE_NAME[k] for k in won)
-    for key in won:
-        announce(token, g, key, who, ticket, result)
+    announced = False
+    for index, key in enumerate(won):
+        # one photo for a tap that wins several prizes at once (it is the same person): on the last announcement
+        ts = announce(token, g, key, who, ticket, result, with_photo=index == len(won) - 1)
+        keep_announcement(table, g, key, ts, result)
+        announced = announced or bool(ts)
     if won:
         finished = "full" in won
+        pause = g.get("celebrate", CELEBRATION_SECONDS)
         if not g["test"]:
             fresh, fresh_row = load_game(table, g["id"], with_wins=True)   # the numbers may have moved meanwhile
             if fresh is not LOOKUP_FAILED and fresh:
+                for key, win in g["wins"].items():       # what this tap just wrote may not be in the table's reads yet
+                    kept = fresh["wins"].setdefault(key, win)
+                    for field in ("img", "nums", "ann"):
+                        if win.get(field) and not kept.get(field):
+                            kept[field] = win[field]
                 g, row = fresh, fresh_row
         if finished:
             g["status"] = DONE
+            finish_winners(g)
             if not g["test"] and not save_game(table, row, g):
                 result["warnings"].append("could not close the game")
         redraw_board(token, g, result, OVER_FULL.format(name=esc(who or ANONYMOUS)) if finished else "")
         result["finished"], result["status"] = finished, g["status"]
+        if finished:
+            if announced and pause:
+                _sleep(pause)                            # the celebration is up: give people the time to see it
+            tidy_up(token, g, result)
     result["ok"] = True
 
 
@@ -3487,6 +3734,7 @@ def click_mark(input, result, token, table, parsed):
             return
     result["game_id"], result["status"] = g["id"], g["status"]
     g["banners"], notes = read_banners(input.get("banners"))
+    g["celebrate"] = _int(input.get("celebration_seconds"), CELEBRATION_SECONDS, 0, CELEBRATION_MAX)
     result["warnings"] += notes
 
     def show(game, marks_now, lines, over):
@@ -3536,6 +3784,7 @@ def click_hmark(input, result, token, table, parsed):
         return
     result["game_id"], result["status"] = g["id"], g["status"]
     g["banners"], notes = read_banners(input.get("banners"))
+    g["celebrate"] = _int(input.get("celebration_seconds"), CELEBRATION_SECONDS, 0, CELEBRATION_MAX)
     result["warnings"] += notes
     if not host_only(result, token, g, clicker):
         return
@@ -3571,12 +3820,13 @@ def click_hmark(input, result, token, table, parsed):
 
 def click_ticket(input, result, token, table, parsed):
     """Show my card / Hide my card, on the organizer's controls. Show opens their own ticket inside the same private
-    note, under the controls, so they can tap their numbers without leaving the channel for a private message; Hide
-    tucks it away. The note says which it is in on every button, so no state is kept anywhere. Opening it redraws
-    the note in place, which needs response_url: without one the ticket is sent by private message, as before."""
-    clicker, stamp = result["user_id"], click_stamp(input)
+    note, under the controls, so they can tap their numbers without leaving the channel; Hide tucks it away. The note
+    says which it is in on every button, so no state is kept anywhere. Opening it redraws the note in place; without
+    response_url a new private note is sent instead, with the card in it. The organizer's ticket is never sent by
+    private message."""
+    clicker = result["user_id"]
     result["mode"], result["testing"] = "ticket", parsed["test"]
-    g, row, problem = open_game(token, table, parsed, input)
+    g, row, problem = open_game(token, table, parsed, input, with_wins=True)
     if problem:
         problem_note(result, token, input, clicker, problem)
         return
@@ -3589,21 +3839,21 @@ def click_ticket(input, result, token, table, parsed):
         show_controls(result, token, input, g, clicker)
         result["ok"] = True
         return
-    if usable_response_url(input):                                  # Show my card
-        mine = organizer_ticket(table, g, clicker)
-        if mine:
-            show_controls(result, token, input, g, clicker, mine=mine)
-            result["ok"] = True
-            return
-    result["ok"] = resend_ticket(token, table, result, g, clicker, stamp,
-                                 lambda text: reply(result, token, input, clicker, text, g)) or result["ok"]
+    mine = organizer_ticket(table, g, clicker)                      # Show my card
+    if not mine:
+        reply(result, token, input, clicker, SAID_AGAIN, g)
+        result["error"] = "could not read your card"
+        return
+    show_controls(result, token, input, g, clicker, mine=mine)
+    result["ok"] = True
 
 
 # --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 
-CLICKS = {"set": click_set, "menu": click_menu, "blank": click_blank, "pick": click_pick, "join": click_join,
+CLICKS = {"set": click_set, "menu": click_menu, "blank": click_blank, "winners": click_winners,
+          "pick": click_pick, "join": click_join,
           "start": click_start, "cancel": click_cancel, "next": click_next, "review": click_review,
           "resume": click_resume, "end": click_end, "mark": click_mark, "hmark": click_hmark, "ticket": click_ticket}
 CLICK_INPUTS = ("payload", "action_value", "action_id", "selected_users", "selected_options", "selected_option",
