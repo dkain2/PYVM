@@ -327,6 +327,28 @@
     }
   },
   {
+    "control_type": "text",
+    "label": "Weekly banner URL",
+    "name": "weekly_image_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional thin banner (1300 x 100) shown above the weekly top three, under the all-time podium. Leave blank for a text heading (\"Weekly leaders - most added this week\"). A public https URL. make_weekly_banner.py draws the default one.",
+    "details": {
+      "real_name": "weekly_image_url"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Weekly sections",
+    "name": "weekly_sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Comma separated list of the parts of the post to show. Blank or \"all\" shows everything. Names: podium, banner, table, share, active, streak, pb, overall, shoutout, crew, climbers, welcome, footer. A list shows only those (\"podium,banner,table,overall\"); a minus takes one away from everything (\"all,-streak,-share\" or just \"-streak,-share\"). Unknown names are ignored and reported in the result's error.",
+    "details": {
+      "real_name": "weekly_sections"
+    }
+  },
+  {
     "control_type": "select",
     "label": "Walk layout (Great Walk)",
     "name": "walk_layout",

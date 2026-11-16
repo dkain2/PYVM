@@ -15,7 +15,7 @@ THE GROUPS
     TestDealing              the order the numbers come out in and the tickets, for every size
     TestPrizes               prizes, progress and the review's steps at every ticket size
     TestBoardStyles          the three board styles: emoji, plain number grid, called list
-    TestPrintedTicket        the printed ticket: a number in its column, blanks between
+    TestTicketLayout         the ticket as buttons: three rows of numbers, every button a number, no "+ N more"
     TestWinners              the board's winners: names, a carousel of profile pictures, a strip, or none
     TestClaims               a prize is won, and announced, once: even if one player's click is handled twice
     TestCelebrations         announcements that grow with the prize, and the banners that can top them
@@ -200,9 +200,9 @@ def chosen_board(blocks):
     return json.loads(board_menu_of(blocks)["initial_option"]["value"])["s"]
 
 
-def columns_of(size):
-    """Cells in a row of a printed ticket of this size: one for each column."""
-    return t.layout_columns(t.SIZES[size]["numbers"])
+def row_of(size):
+    """Buttons in a row of a ticket of this size: the numbers of the row, and nothing else."""
+    return t.SIZES[size]["row"]
 
 
 def row_widths(blocks):
@@ -210,6 +210,18 @@ def row_widths(blocks):
     return [len(b["elements"]) for b in blocks if b["type"] == "actions" and any(
         e["action_id"].startswith((t.ACTION_PREFIX + "mark_", t.ACTION_PREFIX + "hmark_", t.BLANK_ACTION))
         for e in b["elements"])]
+
+
+def ticket_buttons(blocks):
+    """Every button of a ticket's rows (or of the organizer's card): the numbers, and any blank square."""
+    return [e for b in blocks if b["type"] == "actions" for e in b["elements"]
+            if e["action_id"].startswith((t.ACTION_PREFIX + "mark_", t.ACTION_PREFIX + "hmark_", t.BLANK_ACTION))]
+
+
+def old_blank_button():
+    """A blank square as an earlier version drew one on a ticket: it may still be in somebody's private messages."""
+    return {"type": "button", "action_id": t.BLANK_ACTION + "0_3", "value": t.TEST_PREFIX + "|blank|{}",
+            "text": {"type": "plain_text", "text": "\u00b7"}}
 
 
 def dropdown_state(menu, key, block="SL9MT"):
@@ -493,6 +505,19 @@ class TestDealing(unittest.TestCase):
             self.assertEqual(sum(row.count(t.EMPTY_TILE) for row in t.board_rows(called, 10, spec["numbers"])),
                              spec["numbers"] - 5)
         self.assertEqual(len(t.board_rows([], 7, 30)), 5)                  # 7 to a row: 4 full rows and a short one
+
+    def test_numbers_of_the_emoji_board_are_set_apart_from_each_other(self):
+        """Two digits of a number touch; one number is a clear step away from the next, wider than a plain space."""
+        self.assertGreater(len(t.BOARD_GAP), 0)
+        self.assertNotEqual(t.BOARD_GAP, " ", "a plain space is no wider than the gap between a number's own digits")
+        called = [3, 14, 25]
+        for row in t.board_rows(called, 10, 30):
+            cells = row.split(t.BOARD_GAP)
+            self.assertEqual(len(cells), 10, "ten numbers to a row, each one cell")
+            for cell in cells:
+                self.assertEqual(len(re.findall(r":[a-z_]+:", cell)), 2, "a number is two emoji")
+                self.assertNotIn(" ", cell.strip(), "and nothing comes between them")
+        self.assertEqual(len(t.board_rows(called, 7, 30)[-1].split(t.BOARD_GAP)), 2, "a short last row")
 
 
 # --------------------------------------------------------------------------
@@ -912,10 +937,10 @@ class TestWinners(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
-# The printed ticket
+# The ticket as buttons
 # --------------------------------------------------------------------------
 
-class TestPrintedTicket(unittest.TestCase):
+class TestTicketLayout(unittest.TestCase):
     USERS = ("UAAAAAAA1", "UBBBBBBB2", "UCCCCCCC3", "UDDDDDDD4", "UHOST0001")
 
     def test_there_is_no_layout_to_choose(self):
@@ -959,40 +984,6 @@ class TestPrintedTicket(unittest.TestCase):
         self.assertEqual(t.cfg_from(["early5,top,middle,bottom,full"])["prizes"], list(t.PRIZE_KEYS),
                          "a game saved with the five spelled out reads the same")
 
-    def test_printed_cells_put_every_number_in_its_column(self):
-        for size, spec in t.SIZES.items():
-            columns, ranges = columns_of(size), t.column_ranges(spec["numbers"])
-            for seed in range(1, 30):
-                for user in self.USERS:
-                    g = make_game(size, seed=seed)
-                    ticket = t.make_ticket(seed, user, size)
-                    rows = t.ticket_cells(g, ticket)
-                    where = (size, seed, user)
-                    self.assertEqual([len(r) for r in rows], [columns] * 3, where)
-                    self.assertEqual(sorted(n for r in rows for n in r if n), sorted(t.ticket_numbers(ticket)), where)
-                    for cells, row in zip(rows, ticket):
-                        self.assertEqual([n for n in cells if n], row, "a row reads left to right, ascending")
-                        for column, number in enumerate(cells):
-                            if number:
-                                low, high = ranges[column]
-                                self.assertTrue(low <= number <= high,
-                                                "{} in column {} of {}".format(number, column, where))
-                    for column in range(columns):                                      # and down a column, ascending
-                        down = [r[column] for r in rows if r[column]]
-                        self.assertEqual(down, sorted(down), where)
-                        self.assertTrue(1 <= len(down) <= 3, where)
-
-    def test_a_ticket_that_does_not_fit_the_columns_is_drawn_as_its_rows_not_cut(self):
-        g = make_game("large")
-        odd = [[11, 12, 30, 50, 75], [5, 28, 44, 60, 77], [47, 58, 63, 78, 89]]      # 11 and 12: both in column two
-        self.assertEqual(t.ticket_cells(g, odd), odd)
-        self.assertIsNot(t.ticket_cells(g, odd)[0], odd[0], "a copy, never the ticket's own rows")
-
-    def test_how_the_columns_are_named(self):
-        self.assertEqual(t.column_names(90), "1-9, 10s, 20s ... 80s")
-        self.assertEqual(t.column_names(60), "1-9, 10s, 20s ... 50s")
-        self.assertEqual(t.column_names(30), "1-9, 10s, 20s")
-
     def test_a_ticket_at_every_size(self):
         for size, spec in t.SIZES.items():
             for marked in (0, 1, 5):
@@ -1005,31 +996,55 @@ class TestPrintedTicket(unittest.TestCase):
                         check_blocks(blocks)
                     except AssertionError as error:
                         self.fail("{}: {}".format(where, error))
-                    self.assertEqual(row_widths(blocks), [columns_of(size)] * 3, where)
-                    buttons = [b for b in buttons_of(blocks)
-                               if b["action_id"].startswith((t.ACTION_PREFIX + "mark_", t.ACTION_PREFIX + "hmark_",
-                                                             t.BLANK_ACTION))]
+                    self.assertEqual(row_widths(blocks), [row_of(size)] * 3, where)
+                    buttons = ticket_buttons(blocks)
                     ids = [b["action_id"] for b in buttons]
                     self.assertEqual(len(ids), len(set(ids)), "every button needs an id of its own")
-                    blanks = [b for b in buttons if b["action_id"].startswith(t.BLANK_ACTION)]
-                    numbers = [b for b in buttons if not b["action_id"].startswith(t.BLANK_ACTION)]
-                    self.assertEqual(len(numbers), 3 * spec["row"], where)
-                    self.assertEqual(len(blanks), 3 * (columns_of(size) - spec["row"]), where)
-                    for blank in blanks:
-                        parsed = t.parse_value(blank["value"], blank["action_id"])
-                        self.assertEqual((parsed["kind"], parsed["test"]), ("blank", True))
-                    marked_buttons = [b for b in numbers if b.get("style") == "primary"]
+                    self.assertFalse([b for b in buttons if b["action_id"].startswith(t.BLANK_ACTION)],
+                                     "no blank squares: every button is a number")
+                    self.assertEqual(len(buttons), 3 * spec["row"], where)
+                    for b in buttons:
+                        self.assertRegex(b["text"]["text"], r"^(:white_check_mark: )?\d+$", "a number, nothing else")
+                    marked_buttons = [b for b in buttons if b.get("style") == "primary"]
                     self.assertEqual(len(marked_buttons), marked, where)
                     for b in marked_buttons:
                         self.assertIn(":white_check_mark:", b["text"]["text"])
 
-    def test_the_ticket_names_its_columns_only_when_they_are_there_to_find(self):
+    def test_a_row_is_the_numbers_of_the_ticket_row_smallest_first(self):
+        for size in t.SIZES:
+            g = make_game(size)
+            ticket = t.deal_ticket(g, HOST)
+            rows = [[int(e["action_id"].rsplit("_", 1)[1]) for e in b["elements"]]
+                    for b in t.ticket_blocks(g, ticket, set()) if b["type"] == "actions"]
+            self.assertEqual(rows, ticket, size)
+            for row in rows:
+                self.assertEqual(row, sorted(row), size)
+
+    def test_no_row_of_buttons_is_long_enough_for_slack_to_fold_it(self):
+        """Slack shows five buttons of a row and puts the rest behind a "+ N more" button."""
+        for size, spec in t.SIZES.items():
+            self.assertLessEqual(spec["row"], t.MAX_ROW, size)
+            g = make_game(size)
+            ticket = t.deal_ticket(g, HOST)
+            for blocks in (t.ticket_blocks(g, ticket, set()), t.panel_blocks(g, mine=(ticket, set()))):
+                for b in blocks:
+                    if b["type"] == "actions":
+                        self.assertLessEqual(len(b["elements"]), t.MAX_ROW, size)
+
+    def test_a_longer_row_goes_on_in_a_second_block_rather_than_fold(self):
+        g = make_game("large")
+        ticket = [[1, 2, 3, 4, 5, 6, 7], [10, 11], [20]]                  # not a ticket this step deals
+        rows = t.ticket_rows(g, ticket, set(), lambda number, marked: {"action_id": "mark_{}".format(number)})
+        self.assertEqual([len(r["elements"]) for r in rows], [5, 2, 2, 1])
+        self.assertEqual([e["action_id"] for r in rows for e in r["elements"]],
+                         ["mark_{}".format(n) for row in ticket for n in row], "in order, none lost")
+
+    def test_the_ticket_does_not_talk_about_columns(self):
         for size in t.SIZES:
             g = make_game(size)
             text = all_text(t.ticket_blocks(g, t.deal_ticket(g, HOST), set()))
-            self.assertEqual("Each number sits in its column" in text, size != "small", size)
-        g = make_game("large")
-        self.assertIn("1-9, 10s, 20s ... 80s", all_text(t.ticket_blocks(g, t.deal_ticket(g, HOST), set())))
+            self.assertNotIn("column", text, size)
+            self.assertNotIn("\u00b7  \u00b7", text, size)
 
 # --------------------------------------------------------------------------
 # Every card, against Slack's limits
@@ -1056,7 +1071,7 @@ class TestCards(unittest.TestCase):
     def test_the_ticket_card_is_three_rows_of_the_size(self):
         for size, spec in t.SIZES.items():
             ticket = self.cards(size, False)["ticket"]
-            self.assertEqual(row_widths(ticket), [columns_of(size)] * 3, size)
+            self.assertEqual(row_widths(ticket), [row_of(size)] * 3, size)
             self.assertIn("of {}".format(3 * spec["row"]), all_text(ticket), size)
 
     def test_the_board_and_the_review_follow_the_size(self):
@@ -1111,7 +1126,7 @@ class TestCards(unittest.TestCase):
             ticket = t.deal_ticket(g, HOST)
             blocks = t.panel_blocks(g, mine=(ticket, set()))
             check_blocks(blocks)
-            self.assertEqual(row_widths(blocks), [columns_of(size)] * 3, size)           # laid out as a printed ticket
+            self.assertEqual(row_widths(blocks), [row_of(size)] * 3, size)
             self.assertIn("of {} called".format(spec["numbers"]), all_text(blocks), size)
 
 
@@ -2255,22 +2270,75 @@ class TestGames(unittest.TestCase):
         self.assertEqual(self.standing_announcements(), [], "and the screen is cleared when the game ends")
         self.assertTrue([b for b in self.board() if b.get("fields")], "the winners stay, on the board")
 
-    def test_a_small_game_ends_when_the_thirty_numbers_are_out(self):
-        ids = self.people(2)
+    # -- the last number: the game waits for the players, the organizer ends it
+    def test_the_last_number_does_not_end_the_game(self):
+        w = self.world
+        ids = self.people(6)
         self.open_game(ids, "small")
-        for call in range(1, 31):
+        for call in range(1, 30):
             out = self.next_number()                   # nobody marks anything, so nobody can win
-        self.assertTrue(out["finished"], out)
-        self.assertEqual(out["called"], 30)
+            self.assertFalse(out["finished"], call)
+        self.assertTrue([b for b in buttons_of(w.panel(HOST)) if b["action_id"].endswith("_next")])
+        stale_next = button_named(w.panel(HOST), "next")
+        out = self.next_number()                       # the 30th, the last
+        self.assertEqual((out["called"], out["finished"], out["status"]), (30, False, t.RUNNING), out)
+        self.assertEqual(w.rows_of(t.GAME_ROW)[0]["status"], t.RUNNING, "still running: the players get their time")
+        board = all_text(self.board())
+        self.assertIn("That was the last number", board)
+        self.assertNotIn("Game over", board)
+        # the organizer's note: nothing left to call, so End game is what to press
+        panel = w.panel(HOST)
+        self.assertFalse([b for b in buttons_of(panel) if b["action_id"].endswith("_next")], "no Next number now")
+        self.assertEqual(button_named(panel, "end").get("style"), "primary")
+        self.assertTrue(button_named(panel, "review"))
+        self.assertIn("all *30* numbers are out", all_text(panel))
+        # a Next number left on an old note changes nothing and says why
+        before = w.rows_of(t.GAME_ROW)[0]["content"]
+        out = w.click(HOST, stale_next, self.CHANNEL)
+        self.assertEqual((out["ok"], out["skipped"], out["error"]), (True, "every number has been called", ""))
+        self.assertEqual(w.rows_of(t.GAME_ROW)[0]["content"], before)
+        self.assertIn("All 30 numbers have been called", all_text(w.panel(HOST)))
+        # a player can still tap the last number, and it is marked, not refused as over
+        last = t.draw_order(424242, 30)[-1]
+        holders = [u for u in ids if last in ticket_numbers_on(w.host_card(u) if u == HOST else w.ticket_of(u)[2])]
+        self.assertTrue(holders, "someone holds the last number")
+        result = w.tap(holders[0], last)
+        self.assertEqual((result["ok"], result["marked"]), (True, last), result)
+        self.assertEqual(w.rows_of(t.GAME_ROW)[0]["status"], t.RUNNING)
+        # the organizer ends it: the closing line says every number was called
+        out = w.click(HOST, button_named(w.panel(HOST), "end"), self.CHANNEL)
+        self.assertTrue(out["ok"] and out["finished"], out)
+        self.assertEqual(w.rows_of(t.GAME_ROW)[0]["status"], t.DONE)
         self.assertIn("All 30 numbers have been called", all_text(self.board()))
-        self.assertEqual(self.world.rows_of(t.GAME_ROW)[0]["status"], t.DONE)
+        self.assertNotIn("ended the game", all_text(self.board()))
+
+    def test_a_full_house_can_be_won_with_the_last_number(self):
+        """The bug: the game ended the moment the last number was called, so nobody could tap it and win with it."""
+        w = self.world
+        ids = self.people(6)
+        self.open_game(ids, "small")
+        last = t.draw_order(424242, 30)[-1]
+        holders = [u for u in ids if last in ticket_numbers_on(w.host_card(u) if u == HOST else w.ticket_of(u)[2])]
+        self.assertTrue(holders, "someone holds the last number")
+        for call in range(29):
+            out = self.next_number()
+            for user in holders:                       # only the holders play, so nobody can finish before the last
+                w.tap(user, out["number"])
+        out = self.next_number()
+        self.assertEqual((out["number"], out["finished"]), (last, False))
+        won = w.tap(holders[0], last)
+        self.assertEqual(won["marked"], last, won)
+        self.assertIn("Full House", won["prize"])
+        self.assertTrue(won["finished"], won)
+        self.assertEqual(w.rows_of(t.GAME_ROW)[0]["status"], t.DONE)
+        self.assertIn("completed the Full House", all_text(self.board()))
 
     def test_a_medium_game_deals_four_numbers_a_row(self):
         ids = self.people(5)
         self.open_game(ids, "medium")
         for user in ids:
             blocks = self.ticket_blocks_of(user)
-            self.assertEqual(row_widths(blocks), [6, 6, 6], "a printed row has a cell for each of six columns")
+            self.assertEqual(row_widths(blocks), [4, 4, 4], "four numbers to a row, no blanks")
             self.assertTrue(all(1 <= n <= 60 for n in ticket_numbers_on(blocks)))
             self.assertEqual(len(ticket_numbers_on(blocks)), 12)
         calls, won = self.play_out(ids, 60)
@@ -3019,15 +3087,17 @@ class TestGames(unittest.TestCase):
                     self.assertIn("not won" if style == "names" else "Not won", all_text(board),
                                   "what nobody won is said so, not left 'open'")
 
-    def test_the_last_number_clears_the_announcements_too(self):
+    def test_ending_a_game_after_the_last_number_clears_the_announcements_too(self):
         ids = self.people(2)
         self.open_game(ids, "small", winners="strip")
         self.play_until(ids, "Early Five")
         for _ in range(30):
             out = self.next_number()
-            if out["finished"]:
+            if out["called"] == 30:
                 break
-        self.assertTrue(out["finished"])
+        self.assertFalse(out["finished"], "the last number waits for the players")
+        out = self.world.click(HOST, button_named(self.world.panel(HOST), "end"), self.CHANNEL)
+        self.assertTrue(out["finished"], out)
         self.assertEqual(self.standing_announcements(), [])
         self.assertIn("All 30 numbers have been called", all_text(self.board()))
         self.assertTrue(self.photo_blocks(self.board()), "and the winners are on the board")
@@ -3128,34 +3198,32 @@ class TestGames(unittest.TestCase):
                                  "an announcement that is gone already is no trouble")
                 self.assertEqual(len(self.world.deleted), 5, "each was deleted once")
 
-    # -- the printed ticket
-    def test_a_printed_ticket_has_every_number_in_its_column(self):
+    # -- the ticket as buttons
+    def test_a_ticket_is_three_rows_of_numbers_and_every_button_is_one(self):
         w = self.world
         ids = self.people(3)
-        self.open_game(ids)                                           # large, printed: the defaults
+        self.open_game(ids)                                           # large: the default
         self.assertEqual(self.opened_on, "large")
-        ranges = t.column_ranges(90)
 
-        def in_their_columns(blocks, prefix):
+        def only_numbers(blocks, prefix):
             rows = [b["elements"] for b in blocks if b["type"] == "actions" and any(
                 e["action_id"].startswith(prefix) for e in b["elements"])]
-            self.assertEqual([len(cells) for cells in rows], [9, 9, 9])
+            self.assertEqual([len(cells) for cells in rows], [5, 5, 5], "five to a row: Slack folds nothing")
             for cells in rows:
-                self.assertEqual(sum(1 for e in cells if e["action_id"].startswith(prefix)), 5)
-                for column, e in enumerate(cells):
-                    if e["action_id"].startswith(prefix):
-                        number = int(e["action_id"].rsplit("_", 1)[1])
-                        self.assertTrue(ranges[column][0] <= number <= ranges[column][1], (column, number))
-                    else:
-                        self.assertEqual(e["text"]["text"], t.BLANK_TEXT)
+                numbers = []
+                for e in cells:
+                    self.assertTrue(e["action_id"].startswith(prefix), "no blank squares: " + e["action_id"])
+                    self.assertRegex(e["text"]["text"], r"^(:white_check_mark: )?\d+$")
+                    numbers.append(int(e["action_id"].rsplit("_", 1)[1]))
+                self.assertEqual(numbers, sorted(numbers))
+            self.assertNotIn("column", all_text(blocks))
             return rows
-        in_their_columns(w.host_card(HOST), t.ACTION_PREFIX + "hmark_")             # the organizer's card
+        only_numbers(w.host_card(HOST), t.ACTION_PREFIX + "hmark_")                 # the organizer's card
         for user in ids[1:]:
             channel, ts, blocks = w.ticket_of(user)
-            rows = in_their_columns(blocks, t.ACTION_PREFIX + "mark_")
-            self.assertIn("1-9, 10s, 20s ... 80s", all_text(blocks))
+            rows = only_numbers(blocks, t.ACTION_PREFIX + "mark_")
             before = [[e["action_id"] for e in cells] for cells in rows]
-            # a tap marks a number and leaves every square where it was
+            # a tap marks a number and leaves every button where it was
             out = self.next_number()
             mine = ticket_numbers_on(blocks)
             number = out["number"]
@@ -3171,7 +3239,9 @@ class TestGames(unittest.TestCase):
         ids = self.people(2)
         self.open_game(ids)
         channel, ts, blocks = w.ticket_of(ids[1])
-        blank = [b for b in buttons_of(blocks) if b["action_id"].startswith(t.BLANK_ACTION)][0]
+        self.assertFalse([b for b in buttons_of(blocks) if b["action_id"].startswith(t.BLANK_ACTION)],
+                         "this step draws no blank squares")
+        blank = old_blank_button()                                     # one on a ticket sent by an earlier version
         snapshot = json.dumps(w.messages[(channel, ts)]["blocks"], sort_keys=True)
         calls, private, rows = len(w.calls), len(w.private), json.dumps(w.rows, sort_keys=True)
         out = w.click(ids[1], blank, channel, source_ts=ts, response=False)
@@ -3190,7 +3260,7 @@ class TestGames(unittest.TestCase):
                     self.use_world()
                     ids = self.people(3)
                     self.open_game(ids, size, test=test)
-                    width = columns_of(size)
+                    width = row_of(size)
                     for user in ids:
                         self.assertEqual(row_widths(self.ticket_blocks_of(user)), [width] * 3)
                     calls, won = self.play_out(ids, t.SIZES[size]["numbers"])
@@ -3211,9 +3281,9 @@ class TestGames(unittest.TestCase):
         now = w.last_note(HOST)["blocks"]
         self.assertEqual((chosen_size(now), chosen_board(now), chosen_winners(now)), ("small", "list", "carousel"))
 
-    def test_a_game_saved_with_a_ticket_layout_in_its_settings_goes_on_with_printed_tickets(self):
+    def test_a_game_saved_with_a_ticket_layout_in_its_settings_goes_on_with_plain_rows(self):
         """A game saved by an earlier version has a ticket layout in its settings. It is not a choice any more: the game
-        plays on, its winners style where it was, its tickets laid out as a printed one is."""
+        plays on, its winners style where it was, its tickets three rows of numbers."""
         w = self.world
         ids = self.people(2)
         self.open_game(ids, winners="carousel")
@@ -3226,7 +3296,7 @@ class TestGames(unittest.TestCase):
         while number not in mine:
             number = self.next_number()["number"]
         self.assertEqual(w.tap(ids[1], number)["marked"], number)
-        self.assertEqual(row_widths(w.ticket_of(ids[1])[2]), [9, 9, 9], "redrawn as a printed ticket")
+        self.assertEqual(row_widths(w.ticket_of(ids[1])[2]), [5, 5, 5], "redrawn as three rows of five")
         self.assertEqual(t.game_from_row(row)["cfg"]["winners"], "carousel", "and the winners style is still read")
 
     # -- the organizer's own ticket is in their note, never in a private message
@@ -3482,7 +3552,7 @@ class TestGames(unittest.TestCase):
         self.assertNotIn(" game: numbers", self.lobby_text)
         for user in ids:
             blocks = self.ticket_blocks_of(user)
-            self.assertEqual(row_widths(blocks), [9, 9, 9], "a printed row has a cell for each of nine columns")
+            self.assertEqual(row_widths(blocks), [5, 5, 5], "five numbers to a row, no blanks and no fold")
             self.assertEqual(len(ticket_numbers_on(blocks)), 15)
         game = t.game_from_row(self.world.rows_of(t.GAME_ROW)[0])
         self.assertEqual((game["cfg"]["size"], t.numbers_of(game)), ("large", 90))
@@ -3616,7 +3686,7 @@ class TestGames(unittest.TestCase):
                 card = self.world.panel(HOST)
                 rows = [b for b in card if b["type"] == "actions" and any(
                     e["action_id"].startswith(t.ACTION_PREFIX + "hmark_") for e in b["elements"])]
-                self.assertEqual([len(r["elements"]) for r in rows], [columns_of(size)] * 3)
+                self.assertEqual([len(r["elements"]) for r in rows], [row_of(size)] * 3)
                 mine = ticket_numbers_on(card)
                 self.assertEqual(len(mine), 3 * spec["row"])
                 number = 0

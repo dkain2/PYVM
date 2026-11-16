@@ -52,28 +52,28 @@ HOW A GAME GOES
     4  The board is a grid of 90 white squares (in the default emoji style, see BOARD STYLE). Each Next number
        turns one into its number (two keycap digits) in the same message and says it in words, with the caller's
        name for it where there is one: "47: Forty-seven", "22: Twenty-two, two little ducks" (CALLS).
-    5  A ticket is 3 rows of numbers, each a button, laid out like a printed ticket (see THE TICKET). When a
-       number is called the
-       player taps it on their ticket and it turns green. A number that has NOT been called is refused on the
-       ticket ("47 has not been called yet"). Any number that HAS been called can be tapped later: nobody loses
-       one by being slow.
+    5  A ticket is 3 rows of numbers, each a button, every button a number (see THE TICKET). When a number is
+       called the player taps it on their ticket and it turns green. A number that has NOT been called is refused
+       on the ticket ("47 has not been called yet"). Any number that HAS been called can be tapped later: nobody
+       loses one by being slow.
     6  Prizes (PRIZES, or the `prizes` input): Early Five (the first five numbers marked), Top Line, Middle
        Line, Bottom Line, Full House. The press that finishes one wins it (the earliest, by Slack's own click
-       time) and the channel hears about it (`announce`: channel, thread or off). Full House ends the game,
-       as does the 90th number or End game. The board shows who holds each prize.
+       time) and the channel hears about it (`announce`: channel, thread or off). Full House ends the game, and so
+       does End game. The LAST NUMBER does not: when it has been called the game waits, with players free to tap it
+       (and win with it), until the organizer presses End game (see THE LAST NUMBER). The board shows who holds each
+       prize.
 
     Tickets are dealt as a printed one is: 9 columns (column 1 holds 1-9, column 2 10-19 ... column 9 80-90),
     1 to 3 numbers in each, 5 in every row, in ascending order down a column and along a row (a smaller game has
     fewer columns, see GAME SIZE).
 
-THE TICKET  (laid out as a printed one)
-    The numbers sit on the buttons as they do on a paper ticket: every number in its own column, a cell for each
-    column (9 for a large game), the numbers where their tens put them and a quiet blank button where the ticket has
-    a blank, so a number is found by its tens (the ticket says which tens its columns are). A blank is a button that
-    does nothing (Slack has no inert one). A row of cells is a row of buttons, 9 for a large game, and Slack may fold
-    a long one on a narrow screen. A small game's three columns are full, so it has no blanks. There is one layout and
-    nothing to choose, and the organizer's card in their note is laid out the same way. (A ticket that did not fit the
-    columns, which this step never deals, would be drawn as its rows of numbers rather than lose one.)
+THE TICKET  (three rows of numbers, every button a number)
+    A ticket is drawn as its three rows, a button for each number in the row, smallest first: 5 to a row in a large
+    game, 4 in a medium one, 3 in a small one. There are NO BLANK BUTTONS and no "+ N more": Slack shows at most 5
+    buttons of a row and folds any more behind a "+ N more" button, so a row is never longer than that (SIZES keeps
+    `row` at 5 or fewer). The organizer's card in their note is drawn the same way. There is one layout and nothing to
+    choose. (A ticket is still DEALT as a printed one is, below, so the numbers are spread across the board's tens,
+    but it is not drawn with a cell for every column: that is what made blank squares and a fold.)
 
 GAME SIZE  (small, medium, large: SIZES)
     One setting sets both how many numbers are called and how big a ticket is, so a quick game is quick:
@@ -90,8 +90,7 @@ GAME SIZE  (small, medium, large: SIZES)
     `response_url` a new card is sent instead. The card opens on the recipe's `size` input (large when it is blank),
     so a channel that mostly plays quick games can start there. The lobby (its rules and a note) says the size, and
     the board, the tickets and the review all follow it. The size is kept with the game. A game made before sizes
-    existed is a large one and plays exactly as it did. The tickets keep the printed layout, one column for each ten
-    numbers.
+    existed is a large one and plays exactly as it did. The tickets are dealt one column for each ten numbers.
 
 BOARD STYLE  (emoji, numbers, list: BOARD_STYLES)
     How the numbers called are shown on the board, chosen on a second dropdown of the setup card, beside the size's:
@@ -171,8 +170,7 @@ CELEBRATIONS  (PRIZE_TIER: the bigger the prize, the bigger the announcement)
 
     THE END OF A GAME CLEARS THE SCREEN. Full House ends the game, and nothing is pressed after it, so its celebration,
     banner and card, stays up for `celebration_seconds` (a setting of the click recipe: 20 by default, 0 for none, 60
-    at most; the job waits that long) and is then cleared, as it is at once when the last number is called or the
-    organizer presses End game. Where the board lists winners (names, carousel or strip) every announcement that is
+    at most; the job waits that long) and is then cleared, as it is at once when the organizer presses End game. Where the board lists winners (names, carousel or strip) every announcement that is
     still up is deleted, banner, card and words: the board's final list, in the style chosen at the start, is the
     record, and a screen of "goes to" lines would only be in its way (one the next number deleted already is no
     trouble). With no winners list (the none style) the announcements are the only record, so they stay, each as its
@@ -182,6 +180,15 @@ CELEBRATIONS  (PRIZE_TIER: the bigger the prize, the bigger the announcement)
     announcement goes without it, and without the card if it will not take that (a workspace without carousels), and
     the job's warnings say so: neither can ever cost a win its announcement. A prize is announced once, however many
     times a click is handled.
+
+THE LAST NUMBER  (the game waits for the players)
+    Calling the last number (the 90th of a large game) does NOT end the game: the players need time to find it on their
+    ticket and tap it, and it may be the number that completes a line or a Full House. The board says that was the last
+    number; the organizer's Next number button goes (there is nothing left to call) and End game is highlighted in its
+    place; Review and Show my card still work, and every ticket can still be tapped. The game ends when somebody wins
+    the Full House (as ever) or when the organizer presses End game, whose closing line then says all the numbers were
+    called. A step cannot wait or run a timer for them, so the organizer decides when everybody has had long enough. A
+    stale Next number pressed after that is answered with a line saying so, and changes nothing.
 
 REVIEW AND RESUME  (the organizer's controls)
     Review pauses the game and puts a summary in the board's place, for everyone: the numbers called (in
@@ -201,7 +208,7 @@ THE CARDS (kept short, as iMath's rules card is)
                organizer showed), a line on getting a lost ticket back. No button.
     Review     header, counts, the numbers called, prizes, the top of the ranking as one table, the spread
     Ticket     a private message to each player but the organizer (whose opens in their controls): 3 rows of
-               buttons laid out like a printed ticket and a line of progress
+               buttons, every one a number, and a line of progress
 
 TWO PRESSES AT ONCE
     Next number is the organizer's alone, and what it reveals is fixed in advance: the order of the numbers
@@ -288,7 +295,7 @@ BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<ki
     myticket                         Show my card / Hide my card, on the organizer's note (private)
     hmark_<number>                   a number on the organizer's card, in their note (private)
     mark_<number>                    a number on a ticket (private message to the player)
-    blank_<row>_<column>             a blank square of a printed ticket: does nothing
+    blank_<row>_<column>             a blank square on a ticket sent before tickets lost their blanks: does nothing
     test games use  tbt|<kind>|<json>  for all of these.
 
 Input / output schema: tambola_input_schema.json / tambola_output_schema.json
@@ -374,9 +381,10 @@ EARLY_COUNT = 5                   # numbers marked for Early Five
 
 # GAME SIZES. One setting shapes the whole game: how many numbers are called (1 to N) AND how many numbers a ticket
 # holds (3 rows of `row`). Large is the full game and the default. A smaller one is a quick game: fewer numbers to
-# call, a smaller ticket to fill. `row` is also the buttons in a row of a ticket (Slack folds past 5). The printed
-# ticket's layout follows from N: one column for each ten numbers (1-9, 10-19 ... the last one up to N), holding 1 to
-# 3 numbers, so a row needs no more numbers than there are columns. `tag` is a word or two in the dropdown. Add or
+# call, a smaller ticket to fill. `row` is also the buttons in a row of a ticket, and MUST NOT BE MORE THAN 5: Slack shows
+# five buttons of a row and folds the rest behind a "+ N more" button (MAX_ROW). A ticket is dealt as a printed one is:
+# one column for each ten numbers (1-9, 10-19 ... the last one up to N), holding 1 to 3 numbers, so a row needs no
+# more numbers than there are columns. `tag` is a word or two in the dropdown. Add or
 # change a size here; nothing else holds these figures. The first key is the default. The organizer chooses the size
 # on a dropdown of the setup card, in the order of their numbers.
 SIZES = {
@@ -385,6 +393,7 @@ SIZES = {
     "small": {"label": "Small", "numbers": 30, "row": 3, "tag": "quick"},       # 9 numbers on a ticket
 }
 DEFAULT_SIZE = next(iter(SIZES))
+MAX_ROW = 5                       # the most buttons of a row Slack shows before folding the rest behind "+ N more"
 SIZE_ALIASES = {"l": "large", "full": "large", "big": "large", "classic": "large", "normal": "large",
                 "m": "medium", "med": "medium", "mid": "medium", "regular": "medium",
                 "s": "small", "quick": "small", "mini": "small", "short": "small", "fast": "small"}
@@ -531,8 +540,6 @@ STILL_TO_WIN = "*Still to win:*  {prizes}"
 NOT_WON = "*Not won:*  {prizes}"
 SIZE_OPTION = "{label}{tag}: numbers 1 to {numbers}, {ticket} on a ticket"
 BOARD_OPTION = "{label}: {text}"
-BLANK_TEXT = "\u00b7"             # a blank square of a printed ticket: a button that does nothing
-TICKET_COLUMNS = "Each number sits in its column, as on a printed ticket: {columns}."
 RULES = ("• Every player gets a ticket in a private message: {ticket} numbers in 3 rows.\n"
          "• Numbers from 1 to {numbers} are called on the board in this channel. Tap yours on your ticket when "
          "they come up.\n"
@@ -568,6 +575,8 @@ PANEL_NO_MENU = (" The player menu could not be shown just now: type `{word}` in
                  "*Start game* to play with just yourself.")
 PANEL_NO_NUMBER = ":game_die: No number called yet. Press *Next number* to call the first one."
 PANEL_LAST = ":game_die: Last called *{number}*  ({said})  \u00b7  *{called}* of {numbers} called"
+PANEL_ALL_CALLED = (":hourglass_flowing_sand: Last called *{number}*  ({said})  \u00b7  all *{numbers}* numbers are "
+                    "out. Players can still tap theirs. Press *End game* when everyone is done.")
 PANEL_PAUSED_LINE = ":pause_button: *Paused* at *{called}* of {numbers} called. The board shows the review."
 PANEL_HINT_RUNNING = ("*Review* pauses the game and shows everyone where it stands. *Show my card* opens your own "
                       "card here, so you can tap your numbers without leaving the channel.")
@@ -593,6 +602,8 @@ BOARD_FOOT = "Hosted by {host}  ·  {count} {players}"
 BOARD_FOOT_LOST = "  ·  Playing and lost your ticket? Type `{word}` here and it is sent to you again."
 OVER_FULL = ":trophy: *Game over.* {name} completed the Full House."
 OVER_NUMBERS = ":checkered_flag: *Game over.* All {numbers} numbers have been called."
+BOARD_LAST = (":hourglass_flowing_sand: *That was the last number.* Tap it on your ticket if you have it. {host} ends "
+              "the game when everyone is done.")
 OVER_ENDED = ":checkered_flag: *Game over.* {host} ended the game."
 NEXT_TEXT = "Next number :game_die:"
 REVIEW_TEXT = "Review :bar_chart:"
@@ -615,6 +626,8 @@ SAID_GONE = ":warning: That game is not available any more."
 SAID_AGAIN = ":warning: Could not save that just now. Please press the button again."
 SAID_NOT_HOST = ":lock: Only {host} can do that: they set this game up."
 SAID_PAUSED = ":pause_button: The game is paused. Press *Resume* to carry on."
+SAID_ALL_CALLED = (":information_source: All {numbers} numbers have been called. Players can still tap theirs: press "
+                   "*End game* when everyone is done.")
 SAID_NOT_PAUSED = ":information_source: The game is not paused."
 SAID_NOT_PLAYING = ":information_source: You are not playing in this game."
 SAID_ALREADY_IN = ":information_source: You are already in. Your ticket arrives when the game starts."
@@ -747,6 +760,12 @@ def row_size_of(g):
     return size_of(g)["row"]
 
 
+def all_called(g):
+    """True once the last number of the game has been called. The game is still running then: it waits for the players
+    (THE LAST NUMBER) and the organizer ends it."""
+    return g["n"] >= numbers_of(g)
+
+
 def ticket_size_of(g):
     return TICKET_ROWS * row_size_of(g)
 
@@ -808,6 +827,10 @@ TENS = ("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eight
 DIGITS = (":zero:", ":one:", ":two:", ":three:", ":four:", ":five:", ":six:", ":seven:", ":eight:",
           ":nine:")
 EMPTY_TILE = ":white_large_square:" * 2
+# What goes between two numbers of a row of the emoji board. A plain space is about as wide as the gap between the two
+# digits of one number, so "01 02 03" reads as one run of digits; an em space (the width of the letter M) is a clear
+# step wider, so each number stands as a pair. Use "\u2002" (an en space, half as wide) for a tighter board.
+BOARD_GAP = "\u2003"
 
 
 def number_words(number):
@@ -834,12 +857,13 @@ def call_lines(number, style=DEFAULT_BOARD_STYLE):
 
 
 def board_rows(called, columns=BOARD_COLUMNS, numbers=NUMBERS):
-    """The grid as lines of text, a white square for each number not called and its digits for each that is."""
+    """The grid as lines of text, a white square for each number not called and its digits for each that is, a
+    BOARD_GAP between one number and the next so the pairs of digits do not run together."""
     called = set(called)
     rows = []
     for start in range(1, numbers + 1, columns):
         cells = [tiles(n) if n in called else EMPTY_TILE for n in range(start, min(start + columns, numbers + 1))]
-        rows.append(" ".join(cells))
+        rows.append(BOARD_GAP.join(cells))
     return rows
 
 
@@ -939,34 +963,6 @@ def deal_ticket(g, user_id):
 
 def ticket_numbers(ticket):
     return [n for row in ticket for n in row]
-
-
-def number_column(number, numbers):
-    """The column of a printed ticket a number belongs to: 1-9 the first, then each ten, the last up to `numbers`."""
-    return min(number // 10, layout_columns(numbers) - 1)
-
-
-def ticket_cells(g, ticket):
-    """The rows of a ticket as a printed ticket draws them, [[number or None, ...], ...]: a cell for each column, a
-    number in its own column and the rest None (blank). A ticket that does not fit the columns (two numbers in one
-    column: not one this step deals) is drawn as its rows of numbers rather than lose a number."""
-    columns, numbers = layout_columns(numbers_of(g)), numbers_of(g)
-    rows = []
-    for row in ticket:
-        cells = [None] * columns
-        for number in row:
-            column = number_column(number, numbers)
-            if cells[column] is not None:
-                return [list(r) for r in ticket]
-            cells[column] = number
-        rows.append(cells)
-    return rows
-
-
-def column_names(numbers):
-    """The tens a printed ticket's columns stand for, as a short line: 1-9, 10s, 20s ... 80s."""
-    names = ["1-9"] + ["{}s".format(c * 10) for c in range(1, layout_columns(numbers))]
-    return ", ".join(names) if len(names) <= 4 else "{}, {}, {} ... {}".format(*names[:3], names[-1])
 
 
 def mask_of(ticket, marks):
@@ -1309,19 +1305,13 @@ def _actions(buttons):
     return {"type": "actions", "elements": buttons}
 
 
-def blank_button(row, column):
-    """A blank square of a printed ticket. Slack has no inert button, so it is a quiet one: its press is read as a test
-    game's (no table, no game to look up) and does nothing."""
-    return _button(BLANK_TEXT, "{}{}_{}".format(BLANK_ACTION, row, column), TEST_PREFIX + "|blank|{}")
-
-
 def ticket_rows(g, ticket, marks, make):
-    """A ticket as rows of buttons, laid out as a printed ticket: `make(number, marked)` is a number's button, a blank
-    square is a quiet one."""
+    """A ticket as its three rows of buttons, a button for each number of the row and nothing else: `make(number,
+    marked)` is a number's button. No blank squares, and never more than MAX_ROW to a block (a longer row would go on
+    in a second one), so Slack folds none of them behind a "+ N more" button."""
     marks = set(marks)
-    return [_actions([make(number, number in marks) if number else blank_button(r, c)
-                      for c, number in enumerate(cells)])
-            for r, cells in enumerate(ticket_cells(g, ticket))]
+    return [_actions([make(number, number in marks) for number in row[i:i + MAX_ROW]])
+            for row in ticket for i in range(0, len(row), MAX_ROW)]
 
 
 def host_name_of(g):
@@ -1468,6 +1458,8 @@ def panel_status_line(g):
         return PANEL_NO_NUMBER
     last = called[-1]
     said = number_words(last) + (", " + CALLS[last].lower() if last in CALLS else "")
+    if all_called(g):
+        return PANEL_ALL_CALLED.format(number=last, said=said, numbers=numbers_of(g))
     return PANEL_LAST.format(number=last, said=said, called=len(called), numbers=numbers_of(g))
 
 
@@ -1526,10 +1518,13 @@ def panel_blocks(g, note="", mine=None, menu=None, form="full"):
         hint = PANEL_HINT_PAUSED
     else:
         blocks += [_section(PANEL_HEAD)] + ([] if form == "minimal" else [_section(panel_status_line(g))])
-        buttons = [_button(NEXT_TEXT, ACTION_PREFIX + "next", value_for("next", g, arg, mask), "primary"),
+        last = all_called(g)                                       # nothing left to call: End game takes its place
+        buttons = ([] if last else [_button(NEXT_TEXT, ACTION_PREFIX + "next", value_for("next", g, arg, mask),
+                                            "primary")]) + [
                    _button(REVIEW_TEXT, ACTION_PREFIX + "review", value_for("review", g, arg, mask)),
                    card_button] + winners_button + [
-                   _button(END_TEXT, ACTION_PREFIX + "end", value_for("end", g, arg, mask), confirm=END_CONFIRM)]
+                   _button(END_TEXT, ACTION_PREFIX + "end", value_for("end", g, arg, mask),
+                           "primary" if last else None, confirm=END_CONFIRM)]
         hint = PANEL_HINT_RUNNING + (PANEL_HINT_WINNERS if winners_button else "")
     if form == "minimal":
         buttons = [plain_button(b) for b in buttons]
@@ -1683,6 +1678,8 @@ def board_blocks(g, over=""):
     if earlier:
         bits.append("Earlier: " + "  ·  ".join(str(n) for n in earlier))
     blocks.append(_context("  ·  ".join(bits)))
+    if not over and called and all_called(g):
+        blocks.append(_context(BOARD_LAST.format(host=host_name_of(g))))
     if style == "numbers":
         blocks.append(_section(number_grid(called, g["cfg"]["cols"], numbers_of(g))))
     elif style == "list":
@@ -1808,12 +1805,10 @@ def review_blocks(g, stats):
 
 
 def ticket_blocks(g, ticket, marks, note="", over=False):
-    """A player's ticket: three rows, each number a button, laid out as a printed ticket is; a marked one is green with
-    a tick."""
+    """A player's ticket: three rows, each number a button and every button a number; a marked one is green with a
+    tick."""
     marks = set(marks)
     where = TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g))
-    if layout_columns(numbers_of(g)) > row_size_of(g):                 # there are blanks: say where the columns are
-        where += "\n" + TICKET_COLUMNS.format(columns=column_names(numbers_of(g)))
     blocks = [_section(TICKET_HEAD.format(word=g["word"])), _context(where)]
     blocks += ticket_rows(g, ticket, marks, lambda number, marked: _button(
         (":white_check_mark: " if marked else "") + str(number), ACTION_PREFIX + "mark_{}".format(number),
@@ -3015,7 +3010,9 @@ def click_menu(input, result, token, table, parsed):
 
 
 def click_blank(input, result, token, table, parsed):
-    """A blank square of a printed ticket was pressed. There is nothing on it: nothing changes, and nobody is told."""
+    """A blank square was pressed, on a ticket sent before tickets lost their blank squares (this step draws none now,
+    but one already in somebody's private messages stays as it was until they tap a number). There is nothing on it:
+    nothing changes, and nobody is told."""
     result["mode"], result["ok"], result["skipped"] = "blank", True, "a blank square"
 
 
@@ -3479,25 +3476,24 @@ def click_next(input, result, token, table, parsed):
     if g["last_next"] and 0 <= as_ts(stamp) - g["last_next"] < DEBOUNCE:
         result["ok"], result["skipped"] = True, "the same press made twice"
         return
+    if all_called(g):                                              # a stale button: every number is out already
+        show_controls(result, token, input, g, clicker, note=SAID_ALL_CALLED.format(numbers=numbers_of(g)), mine=mine)
+        result["ok"], result["skipped"] = True, "every number has been called"
+        return
     previous = g["last_next"]
     g["n"] += 1
     g["last_next"] = as_ts(stamp)
     number = draw_order(g["seed"], numbers_of(g))[g["n"] - 1]
-    over = ""
-    if g["n"] >= numbers_of(g):
-        g["status"], over = DONE, OVER_NUMBERS.format(numbers=numbers_of(g))
-        finish_winners(g)
     if not g["test"] and not save_game(table, row, g):
         tell(result, token, result["channel"], clicker, SAID_AGAIN)
         result["error"] = "could not save the number; the board was not changed"
         return
-    redraw_board(token, g, result, over)
-    if over:
-        tidy_up(token, g, result)                                    # the game is over: the screen is cleared
-    else:
-        retire_celebrations(token, g, previous, result)              # a banner and photo last until the next number
+    # the last number does not end the game: the players need time to tap it (the board and the organizer's note say
+    # so), and the organizer presses End game
+    redraw_board(token, g, result)
+    retire_celebrations(token, g, previous, result)                  # a banner and photo last until the next number
     show_controls(result, token, input, g, clicker, fresh=False, mine=mine)   # the note says what was just called
-    result["number"], result["called"], result["finished"] = number, g["n"], bool(over)
+    result["number"], result["called"], result["finished"] = number, g["n"], False
     result["status"], result["ok"] = g["status"], True
 
 
@@ -3594,7 +3590,8 @@ def click_end(input, result, token, table, parsed):
         tell(result, token, result["channel"], clicker, SAID_AGAIN)
         result["error"] = "could not end the game"
         return
-    redraw_board(token, g, result, OVER_ENDED.format(host=host_name_of(g)))
+    redraw_board(token, g, result, OVER_NUMBERS.format(numbers=numbers_of(g)) if all_called(g)
+                 else OVER_ENDED.format(host=host_name_of(g)))
     tidy_up(token, g, result)
     reply(result, token, input, clicker, SAID_OVER, fresh=False)    # the controls have nothing left to do
     result["called"], result["status"], result["finished"], result["ok"] = g["n"], g["status"], True, True

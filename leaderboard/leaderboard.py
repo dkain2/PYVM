@@ -40,6 +40,15 @@ many. Optional columns, OFF by default: show_average (rate: cleared out of taken
 category_thread = false drops the thread reply. It reads every activity and game row, so it is a
 wider read than the others.
 
+THE WEEKLY TOP THREE: under the table and the all-time podium, every board that adds up (the
+activities, the maths games, the challenge board) shows the three who added the most over the last
+seven days under a banner (weekly_image_url, drawn by make_weekly_banner.py; a text heading without
+one) in a small table (added, days active out of seven, where they stand overall), then a one-line shoutout to them and a welcome to anyone who joined that week. People
+still getting started can top it, so newcomers are recognised before they are ranked. The week is
+measured from the latest saved run at least six days old (the oldest run in the first week), so it
+needs one earlier board to appear; until then, and on a best-score game board, the all-time podium and
+the "since the last board" line are shown instead. The footer is just the all-time total and the headcount.
+
 Important input fields:
     workato_dev_api    Workato API token. Required unless local_data_file is set.
     channel_id         Slack channel to include in post_message_body.
@@ -59,6 +68,12 @@ Important input fields:
                        road, next, then, home) in a thread reply. strip: the strip
                        only. carousel: the carousel in the post, no strip.
     use_carousel       Optional boolean, Great Walk only. false is walk_layout = strip.
+    weekly_sections    Optional comma separated list of the parts of the post to show (see
+                       WEEKLY_SECTIONS): podium, banner, table, share, active, streak, pb, overall,
+                       shoutout, crew, climbers, welcome, footer. Blank or "all": everything. A list
+                       shows only those; "all,-streak,-share" is everything but those two.
+    weekly_image_url   Optional image URL: the thin banner above the weekly top three (1300 x 100,
+                       see make_weekly_banner.py). Without it the section has a text heading.
     set_based          Optional boolean. Shows both best day and best set.
     best_phrase        Optional footer phrase for best effort.
     min_days           Optional minimum logged days to appear. Default: 5.
@@ -368,6 +383,56 @@ LOCAL_COLUMN_KEYS = {name: uuid.replace("-", "_") for name, uuid in COLUMNS.item
 
 MEDALS = {1: ":first_place_medal:", 2: ":second_place_medal:", 3: ":third_place_medal:"}
 
+# The weekly mini board: who added the most over the last week, top three only.
+WEEK_DAYS = 7
+WEEK_TOLERANCE_DAYS = 1     # a weekly post that runs a few hours early still counts as a week
+WEEKLY_TOP = 3
+WEEKLY_ICON = ":trophy:"    # the heading when there is no banner image (weekly_image_url)
+# Every part of the post that `weekly_sections` can switch on or off, in the order they appear.
+WEEKLY_SECTIONS = (
+    "podium",     # the all-time medals line straight under the main table
+    "banner",     # the weekly banner (weekly_image_url), or a text heading without one
+    "table",      # the weekly top three, as a small table
+    "share",      #   table column: their slice of everything the crew added
+    "active",     #   table column: days they showed up this week (games / challenges taken on those boards)
+    "streak",     #   table column: boards in a row they have added something
+    "pb",         #   table column: a star if they beat their own best day this week (activity boards)
+    "overall",    #   table column: where they stand on the all-time board, or "new"
+    "shoutout",   # "Shoutout to A, B and C for leading the way."
+    "crew",       # "Crew added 315,871 steps."
+    "climbers",   # "Biggest climb: X up 6, now #3."
+    "welcome",    # "Welcome X, new this week."
+    "footer",     # the all-time total and the headcount at the bottom
+)
+
+
+def parse_sections(value):
+    """(sections switched on, words that are not sections) from the weekly_sections input.
+
+    Comma separated (a list works too). Blank or "all": every section. Otherwise only the ones
+    named, so "podium,table,overall" is three sections; a "-" in front takes one away from
+    everything ("all,-streak,-share", or just "-streak") and "all" or a bare name adds back.
+    """
+    if isinstance(value, (list, tuple)):
+        words = [str(word) for word in value]
+    else:
+        words = re.split(r"[,;\n]", str(value or ""))
+    words = [word.strip().lower().replace(" ", "_") for word in words if word.strip()]
+    positive = [word for word in words if not word.startswith("-") and word != "all"]
+    on = set() if positive and "all" not in words else set(WEEKLY_SECTIONS)
+    unknown = []
+    for word in words:
+        name = word.lstrip("-")
+        if name == "all":
+            continue
+        if name not in WEEKLY_SECTIONS:
+            unknown.append(name)
+        elif word.startswith("-"):
+            on.discard(name)
+        else:
+            on.add(name)
+    return on, unknown
+
 
 def truthy(value):
     if isinstance(value, bool):
@@ -455,6 +520,9 @@ def activity_config(input_data):
         "gain_label": "biggest jump" if game and activity not in GAME_LEVELS else "most added",
         "roll_verb": "improved" if game and activity not in GAME_LEVELS else "added",
         "image_url": (input_data.get("header_image_url") or "").strip(),
+        "weekly_image_url": (input_data.get("weekly_image_url") or "").strip(),
+        "sections": parse_sections(input_data.get("weekly_sections"))[0],
+        "sections_unknown": parse_sections(input_data.get("weekly_sections"))[1],
         "set_based": not game and not challenge
                      and (truthy(input_data.get("set_based")) or activity in DEFAULT_SET_BASED),
         "best_phrase": input_data.get("best_phrase") or ("Top score" if game else
@@ -892,11 +960,6 @@ def getting_started(full_board, qualified):
     )
 
 
-def ordinal(n):
-    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return "{}{}".format(n, suffix)
-
-
 def distance(steps, config):
     return steps * config["stride_m"] / 1000.0
 
@@ -1315,54 +1378,202 @@ def movers_line(entries, changes, config):
     return "Since the last board: " + "  -  ".join(parts) if parts else ""
 
 
-def extras_line(entries, changes, history, config):
-    """A second "since the last board" line, from the richer history:
-    what the crew added, new personal bests, and who is on a run of boards in a row."""
-    if changes is None or not history:
-        return ""
-    parts = []
+def weekly_applies(config):
+    """Weekly gains add up on an activity, the challenge board and a points game; a best score does not."""
+    return not config["walk"] and (config["challenge"] or config["points"] or not config["game"])
 
-    added = sum(change["gain"] for change in changes.values() if change["gain"] and change["gain"] > 0)
-    # Improvements to a best score do not add up to anything meaningful.
-    if added > 0 and config["challenge"]:
-        parts.append("Crew cleared {} more {}".format(added, "challenge" if added == 1 else "challenges"))
-    elif added > 0 and (config["points"] or not config["game"]):
-        joiner = "of " if config["unit"] in ("seconds", "minutes") else ""
-        parts.append("Crew added {} {}{}".format(humanize(added, config), joiner, config["noun"]))
 
-    last_run = history[-1]["p"]
-    bests = []
-    for entry in ([] if config["challenge"] else entries):     # (on the challenge board best IS the total)
-        before = last_run.get(person_key(entry))
-        if before and len(before) > BEST and before[BEST] is not None and entry["best"] > before[BEST]:
-            bests.append(entry)
-    if bests:
-        bests.sort(key=lambda entry: -entry["best"])
-        names = ", ".join("*{}* {}".format(entry["name"], humanize(entry["best"], config)) for entry in bests[:2])
-        if len(bests) > 2:
-            names += " +{} more".format(len(bests) - 2)
-        parts.append("new personal best " + names)
+def _run_time_of(run):
+    try:
+        return datetime.strptime(run.get("at") or "", "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
 
-    rolls = []
+
+def weekly_baseline(history, now):
+    """(time, run) the week is measured from, or None.
+
+    The latest run at least a week old (less a day of slack); with none that old yet,
+    the oldest run there is, so the first week still gets a board.
+    """
+    runs = [(stamp, run) for run in history for stamp in [_run_time_of(run)] if stamp]
+    if not runs:
+        return None
+    cutoff = now - timedelta(days=WEEK_DAYS - WEEK_TOLERANCE_DAYS)
+    old_enough = [item for item in runs if item[0] <= cutoff]
+    return max(old_enough, key=lambda item: item[0]) if old_enough else min(runs, key=lambda item: item[0])
+
+
+def _saved(before, index):
+    """A fact an earlier run kept about someone, or None (they were not on it, or it did not keep it)."""
+    return before[index] if before and len(before) > index and before[index] is not None else None
+
+
+def boards_in_a_row(entry, history):
+    """On how many boards in a row, up to this one, they added something."""
+    key = person_key(entry)
+    totals = [_saved((past.get("p") or {}).get(key), TOTAL) for past in history] + [entry["total"]]
+    streak = 0
+    for gain in reversed(run_gains(totals)):
+        if gain and gain > 0:
+            streak += 1
+        else:
+            break
+    return streak
+
+
+def compute_weekly(entries, ranked_keys, history, config, now=None):
+    """The week's top three and the crew's week, or None when there is no week to show
+    (no history, a board that does not add up, or nobody active in the week).
+
+    `entries` is everyone the channel can see: the ranked board and the people still getting
+    started, so someone who joined this week can top it. Gain is the total now less the total
+    in the run a week ago; anyone not in that run joined since, and their whole total is theirs.
+    """
+    if not weekly_applies(config) or not history:
+        return None
+    now = now or datetime.now(timezone.utc)
+    baseline = weekly_baseline(history, now)
+    if baseline is None:
+        return None
+    since, run = baseline
+    window_days = max(1, (now - since).days + 1)
+    plain = not config["game"] and not config["challenge"]
+
+    people = []
     for entry in entries:
-        key = person_key(entry)
-        totals = [(run["p"].get(key) or [None, None])[TOTAL] for run in history] + [entry["total"]]
-        streak = 0
-        for gain in reversed(run_gains(totals)):
-            if gain and gain > 0:
-                streak += 1
-            else:
-                break
-        if streak >= 3:
-            rolls.append((streak, entry["total"], entry["name"]))
-    if rolls:
-        streak, _, name = max(rolls)
-        parts.append("on a roll *{}*, {} on {} boards in a row".format(name, config["roll_verb"], streak))
+        before = run["p"].get(person_key(entry))
+        if _saved(before, TOTAL) is not None:
+            gain, joined = entry["total"] - before[TOTAL], False
+            was_days = _saved(before, DAYS)
+            active = None if was_days is None else entry["days"] - was_days
+        elif plain and entry["days"] > window_days + 1:
+            continue        # logged on more days than the window holds: not new, just not in the snapshot
+        else:
+            gain, joined, active = entry["total"], True, entry["days"]
+        was_best, was_rank = _saved(before, BEST), _saved(before, RANK)
+        people.append({
+            "entry": entry, "gain": gain, "joined": joined,
+            "active": None if active is None else max(0, active),
+            # a new best day: only on boards where a best day means something, and not for someone
+            # who is new (everything they have done is a best)
+            "pb": bool(plain and not joined and was_best and entry["best"] > was_best),
+            "move": was_rank - entry["rank"] if was_rank and person_key(entry) in ranked_keys else 0,
+        })
 
-    return "  -  ".join(parts)
+    positive = [item for item in people if item["gain"] > 0]
+    positive.sort(key=lambda item: (-item["gain"], -item["entry"]["total"], item["entry"]["name"]))
+    if not positive:
+        return None         # nobody was active this week: no weekly board at all
+    crew = sum(item["gain"] for item in positive)
+    climbs = [item for item in people if item["move"] > 0]
+    climber = max(climbs, key=lambda item: (item["move"], item["gain"])) if climbs else None
+    return {
+        "top": [{"entry": item["entry"], "gain": item["gain"], "active": item["active"], "pb": item["pb"],
+                 "new": item["joined"] or person_key(item["entry"]) not in ranked_keys,
+                 "streak": boards_in_a_row(item["entry"], history),
+                 "share": 100.0 * item["gain"] / crew}
+                for item in positive[:WEEKLY_TOP]],
+        "newcomers": [(item["entry"], item["gain"]) for item in positive if item["joined"]],
+        "crew": crew,
+        "climber": {"entry": climber["entry"], "move": climber["move"]} if climber else None,
+        "label": "this week" if (now - since).days <= WEEK_DAYS + 2 else "since {}".format(since.strftime("%b %-d")),
+    }
 
 
-def build_message(board, config, top_n, full_board=None, changes=None, has_thread=False, trends=None, movers=""):
+def weekly_blocks(weekly, config):
+    """The weekly top three: a banner (or a text heading), then a small table in the main board's
+    style. Which of it shows follows config["sections"]."""
+    on = config["sections"]
+    blocks = []
+    if "banner" in on:
+        if config["weekly_image_url"]:
+            blocks.append({"type": "image", "image_url": config["weekly_image_url"], "alt_text": "Weekly leaders"})
+        else:
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "{}  *Weekly leaders*  -  most {} {}".format(
+                WEEKLY_ICON, "cleared" if config["challenge"] else "added", weekly["label"])}})
+    if "table" not in on:
+        return blocks
+
+    def active(item):
+        if item["active"] is None:
+            return FLAT
+        # An activity's days are out of the week; a game's games and a challenge's taken are just counts.
+        if config["game"] or config["challenge"]:
+            return "{:,}".format(item["active"])
+        return "{}/{}".format(min(item["active"], WEEK_DAYS), WEEK_DAYS)
+
+    def share(item):
+        return "<1%" if item["share"] < 1 else "{:.0f}%".format(item["share"])
+
+    plain = not config["game"] and not config["challenge"]
+    # Two-line headers (a small word over the main one), so a column can be named in words
+    # and stay narrow: (over, under, width, align, value).
+    cols = [
+        ("", "#", 2, ">", lambda item: str(item["place"])),
+        (weekly["label"], "name", NAME_WIDTH, "<", lambda item: trim(item["entry"]["name"])),
+        ("", "gain" if config["game"] else "added", 9, ">", lambda item: "+" + humanize(item["gain"], config)),
+    ]
+    if "share" in on:
+        cols.append(("crew", "share", 6, ">", share))
+    if "active" in on:
+        cols.append(("taken on", "challenges", 10, ">", active) if config["challenge"] else
+                    ("played", "games", 6, ">", active) if config["game"] else
+                    ("days", "active", 6, ">", active))
+    if "streak" in on:
+        cols.append(("streak on", "boards", 9, ">", lambda item: "{}x".format(item["streak"]) if item["streak"] > 1 else FLAT))
+    if "pb" in on and plain:
+        cols.append(("new", "best", 4, ">", lambda item: "\u2605" if item["pb"] else FLAT))
+    if "overall" in on:
+        cols.append(("all-time", "rank", 8, ">", lambda item: "new" if item["new"] else "#" + rank_text(item["entry"])))
+    rows = [dict(item, place=place) for place, item in enumerate(weekly["top"], start=1)]
+    cols = [(over, under, max(width, len(over), len(under)), align, get) for over, under, width, align, get in cols]
+    header = "\n".join([
+        format_row([(over, width, align) for over, _, width, align, _ in cols]),
+        format_row([(under, width, align) for _, under, width, align, _ in cols]),
+    ])
+    body = [format_row([(get(row), width, align) for _, _, width, align, get in cols]) for row in rows]
+    return blocks + code_blocks(header, body)
+
+
+def join_names(names):
+    names = ["*{}*".format(name) for name in names]
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def shoutout_lines(weekly, config):
+    """What the week deserves said out loud, in at most three short lines (see config["sections"])."""
+    on = config["sections"]
+    lines, first = [], []
+    if "shoutout" in on:
+        first.append("Shoutout to {} for leading the way.".format(
+            join_names([item["entry"]["name"] for item in weekly["top"]])))
+    if "crew" in on:
+        crew = weekly["crew"]
+        if config["challenge"]:
+            first.append("Crew cleared {} more {}.".format(humanize(crew, config), "challenge" if crew == 1 else "challenges"))
+        else:
+            joiner = "of " if config["unit"] in ("seconds", "minutes") else ""
+            first.append("Crew added {} {}{}.".format(humanize(crew, config), joiner, config["noun"]))
+    if first:
+        lines.append(" ".join(first))
+
+    climber = weekly.get("climber")
+    if "climbers" in on and climber:
+        lines.append("Biggest climb: *{}* {}{}, now #{}.".format(
+            climber["entry"]["name"], config["up_marker"], climber["move"], rank_text(climber["entry"])))
+
+    newcomers = [entry["name"] for entry, _ in weekly["newcomers"]]
+    if "welcome" in on and newcomers:
+        text = "Welcome {}".format(join_names(newcomers[:3]))
+        if len(newcomers) > 3:
+            text += " +{} more".format(len(newcomers) - 3)
+        lines.append(text + ", new this week.")
+    return lines
+
+
+def build_message(board, config, top_n, full_board=None, changes=None, has_thread=False, trends=None, movers="",
+                  weekly=None):
     shown = board[:top_n]
     total = sum(entry["total"] for entry in board)
     record_pool = full_board or board
@@ -1382,59 +1593,44 @@ def build_message(board, config, top_n, full_board=None, changes=None, has_threa
 
     blocks.extend(table_blocks(shown, config, changes, trends))
 
+    on = config["sections"]
+    # The all-time podium, straight under the table.
     podium = "  ".join(
         "{} *{}*".format(MEDALS[entry["rank"]], entry["name"])
         for entry in shown
         if entry["rank"] in MEDALS
     )
-    if podium:
+    if podium and "podium" in on:
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": podium}})
-    if movers:
+
+    if weekly and weekly["top"]:
+        # The week's top three and what is said about it, which stand in for the since-the-last-board lines.
+        blocks.extend(weekly_blocks(weekly, config))
+        lines = shoutout_lines(weekly, config)
+        if lines:
+            blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": "\n".join(
+                "_{}_".format(line) for line in lines)}]})
+    elif movers:
         blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": "\n".join(
             "_{}_".format(line) for line in movers.splitlines())}]})
 
-    # When nobody is held back by the closest-to-the-board line, the thread pointer shares
-    # the headcount line instead of taking a line of its own.
-    thread_pointer = has_thread and len(board) <= len(shown)
+    if "footer" not in on:
+        return blocks
+
+    # The footer keeps to what lasts: the all-time total and who is on the board. (Without a record
+    # pool the line leaves out the best-effort phrase; a game or challenge board needs the pool.)
+    pool = record_pool if config["game"] or config["challenge"] else None
     footer = [
-        flourish(total, config, record_pool),
+        flourish(total, config, pool),
         "{} {} on the board{}".format(
             len(board), "person" if len(board) == 1 else "people",
-            " - everyone else is in the thread." if thread_pointer else "."),
+            " - everyone else is in the thread." if has_thread else "."),
     ]
-
-    # "Most consistent" is about days active, which suits an activity; a game board has no
-    # equivalent that is not just a games count, so it gets no line.
-    if not config["game"] and not config["challenge"]:
-        steady = max(board, key=lambda entry: (entry["days"], entry["total"]))
-        if steady["rank"] != 1:
-            footer.append("Most consistent: *{}*, active on {} days.".format(steady["name"], steady["days"]))
-
     if config["challenge"] and config["show_categories"]:
         line = most_cleared_line(board)
         if line:
             footer.append(line)
     blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": "\n".join(footer)}]})
-
-    if config["challenge"]:
-        not_listed = "Not listed? Clear a weekly challenge to get on the board."
-    elif config["game"]:
-        not_listed = "Not listed? Type `{}` to get on the board.".format(config["activity"])
-    else:
-        not_listed = "Not listed? `/iprofile` shows where you sit."
-    pointer = "Everyone else is in the thread." if has_thread else not_listed
-    if len(board) > len(shown):
-        nearly = board[len(shown)]
-        need = shown[-1]["total"] - nearly["total"] + 1
-        blocks.append({
-            "type": "context",
-            "elements": [{
-                "type": "mrkdwn",
-                "text": "_Closest to the board: *{}*, {} off {}. {}_".format(
-                    nearly["name"], humanize(need, config), ordinal(len(shown)), pointer
-                ),
-            }],
-        })
 
     return blocks
 
@@ -2167,6 +2363,9 @@ def main(input):
         store = None
 
     errors = []
+    if config["sections_unknown"]:
+        errors.append("weekly_sections: not a section: {} (known: {})".format(
+            ", ".join(config["sections_unknown"]), ", ".join(WEEKLY_SECTIONS)))
     previous = None
     if store:
         previous, error = store.load()
@@ -2187,10 +2386,11 @@ def main(input):
             result["history_runs_stored"], "run" if result["history_runs_stored"] == 1 else "runs", SNAPSHOT_ROOM))
 
     text = fallback_text(board, config)
-    movers = "\n".join(line for line in (
-        movers_line(qualified, changes, config),
-        extras_line(qualified, changes, history, config),
-    ) if line)
+    # The week's top three and shoutout, from the history. Boards with no weekly gain to show
+    # (a best-score game, the first board ever) keep the podium and the since-the-last-board line.
+    ranked_keys = {person_key(entry) for entry in qualified}
+    weekly = compute_weekly(list(board) + list(starters), ranked_keys, history, config)
+    movers = "" if weekly and weekly["top"] else movers_line(qualified, changes, config)
     shown_count = min(top_n, len(board))
     has_thread = config["thread_full_list"] and (len(qualified) > shown_count or bool(starters))
     plain_blocks = None
@@ -2209,7 +2409,7 @@ def main(input):
             plain_blocks = build_walk_message(full_board, status, config, now, carousel=False)
         has_thread = False
     else:
-        blocks = build_message(board, config, top_n, full_board, changes, has_thread, trends, movers)
+        blocks = build_message(board, config, top_n, full_board, changes, has_thread, trends, movers, weekly)
     rest = qualified[shown_count:]
     thread = build_thread(rest, starters, config, changes, trends) if has_thread else []
     if config["walk"] and config["walk_layout"] == "thread":
@@ -2289,6 +2489,9 @@ def cli():
     parser.add_argument("--noun")
     parser.add_argument("--icon")
     parser.add_argument("--header-image-url")
+    parser.add_argument("--weekly-image-url")
+    parser.add_argument("--weekly-sections", help="comma separated: podium,banner,table,share,active,streak,pb,"
+                                                  "overall,shoutout,crew,climbers,welcome,footer (blank: all)")
     parser.add_argument("--set-based", action="store_true")
     parser.add_argument("--best-phrase")
     parser.add_argument("--min-days", type=int)
