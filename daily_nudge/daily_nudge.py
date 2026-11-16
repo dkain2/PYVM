@@ -23,9 +23,10 @@ Two kinds of nudge, picked by the activity:
                the existing button trigger and recipe handle the click, from anyone.
 
 Every nudge, of either kind, also ends with a "Take a break" section: a one-line suggestion
-(chosen to suit the day's activity) and three always-there buttons that open iMath, iMemory
-and iBreath for whoever presses one (see BREAKS and break_blocks). Same action ids as the
-games' own steps: imath_play, imemory_play and ibreath_play.
+(chosen to suit the day's activity) and a button for EACH game -- iAdd, iSub, iMultiple,
+iDivide, iAverage, iMemory, iMemoryImage, iMatch and iBoxBreathe -- that opens that game for
+whoever presses it (see BREAKS and break_blocks). The buttons are the games' own, so their
+steps handle the clicks.
 
 The Azure prompt is told which kind it is writing, so a game nudge invites people to play
 and an activity nudge invites them to log, and neither repeats the command or the buttons.
@@ -307,102 +308,118 @@ def game_buttons(details):
     ]}
 
 
-# The "Take a break" section on every nudge: one button per game step, always all three.
-#   buttons  the action-id prefix of the step; the click is `<buttons>_play`
-#   label    the button's text
-#   ideas    one-line suggestions, one is picked per nudge
-#   mood     the kinds of day it suits best (see suggest_break); "any" suits all
-# imath's click needs a game key in its value (iadd / isub / imultiple); the three are
-# rotated by the date (see math_game_for), so the same button is not the same game every day.
+# The "Take a break" section on every nudge: one button for EACH game, always all nine, in
+# two rows (maths; memory and breathing). Every button is the game's own "anyone may press it"
+# button, so the click is handled by the game's existing step, nothing new to wire:
+#     imath      imath_play_<game>    value  <game>|anyone|0|play        (iadd .. idivide)
+#     imemory    imemory_play         value  anyone|0|play                (words)
+#                imemory_play_img     value  img|anyone|0|play            (iMemoryImage)
+#                imemory_match_start  value  imatch|anyone|0|join         (iMatch's join button)
+#     ibreath    ibreath_play         value  play|anyone|0                (iBoxBreathe)
+# The imath ids end in the game because buttons in one row need ids of their own; the
+# steps read the value, and the ids still start `imath_`, so the triggers already let them through.
+#   row    which row of buttons it is in
+#   mood   the kinds of day it suits best (see suggest_break)
+#   ideas  one-line suggestions, one is picked per nudge
 BREAKS = {
-    "imath": {
-        "label": ":1234: iMath", "buttons": "imath", "mood": ("move", "any"),
-        "ideas": [
-            "Two minutes of mental maths. Faster than a coffee, and it wakes the brain up.",
-            "A quick sprint of sums. Beat yesterday's score, or just beat the clock.",
-            "Warm the brain up before the next meeting: tap the right answer, fast.",
-        ],
+    "iadd": {
+        "label": ":heavy_plus_sign: iAdd", "action_id": "imath_play_iadd",
+        "value": "iadd|anyone|0|play", "row": "maths", "mood": ("move",),
+        "ideas": ["Two minutes of mental addition. Faster than a coffee, and it wakes the brain up.",
+                  "A quick sprint of sums. Beat yesterday's score, or just beat the clock."],
+    },
+    "isub": {
+        "label": ":heavy_minus_sign: iSub", "action_id": "imath_play_isub",
+        "value": "isub|anyone|0|play", "row": "maths", "mood": ("move",),
+        "ideas": ["Subtract in your head, against the clock. Harder than it looks.",
+                  "A two-minute subtraction sprint. Tap the right answer, fast."],
+    },
+    "imultiple": {
+        "label": ":heavy_multiplication_x: iMultiple", "action_id": "imath_play_imultiple",
+        "value": "imultiple|anyone|0|play", "row": "maths", "mood": ("move",),
+        "ideas": ["Times tables, warmed up. How far up the ladder can you get?",
+                  "Two minutes of products. Your school self would be proud."],
+    },
+    "idivide": {
+        "label": ":heavy_division_sign: iDivide", "action_id": "imath_play_idivide",
+        "value": "idivide|anyone|0|play", "row": "maths", "mood": ("move",),
+        "ideas": ["Division, fast. Share it out before the clock runs out.",
+                  "A quick divide sprint. It gets harder as you go."],
+    },
+    "iaverage": {
+        "label": ":bar_chart: iAverage", "action_id": "imath_play_iaverage",
+        "value": "iaverage|anyone|0|play", "row": "maths", "mood": ("move",),
+        "ideas": ["Find the average in your head. Sharper than it sounds.",
+                  "A quick averages sprint: tap the number that sits in the middle."],
     },
     "imemory": {
-        "label": ":brain: iMemory", "buttons": "imemory", "mood": ("learn", "any"),
-        "ideas": [
-            "Words flash up, then vanish. How many rounds can you hold in your head?",
-            "Today's daily is the same for everyone, so you can compare notes after.",
-            "A short memory check: a small challenge that is not a test.",
-        ],
+        "label": ":brain: iMemory", "action_id": "imemory_play",
+        "value": "anyone|0|play", "row": "memory", "mood": ("learn",),
+        "ideas": ["Words flash up, then vanish. How many rounds can you hold in your head?",
+                  "Today's daily is the same for everyone, so you can compare notes after."],
     },
-    "ibreath": {
-        "label": ":wind_blowing_face: iBreath", "buttons": "ibreath", "mood": ("calm",),
-        "ideas": [
-            "Two minutes of box breathing. In, hold, out, hold. Nothing else to do.",
-            "Reset in a minute or two: a guided breathing pattern with a countdown.",
-            "Shoulders down, screen away. Let the pattern do the counting.",
-        ],
+    "imemoryimage": {
+        "label": ":frame_with_picture: iMemoryImage", "action_id": "imemory_play_img",
+        "value": "img|anyone|0|play", "row": "memory", "mood": ("learn",),
+        "ideas": ["Pictures flash up, then vanish. Do you remember what you saw?",
+                  "A memory check with pictures instead of words."],
+    },
+    "imatch": {
+        "label": ":mahjong: iMatch", "action_id": "imemory_match_start",
+        "value": "imatch|anyone|0|join", "row": "memory", "mood": ("learn",),
+        "ideas": ["Find the pairs. Memorise the board, then match every twin.",
+                  "A pairs game that gets a bigger board every level."],
+    },
+    "iboxbreathe": {
+        "label": ":wind_blowing_face: iBoxBreathe", "action_id": "ibreath_play",
+        "value": "play|anyone|0", "row": "memory", "mood": ("calm",),
+        "ideas": ["Two minutes of box breathing. In, hold, out, hold. Nothing else to do.",
+                  "Shoulders down, screen away. Let the pattern do the counting."],
     },
 }
-MATH_ROTATION = ("iadd", "isub", "imultiple")
+BREAK_ROWS = ("maths", "memory")
 
-# Which of the three is suggested for which activity. Calm activities get breathing, the
-# mental ones a memory check, the rest a maths sprint; a game nudge suggests another game.
+# Which kind of break suits which activity: calm ones get breathing, writing and learning a
+# memory game, the rest a maths sprint. A game nudge never suggests its own game.
 CALM = ("yoga", "meditate", "solitude", "journal", "breathe", "chant", "read", "fast", "paint", "sketch")
 LEARN = ("write", "learn")
 
 
-def math_game_for(day):
-    """The iMath game the button opens today: iAdd, iSub, iMultiple in turn, by date."""
-    return MATH_ROTATION[day.toordinal() % len(MATH_ROTATION)]
-
-
-def suggest_break(activity, details, rng=random):
-    """(game key, idea) for the suggestion line: the one that suits today's activity.
-
-    A game nudge never suggests itself (it already has its own two buttons); anything else
-    is matched by mood, falling back to a random one of the others.
-    """
-    own = details.get("buttons") if details.get("kind") == "game" else ""
-    options = [k for k in BREAKS if k != own]
-    if activity in CALM:
-        mood = "calm"
-    elif activity in LEARN:
-        mood = "learn"
-    else:
-        mood = "move"
+def suggest_break(activity, rng=random):
+    """(game key, idea) for the suggestion line: the game that suits today's activity."""
+    mood = "calm" if activity in CALM else "learn" if activity in LEARN else "move"
+    options = [k for k in BREAKS if k != activity]
     fits = [k for k in options if mood in BREAKS[k]["mood"]]
     key = rng.choice(fits or options)
     return key, rng.choice(BREAKS[key]["ideas"])
 
 
-def break_value(key, day):
-    """The button's value, in the form that step's own click handler reads."""
-    if key == "imath":
-        return "{}|anyone|0|play".format(math_game_for(day))
-    if key == "imemory":
-        return "anyone|0|play"
-    return "play|anyone|0"
+def break_blocks(activity, rng=random):
+    """The "Take a break" section: a one-line suggestion, then a button for every game.
 
-
-def break_blocks(activity, details, day, rng=random):
-    """The "Take a break" section: a one-line suggestion, then iMath, iMemory and iBreath.
-
-    The suggested one is the primary (green) button. Anyone may press any of them, so the
-    values name no player.
+    The suggested game's button is the primary (green) one. Anyone may press any of them,
+    so the values name no player.
     """
-    suggested, idea = suggest_break(activity, details, rng)
-    elements = []
-    for key, game in BREAKS.items():
-        button = {"type": "button", "action_id": game["buttons"] + "_play",
-                  "text": {"type": "plain_text", "text": game["label"], "emoji": True},
-                  "value": break_value(key, day)}
-        if key == suggested:
-            button["style"] = "primary"
-        elements.append(button)
-    return [
+    suggested, idea = suggest_break(activity, rng)
+    blocks = [
         {"type": "divider"},
         {"type": "section", "text": {"type": "mrkdwn", "text":
             "*Take a break.* Try *{}*: {}".format(
                 BREAKS[suggested]["label"].split(" ", 1)[1], idea)}},
-        {"type": "actions", "block_id": "nudge_break", "elements": elements},
-    ], suggested
+    ]
+    for row in BREAK_ROWS:
+        elements = []
+        for key, game in BREAKS.items():
+            if game["row"] != row:
+                continue
+            button = {"type": "button", "action_id": game["action_id"],
+                      "text": {"type": "plain_text", "text": game["label"], "emoji": True},
+                      "value": game["value"]}
+            if key == suggested:
+                button["style"] = "primary"
+            elements.append(button)
+        blocks.append({"type": "actions", "block_id": "nudge_break_" + row, "elements": elements})
+    return blocks, suggested
 
 
 def _send_json(url, headers, payload, timeout=HTTP_TIMEOUT):
@@ -693,7 +710,7 @@ def main(input):
 
     llm = Azure(input.get("azure_api_key") or "", input.get("azure_url"))
     (title, body), llm_used = generate_nudge(llm, activity, details, weekday, channel_name)
-    break_section, suggested = break_blocks(activity, details, today.date())
+    break_section, suggested = break_blocks(activity)
     blocks = build_blocks(details, title, body, break_section)
     fallback_text = "{} - {}".format(details["name"], title)
 
