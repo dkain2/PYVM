@@ -1,0 +1,406 @@
+{
+	"blocks": [
+		{
+			"type": "container",
+			"block_id": "bkb_container_standard",
+			"title": {
+				"type": "plain_text",
+				"text": "Standard Width Container"
+			},
+			"width": "standard",
+			"child_blocks": [
+				{
+					"type": "rich_text",
+					"block_id": "rt-simple",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "This is a simple rich text block inside a container."
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_full",
+			"title": {
+				"type": "plain_text",
+				"text": "Full Width Container"
+			},
+			"width": "full",
+			"child_blocks": [
+				{
+					"type": "rich_text",
+					"block_id": "rt-simple",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "This is a simple rich text block inside a container."
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_collapsible",
+			"title": {
+				"type": "plain_text",
+				"text": "Collapsible Container (Expanded)"
+			},
+			"is_collapsible": true,
+			"default_collapsed": false,
+			"child_blocks": [
+				{
+					"type": "rich_text",
+					"block_id": "rt-simple",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "This is a simple rich text block inside a container."
+								}
+							]
+						}
+					]
+				},
+				{
+					"type": "section",
+					"block_id": "section-1",
+					"text": {
+						"type": "mrkdwn",
+						"text": "*Section title*\nThis is a section block with markdown text inside the container."
+					}
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_icon_subtitle",
+			"title": {
+				"type": "plain_text",
+				"text": "Project Updates"
+			},
+			"subtitle": {
+				"type": "plain_text",
+				"text": "Last synced 5 minutes ago"
+			},
+			"icon": {
+				"type": "image",
+				"image_url": "https://a.slack-edge.com/80588/img/plugins/app/service_36.png",
+				"alt_text": "Project icon"
+			},
+			"child_blocks": [
+				{
+					"type": "section",
+					"block_id": "section-1",
+					"text": {
+						"type": "mrkdwn",
+						"text": "*Section title*\nThis is a section block with markdown text inside the container."
+					}
+				},
+				{
+					"type": "divider",
+					"block_id": "divider-1"
+				},
+				{
+					"type": "context",
+					"block_id": "context-1",
+					"elements": [
+						{
+							"type": "mrkdwn",
+							"text": "Last updated: May 14, 2026 at 3:42 PM"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_data_entry",
+			"title": {
+				"type": "plain_text",
+				"text": "New Support Ticket"
+			},
+			"subtitle": {
+				"type": "plain_text",
+				"text": "Fill in all required fields"
+			},
+			"child_blocks": [
+				{
+					"type": "input",
+					"block_id": "form-title",
+					"label": {
+						"type": "plain_text",
+						"text": "Title",
+						"emoji": true
+					},
+					"element": {
+						"type": "plain_text_input",
+						"action_id": "title_input",
+						"placeholder": {
+							"type": "plain_text",
+							"text": "Brief description of the issue"
+						}
+					}
+				},
+				{
+					"type": "input",
+					"block_id": "form-priority",
+					"label": {
+						"type": "plain_text",
+						"text": "Priority",
+						"emoji": true
+					},
+					"element": {
+						"type": "static_select",
+						"action_id": "priority_select",
+						"placeholder": {
+							"type": "plain_text",
+							"text": "Select priority"
+						},
+						"options": [
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Critical"
+								},
+								"value": "critical"
+							},
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "High"
+								},
+								"value": "high"
+							},
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Medium"
+								},
+								"value": "medium"
+							},
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Low"
+								},
+								"value": "low"
+							}
+						]
+					}
+				},
+				{
+					"type": "input",
+					"block_id": "form-category",
+					"label": {
+						"type": "plain_text",
+						"text": "Category",
+						"emoji": true
+					},
+					"element": {
+						"type": "static_select",
+						"action_id": "category_select",
+						"placeholder": {
+							"type": "plain_text",
+							"text": "Select category"
+						},
+						"options": [
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Bug"
+								},
+								"value": "bug"
+							},
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Feature Request"
+								},
+								"value": "feature"
+							},
+							{
+								"text": {
+									"type": "plain_text",
+									"text": "Question"
+								},
+								"value": "question"
+							}
+						]
+					}
+				},
+				{
+					"type": "input",
+					"block_id": "form-description",
+					"label": {
+						"type": "plain_text",
+						"text": "Description",
+						"emoji": true
+					},
+					"element": {
+						"type": "plain_text_input",
+						"action_id": "description_input",
+						"multiline": true,
+						"placeholder": {
+							"type": "plain_text",
+							"text": "Provide details about the issue..."
+						}
+					}
+				},
+				{
+					"type": "actions",
+					"block_id": "form-actions",
+					"elements": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Submit",
+								"emoji": true
+							},
+							"style": "primary",
+							"action_id": "form_submit"
+						},
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Cancel",
+								"emoji": true
+							},
+							"action_id": "form_cancel"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_media",
+			"title": {
+				"type": "plain_text",
+				"text": "Getting Started with Slack"
+			},
+			"child_blocks": [
+				{
+					"type": "video",
+					"block_id": "video-1",
+					"title": {
+						"type": "plain_text",
+						"text": "How to use Slack?"
+					},
+					"title_url": "https://www.youtube.com/watch?v=RRxQQxiM7AA",
+					"video_url": "https://www.youtube.com/embed/RRxQQxiM7AA?feature=oembed&autoplay=1",
+					"thumbnail_url": "https://i.ytimg.com/vi/RRxQQxiM7AA/hqdefault.jpg",
+					"alt_text": "How to use Slack?",
+					"author_name": "Arcado Buendia",
+					"provider_name": "YouTube",
+					"provider_icon_url": "https://a.slack-edge.com/80588/img/unfurl_icons/youtube.png",
+					"description": {
+						"type": "plain_text",
+						"text": "Slack is a new way to communicate with your team."
+					}
+				},
+				{
+					"type": "rich_text",
+					"block_id": "video-desc-rt",
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "Watch this short tutorial to learn the basics of Slack — channels, messages, and integrations."
+								}
+							]
+						}
+					]
+				},
+				{
+					"type": "actions",
+					"block_id": "media-actions",
+					"elements": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Open in Browser",
+								"emoji": true
+							},
+							"url": "https://www.youtube.com/watch?v=RRxQQxiM7AA",
+							"action_id": "open_in_browser"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_image",
+			"title": {
+				"type": "plain_text",
+				"text": "Image Gallery"
+			},
+			"child_blocks": [
+				{
+					"type": "image",
+					"block_id": "image-1",
+					"image_url": "https://images.pexels.com/photos/257532/pexels-photo-257532.jpeg",
+					"alt_text": "A sample landscape image",
+					"image_width": 400,
+					"image_height": 300,
+					"image_bytes": 50000,
+					"fallback": "A sample landscape image"
+				}
+			]
+		},
+		{
+			"type": "container",
+			"block_id": "bkb_container_header_divider",
+			"title": {
+				"type": "plain_text",
+				"text": "Header Divider Container"
+			},
+			"subtitle": {
+				"type": "plain_text",
+				"text": "A visible border separates the header from the content"
+			},
+			"has_header_divider": true,
+			"child_blocks": [
+				{
+					"type": "section",
+					"block_id": "section-1",
+					"text": {
+						"type": "mrkdwn",
+						"text": "*Section title*\nThis is a section block with markdown text inside the container."
+					}
+				},
+				{
+					"type": "context",
+					"block_id": "context-1",
+					"elements": [
+						{
+							"type": "mrkdwn",
+							"text": "Last updated: May 14, 2026 at 3:42 PM"
+						}
+					]
+				}
+			]
+		}
+	]
+}

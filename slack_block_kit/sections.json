@@ -1,0 +1,396 @@
+{
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a plain text section block.",
+				"emoji": true
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a mrkdwn section block :ghost: *this is bold*, and ~this is crossed out~, and <https://google.com|this is a link>"
+			}
+		},
+		{
+			"type": "section",
+			"fields": [
+				{
+					"type": "plain_text",
+					"text": "*this is plain_text text*",
+					"emoji": true
+				},
+				{
+					"type": "plain_text",
+					"text": "*this is plain_text text*",
+					"emoji": true
+				},
+				{
+					"type": "plain_text",
+					"text": "*this is plain_text text*",
+					"emoji": true
+				},
+				{
+					"type": "plain_text",
+					"text": "*this is plain_text text*",
+					"emoji": true
+				},
+				{
+					"type": "plain_text",
+					"text": "*this is plain_text text*",
+					"emoji": true
+				}
+			]
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Test block with users select"
+			},
+			"accessory": {
+				"type": "users_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select a user",
+					"emoji": true
+				},
+				"action_id": "users_select-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Pick an item from the dropdown list"
+			},
+			"accessory": {
+				"type": "static_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select an item",
+					"emoji": true
+				},
+				"options": [
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 0*",
+							"emoji": true
+						},
+						"value": "value-0"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 1*",
+							"emoji": true
+						},
+						"value": "value-1"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 2*",
+							"emoji": true
+						},
+						"value": "value-2"
+					}
+				],
+				"action_id": "static_select-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Test block with multi static select"
+			},
+			"accessory": {
+				"type": "multi_static_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select options",
+					"emoji": true
+				},
+				"options": [
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 0*",
+							"emoji": true
+						},
+						"value": "value-0"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 1*",
+							"emoji": true
+						},
+						"value": "value-1"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 2*",
+							"emoji": true
+						},
+						"value": "value-2"
+					}
+				],
+				"action_id": "multi_static_select-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Test block with multi conversations select"
+			},
+			"accessory": {
+				"type": "multi_conversations_select",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select conversations",
+					"emoji": true
+				},
+				"action_id": "multi_conversations_select-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with a button."
+			},
+			"accessory": {
+				"type": "button",
+				"text": {
+					"type": "plain_text",
+					"text": "Click Me",
+					"emoji": true
+				},
+				"value": "click_me_123",
+				"action_id": "button-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with a button."
+			},
+			"accessory": {
+				"type": "button",
+				"text": {
+					"type": "plain_text",
+					"text": "Click Me",
+					"emoji": true
+				},
+				"value": "click_me_123",
+				"url": "https://google.com",
+				"action_id": "button-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with an accessory image."
+			},
+			"accessory": {
+				"type": "image",
+				"image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
+				"alt_text": "cute cat"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with an accessory image."
+			},
+			"accessory": {
+				"type": "image",
+				"slack_file": {
+					"url": "<insert slack file url here>"
+				},
+				"alt_text": "alt text"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with an overflow menu."
+			},
+			"accessory": {
+				"type": "overflow",
+				"options": [
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 0*",
+							"emoji": true
+						},
+						"value": "value-0"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 1*",
+							"emoji": true
+						},
+						"value": "value-1"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 2*",
+							"emoji": true
+						},
+						"value": "value-2"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 3*",
+							"emoji": true
+						},
+						"value": "value-3"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 4*",
+							"emoji": true
+						},
+						"value": "value-4"
+					}
+				],
+				"action_id": "overflow-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Pick a date for the deadline."
+			},
+			"accessory": {
+				"type": "datepicker",
+				"initial_date": "1990-04-28",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select a date",
+					"emoji": true
+				},
+				"action_id": "datepicker-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "This is a section block with checkboxes."
+			},
+			"accessory": {
+				"type": "checkboxes",
+				"options": [
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"description": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"value": "value-0"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"description": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"value": "value-1"
+					},
+					{
+						"text": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"description": {
+							"type": "mrkdwn",
+							"text": "*this is mrkdwn text*"
+						},
+						"value": "value-2"
+					}
+				],
+				"action_id": "checkboxes-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Section block with radio buttons"
+			},
+			"accessory": {
+				"type": "radio_buttons",
+				"options": [
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 0*",
+							"emoji": true
+						},
+						"value": "value-0"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 1*",
+							"emoji": true
+						},
+						"value": "value-1"
+					},
+					{
+						"text": {
+							"type": "plain_text",
+							"text": "*plain_text option 2*",
+							"emoji": true
+						},
+						"value": "value-2"
+					}
+				],
+				"action_id": "radio_buttons-action"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Section block with a timepicker"
+			},
+			"accessory": {
+				"type": "timepicker",
+				"initial_time": "13:37",
+				"placeholder": {
+					"type": "plain_text",
+					"text": "Select time",
+					"emoji": true
+				},
+				"action_id": "timepicker-action"
+			}
+		}
+	]
+}

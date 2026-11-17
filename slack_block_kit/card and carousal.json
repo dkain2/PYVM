@@ -1,0 +1,511 @@
+{
+	"blocks": [
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"hero_image": {
+				"type": "image",
+				"image_url": "https://picsum.photos/400/300",
+				"alt_text": "Sample hero image"
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button",
+						"emoji": false
+					},
+					"action_id": "button_action"
+				}
+			]
+		},
+		{
+			"type": "card",
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"hero_image": {
+				"type": "image",
+				"image_url": "https://picsum.photos/400/300",
+				"alt_text": "Sample hero image"
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button",
+						"emoji": false
+					},
+					"action_id": "button_action"
+				}
+			]
+		},
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button",
+						"emoji": false
+					},
+					"action_id": "button_action"
+				}
+			]
+		},
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"style": "primary",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button",
+						"emoji": false
+					},
+					"action_id": "button_action_1"
+				},
+				{
+					"type": "button",
+					"style": "danger",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button 2",
+						"emoji": false
+					},
+					"action_id": "button_action_2"
+				}
+			]
+		},
+		{
+			"type": "card",
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"hero_image": {
+				"type": "image",
+				"image_url": "https://picsum.photos/400/300",
+				"alt_text": "Sample hero image"
+			}
+		},
+		{
+			"type": "card",
+			"hero_image": {
+				"type": "image",
+				"image_url": "https://picsum.photos/400/300",
+				"alt_text": "Sample hero image"
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Photo by <http://google.com|John Google>",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"slack_icon": {
+				"type": "icon",
+				"name": "rocket"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			}
+		},
+		{
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://picsum.photos/36/36",
+				"alt_text": "Icon"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			},
+			"subtext": {
+				"type": "mrkdwn",
+				"text": "This is subtext that appears below the body",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Action Button",
+						"emoji": false
+					},
+					"action_id": "button_action"
+				}
+			]
+		},
+		{
+			"type": "card",
+			"slack_icon": {
+				"type": "icon",
+				"name": "rocket"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Sample Card Title",
+				"verbatim": false
+			},
+			"subtitle": {
+				"type": "mrkdwn",
+				"text": "This is a subtitle",
+				"verbatim": false
+			},
+			"body": {
+				"type": "mrkdwn",
+				"text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"style": "danger",
+					"text": {
+						"type": "plain_text",
+						"text": "Delete",
+						"emoji": false
+					},
+					"action_id": "button_danger"
+				},
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Cancel",
+						"emoji": false
+					},
+					"action_id": "button_default"
+				},
+				{
+					"type": "button",
+					"style": "primary",
+					"text": {
+						"type": "plain_text",
+						"text": "Confirm",
+						"emoji": false
+					},
+					"action_id": "button_primary"
+				}
+			]
+		},
+		{
+			"type": "carousel",
+			"elements": [
+				{
+					"type": "card",
+					"block_id": "carousel-card-1",
+					"icon": {
+						"type": "image",
+						"image_url": "https://picsum.photos/36/36",
+						"alt_text": "Icon"
+					},
+					"title": {
+						"type": "mrkdwn",
+						"text": "Sample Card Title",
+						"verbatim": false
+					},
+					"subtitle": {
+						"type": "mrkdwn",
+						"text": "This is a subtitle",
+						"verbatim": false
+					},
+					"hero_image": {
+						"type": "image",
+						"image_url": "https://picsum.photos/400/300",
+						"alt_text": "Sample hero image"
+					},
+					"body": {
+						"type": "mrkdwn",
+						"text": "Check out the latest updates to our project. We shipped new features this week and fixed several bugs reported by the team.",
+						"verbatim": false
+					},
+					"actions": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Action Button",
+								"emoji": false
+							},
+							"action_id": "button_action_1"
+						}
+					]
+				},
+				{
+					"type": "card",
+					"block_id": "carousel-card-2",
+					"icon": {
+						"type": "image",
+						"image_url": "https://picsum.photos/36/36",
+						"alt_text": "Icon"
+					},
+					"title": {
+						"type": "mrkdwn",
+						"text": "Sample Card Title",
+						"verbatim": false
+					},
+					"subtitle": {
+						"type": "mrkdwn",
+						"text": "This is a subtitle",
+						"verbatim": false
+					},
+					"hero_image": {
+						"type": "image",
+						"image_url": "https://picsum.photos/400/300",
+						"alt_text": "Sample hero image"
+					},
+					"body": {
+						"type": "mrkdwn",
+						"text": "Check out the latest updates to our project. We shipped new features this week and fixed several bugs reported by the team.",
+						"verbatim": false
+					},
+					"actions": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Action Button",
+								"emoji": false
+							},
+							"action_id": "button_action_2"
+						}
+					]
+				},
+				{
+					"type": "card",
+					"block_id": "carousel-card-3",
+					"icon": {
+						"type": "image",
+						"image_url": "https://picsum.photos/36/36",
+						"alt_text": "Icon"
+					},
+					"title": {
+						"type": "mrkdwn",
+						"text": "Sample Card Title",
+						"verbatim": false
+					},
+					"subtitle": {
+						"type": "mrkdwn",
+						"text": "This is a subtitle",
+						"verbatim": false
+					},
+					"hero_image": {
+						"type": "image",
+						"image_url": "https://picsum.photos/400/300",
+						"alt_text": "Sample hero image"
+					},
+					"body": {
+						"type": "mrkdwn",
+						"text": "Check out the latest updates to our project. We shipped new features this week and fixed several bugs reported by the team.",
+						"verbatim": false
+					},
+					"actions": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Action Button",
+								"emoji": false
+							},
+							"action_id": "button_action_3"
+						}
+					]
+				},
+				{
+					"type": "card",
+					"block_id": "carousel-card-4",
+					"icon": {
+						"type": "image",
+						"image_url": "https://picsum.photos/36/36",
+						"alt_text": "Icon"
+					},
+					"title": {
+						"type": "mrkdwn",
+						"text": "Sample Card Title",
+						"verbatim": false
+					},
+					"subtitle": {
+						"type": "mrkdwn",
+						"text": "This is a subtitle",
+						"verbatim": false
+					},
+					"hero_image": {
+						"type": "image",
+						"image_url": "https://picsum.photos/400/300",
+						"alt_text": "Sample hero image"
+					},
+					"body": {
+						"type": "mrkdwn",
+						"text": "Check out the latest updates to our project. We shipped new features this week and fixed several bugs reported by the team.",
+						"verbatim": false
+					},
+					"actions": [
+						{
+							"type": "button",
+							"text": {
+								"type": "plain_text",
+								"text": "Action Button",
+								"emoji": false
+							},
+							"action_id": "button_action_4"
+						}
+					]
+				}
+			]
+		}
+	]
+}

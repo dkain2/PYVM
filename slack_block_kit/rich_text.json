@@ -1,0 +1,354 @@
+{
+	"blocks": [
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello there, I am a basic rich text block!"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello there, "
+						},
+						{
+							"type": "text",
+							"text": "I am a bold rich text block!",
+							"style": {
+								"bold": true
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello there, "
+						},
+						{
+							"type": "text",
+							"text": "I am an italic rich text block!",
+							"style": {
+								"italic": true
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello there, "
+						},
+						{
+							"type": "text",
+							"text": "I am a strikethrough rich text block!",
+							"style": {
+								"strike": true
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "emoji",
+							"name": "basketball"
+						},
+						{
+							"type": "text",
+							"text": " "
+						},
+						{
+							"type": "emoji",
+							"name": "snowboarder"
+						},
+						{
+							"type": "text",
+							"text": " "
+						},
+						{
+							"type": "emoji",
+							"name": "checkered_flag"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Basic bullet list with rich elements\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_list",
+					"style": "bullet",
+					"indent": 0,
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "item 1: "
+								},
+								{
+									"type": "emoji",
+									"name": "basketball"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "item 2: "
+								},
+								{
+									"type": "text",
+									"text": "this is a list item"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "item 3: "
+								},
+								{
+									"type": "link",
+									"url": "https://example.com/",
+									"text": "with a link",
+									"style": {
+										"bold": true
+									}
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "item 4: "
+								},
+								{
+									"type": "text",
+									"text": "we are near the end"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "item 5: "
+								},
+								{
+									"type": "text",
+									"text": "this is the end"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_preformatted",
+					"language": "typescript",
+					"elements": [
+						{
+							"type": "text",
+							"text": "import React, { useState } from 'react';\nimport { createRoot } from 'react-dom/client';\n\ninterface Todo {\n\tid: number;\n\ttext: string;\n\tdone: boolean;\n}\n\nconst App = () => {\n\tconst [todos, setTodos] = useState<Todo[]>([]);\n\tconst [input, setInput] = useState('');\n\n\tconst addTodo = () => {\n\t\tif (!input.trim()) return;\n\t\tsetTodos([...todos, { id: Date.now(), text: input, done: false }]);\n\t\tsetInput('');\n\t};\n\n\tconst toggleTodo = (id: number) => {\n\t\tsetTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));\n\t};\n\n\treturn (\n\t\t<div>\n\t\t\t<h1>Todo App</h1>\n\t\t\t<input value={input} onChange={(e) => setInput(e.target.value)} />\n\t\t\t<button onClick={addTodo}>Add</button>\n\t\t\t<ul>\n\t\t\t\t{todos.map((t) => (\n\t\t\t\t\t<li key={t.id} onClick={() => toggleTodo(t.id)}>\n\t\t\t\t\t\t{t.done ? '✓ ' : '○ '}{t.text}\n\t\t\t\t\t</li>\n\t\t\t\t))}\n\t\t\t</ul>\n\t\t</div>\n\t);\n};\n\ncreateRoot(document.getElementById('root')!).render(<App />);"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "rich_text",
+			"elements": [
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Check out these different block types with paragraph breaks between them:\n\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_preformatted",
+					"elements": [
+						{
+							"type": "text",
+							"text": "Hello there, I am preformatted block!\n\nI can have multiple paragraph breaks within the block."
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\nI am rich text with a paragraph break following preformatted text. \n\nI can have multiple paragraph breaks within the block.\n\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_quote",
+					"elements": [
+						{
+							"type": "text",
+							"text": "I am a basic rich text quote, \n\nI can have multiple paragraph breaks within the block."
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\nI am rich text with a paragraph after the quote block\n\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_quote",
+					"elements": [
+						{
+							"type": "text",
+							"text": "I am a basic quote block following rich text"
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_preformatted",
+					"elements": [
+						{
+							"type": "text",
+							"text": "I am more preformatted text following a quote block"
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_quote",
+					"elements": [
+						{
+							"type": "text",
+							"text": "I am a basic quote block following preformatted text"
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\n"
+						}
+					]
+				},
+				{
+					"type": "rich_text_list",
+					"style": "bullet",
+					"indent": 0,
+					"elements": [
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "list item one"
+								}
+							]
+						},
+						{
+							"type": "rich_text_section",
+							"elements": [
+								{
+									"type": "text",
+									"text": "list item two"
+								}
+							]
+						}
+					]
+				},
+				{
+					"type": "rich_text_section",
+					"elements": [
+						{
+							"type": "text",
+							"text": "\nI am rich text with a paragraph break after a list"
+						}
+					]
+				}
+			]
+		}
+	]
+}

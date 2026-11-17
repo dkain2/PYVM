@@ -1,0 +1,626 @@
+{
+	"blocks": [
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_two_column",
+			"label": "Two columns",
+			"is_label_visible": true,
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_2col_left",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Left column*\nContent goes here.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_2col_right",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Right column*\nContent goes here.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_three_column",
+			"label": "Stats overview",
+			"is_label_visible": true,
+			"grid_lines": "outer",
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_3col_metric_1",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Metric 1*\n24",
+									"verbatim": false
+								}
+							},
+							"width": "standard",
+							"horizontal_alignment": "center"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_3col_metric_2",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Metric 2*\n8",
+									"verbatim": false
+								}
+							},
+							"width": "standard",
+							"horizontal_alignment": "center"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_3col_metric_3",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Metric 3*\n112",
+									"verbatim": false
+								}
+							},
+							"width": "standard",
+							"horizontal_alignment": "center"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_main_sidebar",
+			"label": "Main content with sidebar",
+			"is_label_visible": true,
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_main",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Main content*\nArrange display blocks into responsive rows and columns.",
+									"verbatim": false
+								}
+							},
+							"width": "wide"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_sidebar",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Details*\nVersion 2.4\nUpdated today",
+									"verbatim": false
+								}
+							},
+							"width": "narrow"
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "actions",
+								"block_id": "bkb_main_actions",
+								"elements": [
+									{
+										"type": "button",
+										"text": {
+											"type": "plain_text",
+											"text": "Read more",
+											"emoji": true
+										},
+										"action_id": "bkb_read_more",
+										"style": "primary"
+									},
+									{
+										"type": "button",
+										"text": {
+											"type": "plain_text",
+											"text": "Dismiss",
+											"emoji": true
+										},
+										"action_id": "bkb_dismiss"
+									}
+								]
+							},
+							"horizontal_alignment": "end"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "layout_widths",
+			"label": "Column Width Ratios",
+			"is_label_visible": true,
+			"grid_lines": "rows",
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "w1_1",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Narrow*\nflex: 1",
+									"verbatim": false
+								}
+							},
+							"width": "narrow"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "w1_2",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Standard*\nflex: 2",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "w1_3",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Wide*\nflex: 3",
+									"verbatim": false
+								}
+							},
+							"width": "wide"
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "w2_1",
+								"text": {
+									"type": "mrkdwn",
+									"text": "Equal left",
+									"verbatim": false
+								}
+							},
+							"width": "narrow"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "w2_2",
+								"text": {
+									"type": "mrkdwn",
+									"text": "Equal right",
+									"verbatim": false
+								}
+							},
+							"width": "narrow"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_grid_lines",
+			"label": "Grid lines",
+			"is_label_visible": true,
+			"grid_lines": "rows",
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_1",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 1*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_2",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 2*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_3",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 3*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_4",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 4*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_5",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 5*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_6",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 6*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_7",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 7*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_8",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 8*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_gl_9",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 9*\nThis is a section block.",
+									"verbatim": false
+								}
+							},
+							"width": "standard"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_dashboard",
+			"label": "Dashboard",
+			"is_label_visible": true,
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_dash_1",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 1*\nThis is a section block.",
+									"verbatim": false
+								}
+							}
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_dash_2",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 2*\nThis is a section block.",
+									"verbatim": false
+								}
+							}
+						},
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_dash_3",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 3*\nThis is a section block.",
+									"verbatim": false
+								}
+							}
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "section",
+								"block_id": "bkb_dash_wide",
+								"text": {
+									"type": "mrkdwn",
+									"text": "*Section 4*\nThis is a wider section block spanning the row.",
+									"verbatim": false
+								}
+							}
+						}
+					]
+				},
+				{
+					"items": [
+						{
+							"block": {
+								"type": "actions",
+								"block_id": "bkb_dash_actions",
+								"elements": [
+									{
+										"type": "button",
+										"text": {
+											"type": "plain_text",
+											"text": "Button 1",
+											"emoji": true
+										},
+										"action_id": "bkb_dash_btn1",
+										"style": "primary"
+									},
+									{
+										"type": "button",
+										"text": {
+											"type": "plain_text",
+											"text": "Button 2",
+											"emoji": true
+										},
+										"action_id": "bkb_dash_btn2"
+									}
+								]
+							},
+							"horizontal_alignment": "end"
+						}
+					]
+				}
+			]
+		},
+		{
+			"type": "layout",
+			"block_id": "bkb_layout_containers",
+			"label": "Layout with containers",
+			"is_label_visible": true,
+			"grid_lines": "none",
+			"rows": [
+				{
+					"items": [
+						{
+							"block": {
+								"type": "container",
+								"block_id": "bkb_container_1",
+								"title": {
+									"type": "plain_text",
+									"text": "Container 1",
+									"emoji": true
+								},
+								"subtitle": {
+									"type": "plain_text",
+									"text": "This is a subtitle",
+									"emoji": true
+								},
+								"child_blocks": [
+									{
+										"type": "section",
+										"block_id": "bkb_c1_section",
+										"text": {
+											"type": "mrkdwn",
+											"text": "This is a section block.",
+											"verbatim": false
+										}
+									},
+									{
+										"type": "context",
+										"block_id": "bkb_c1_context",
+										"elements": [
+											{
+												"type": "mrkdwn",
+												"text": "This is a context block.",
+												"verbatim": false
+											}
+										]
+									},
+									{
+										"type": "actions",
+										"block_id": "bkb_c1_actions",
+										"elements": [
+											{
+												"type": "button",
+												"text": {
+													"type": "plain_text",
+													"text": "Button 1",
+													"emoji": true
+												},
+												"action_id": "bkb_c1_btn",
+												"style": "primary"
+											}
+										]
+									}
+								]
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "container",
+								"block_id": "bkb_container_2",
+								"title": {
+									"type": "plain_text",
+									"text": "Container 2",
+									"emoji": true
+								},
+								"subtitle": {
+									"type": "plain_text",
+									"text": "This is a subtitle",
+									"emoji": true
+								},
+								"child_blocks": [
+									{
+										"type": "section",
+										"block_id": "bkb_c2_section_1",
+										"text": {
+											"type": "mrkdwn",
+											"text": "This is a section block.",
+											"verbatim": false
+										}
+									},
+									{
+										"type": "section",
+										"block_id": "bkb_c2_section_2",
+										"text": {
+											"type": "mrkdwn",
+											"text": "This is another section block.",
+											"verbatim": false
+										}
+									},
+									{
+										"type": "context",
+										"block_id": "bkb_c2_context",
+										"elements": [
+											{
+												"type": "mrkdwn",
+												"text": "This is a context block.",
+												"verbatim": false
+											}
+										]
+									}
+								]
+							},
+							"width": "standard"
+						},
+						{
+							"block": {
+								"type": "container",
+								"block_id": "bkb_container_3",
+								"title": {
+									"type": "plain_text",
+									"text": "Container 3",
+									"emoji": true
+								},
+								"subtitle": {
+									"type": "plain_text",
+									"text": "This is a subtitle",
+									"emoji": true
+								},
+								"child_blocks": [
+									{
+										"type": "section",
+										"block_id": "bkb_c3_section_1",
+										"text": {
+											"type": "mrkdwn",
+											"text": "This is a section block.",
+											"verbatim": false
+										}
+									},
+									{
+										"type": "section",
+										"block_id": "bkb_c3_section_2",
+										"text": {
+											"type": "mrkdwn",
+											"text": "This is another section block.",
+											"verbatim": false
+										}
+									},
+									{
+										"type": "actions",
+										"block_id": "bkb_c3_actions",
+										"elements": [
+											{
+												"type": "button",
+												"text": {
+													"type": "plain_text",
+													"text": "Button 1",
+													"emoji": true
+												},
+												"action_id": "bkb_c3_btn"
+											}
+										]
+									}
+								]
+							},
+							"width": "standard"
+						}
+					]
+				}
+			]
+		}
+	]
+}

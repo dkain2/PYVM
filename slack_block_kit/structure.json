@@ -1,0 +1,104 @@
+{
+	"blocks": [
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a header block",
+				"emoji": true
+			}
+		},
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a level 1 header",
+				"emoji": true
+			},
+			"level": 1
+		},
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a level 2 header",
+				"emoji": true
+			},
+			"level": 2
+		},
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a level 3 header",
+				"emoji": true
+			},
+			"level": 3
+		},
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "This is a level 4 header",
+				"emoji": true
+			},
+			"level": 4
+		},
+		{
+			"type": "divider"
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "plain_text",
+					"text": "Author: K A Applegate",
+					"emoji": true
+				}
+			]
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "image",
+					"image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
+					"alt_text": "cute cat"
+				},
+				{
+					"type": "mrkdwn",
+					"text": "*Cat* has approved this message."
+				}
+			]
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "mrkdwn",
+					"text": "*This* is :smile: markdown"
+				},
+				{
+					"type": "image",
+					"image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
+					"alt_text": "cute cat"
+				},
+				{
+					"type": "image",
+					"image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
+					"alt_text": "cute cat"
+				},
+				{
+					"type": "image",
+					"image_url": "https://pbs.twimg.com/profile_images/625633822235693056/lNGUneLX_400x400.jpg",
+					"alt_text": "cute cat"
+				},
+				{
+					"type": "plain_text",
+					"text": "Author: K A Applegate",
+					"emoji": true
+				}
+			]
+		}
+	]
+}
