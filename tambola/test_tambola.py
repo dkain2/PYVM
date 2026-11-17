@@ -1090,13 +1090,21 @@ class TestCards(unittest.TestCase):
         self.assertEqual((len(grid_sections(large)), len(grid_sections(small))), (9, 3))
 
     def test_the_boards_last_line(self):
-        for status, over, hint in ((t.RUNNING, "", True), (t.PAUSED, "", True), (t.RUNNING, "x", False),
-                                   (t.DONE, "x", False), (t.DONE, "", False)):
+        for status, over in ((t.RUNNING, ""), (t.PAUSED, ""), (t.RUNNING, "x"), (t.DONE, "x"), (t.DONE, "")):
             g = make_game("small", status=status, n=3)
             line = t.board_foot(g, bool(over))
             self.assertIn("Hosted by", line)
-            self.assertEqual("lost your ticket" in line, hint, (status, over))
-        self.assertEqual(t.board_foot(make_game(status=t.DONE)).count("itambola"), 0)
+            self.assertNotIn("itambola", line, "a lost ticket is the My ticket button's job, not a line of the foot")
+
+    def test_the_board_has_one_button_while_the_game_is_on_my_ticket(self):
+        for status, over, button in ((t.RUNNING, "", True), (t.PAUSED, "", True), (t.RUNNING, "x", False),
+                                     (t.DONE, "x", False), (t.DONE, "", False)):
+            g = make_game("small", status=status, n=3)
+            found = [b["action_id"].replace(t.ACTION_PREFIX, "") for b in buttons_of(t.board_blocks(g, over))]
+            self.assertEqual(found, ["getticket"] if button else [], (status, over))
+        g = make_game("small", n=3)
+        self.assertEqual([b["action_id"] for b in buttons_of(t.review_blocks(g, t.review_stats(g, None)))],
+                         [t.ACTION_PREFIX + "getticket"], "the review, which takes the board's place, has it too")
 
     def test_the_title_is_said_once(self):
         """:tickets: and the game's name are the header's, once: not again in the host line, the rules, or the line the
@@ -1336,6 +1344,7 @@ class World(object):
         self.names = {}               # id -> name
         self.rows = {}                # record id -> {column name: value, "$record_id": id}
         self.calls = []
+        self.not_in_channel = set()   # people Slack will not post a private note to in the channel (they are not in it)
 
     # -- time
     def next_ts(self):
@@ -1401,6 +1410,8 @@ class World(object):
             self.deleted.append(key)
             return {"ok": True}, None
         if endpoint == "chat.postEphemeral":
+            if payload["user"] in self.not_in_channel:
+                return {"ok": False, "error": "user_not_in_channel"}, None
             self.private.append({"user": payload["user"], "channel": payload["channel"], "text": payload.get("text"),
                                  "blocks": self._checked(payload), "how": "note"})
             return {"ok": True, "message_ts": self.next_ts()}, None
@@ -1466,14 +1477,36 @@ class World(object):
     def last_note(self, user):
         return self.events(user)[-1]
 
-    def tickets_of(self, user):
-        """[(channel, ts, blocks)] of the ticket messages in this person's private messages."""
+    @staticmethod
+    def has_ticket(blocks):
+        return any(b["action_id"].startswith(t.ACTION_PREFIX + "mark_") for b in buttons_of(blocks))
+
+    def notes_of(self, user):
+        """[(channel, "", blocks)] of the ticket notes this person has in the channel, as each stands now: a private note
+        the bot sent them, and every press on it replaced it where it was."""
+        found = []
+        for event in self.events(user):
+            if not self.has_ticket(event["blocks"]):
+                continue
+            if event["how"] == "in place" and found:
+                found[-1] = (found[-1][0], "", event["blocks"])
+            else:
+                found.append((event["channel"], "", event["blocks"]))
+        return found
+
+    def dm_tickets_of(self, user):
+        """[(channel, ts, blocks)] of the ticket messages in this person's private messages (where the channel would not
+        take the note, or one an earlier version sent)."""
         return [(c, ts, m["blocks"]) for (c, ts), m in self.messages.items()
-                if c == "D" + user and any(b["action_id"].startswith(t.ACTION_PREFIX + "mark_")
-                                           for b in buttons_of(m["blocks"]))]
+                if c == "D" + user and self.has_ticket(m["blocks"])]
+
+    def tickets_of(self, user):
+        """[(channel, ts, blocks)] of every ticket this person has: private notes in the channel, then any in their
+        private messages."""
+        return self.notes_of(user) + self.dm_tickets_of(user)
 
     def ticket_of(self, user):
-        """(channel, ts, blocks) of the ticket message in this person's private messages, the one with numbers on it."""
+        """(channel, ts, blocks) of this person's ticket, the one with numbers on it."""
         found = self.tickets_of(user)
         assert len(found) == 1, "{} has {} tickets".format(user, len(found))
         return found[0]
@@ -1549,7 +1582,7 @@ class World(object):
 
     def tap(self, user, number):
         """The player taps `number` on their ticket, if it is there. The recipe's result, or None. The organizer has no
-        ticket message: they tap on the card in their controls, opened if it is not."""
+        ticket note: they tap on the card in their controls, opened if it is not."""
         if not self.tickets_of(user):
             found = [b for b in buttons_of(self.host_card(user))
                      if b["action_id"] == t.ACTION_PREFIX + "hmark_{}".format(number)]
@@ -1558,7 +1591,7 @@ class World(object):
         found = [b for b in buttons_of(blocks) if b["action_id"] == t.ACTION_PREFIX + "mark_{}".format(number)]
         if not found:
             return None
-        return self.click(user, found[0], channel, source_ts=ts, response=False)
+        return self.click(user, found[0], channel, source_ts=ts, response=not ts)    # a note is redrawn in place
 
 
 def ticket_numbers_on(blocks):
@@ -3242,11 +3275,11 @@ class TestGames(unittest.TestCase):
         self.assertFalse([b for b in buttons_of(blocks) if b["action_id"].startswith(t.BLANK_ACTION)],
                          "this step draws no blank squares")
         blank = old_blank_button()                                     # one on a ticket sent by an earlier version
-        snapshot = json.dumps(w.messages[(channel, ts)]["blocks"], sort_keys=True)
+        snapshot = json.dumps(w.ticket_of(ids[1])[2], sort_keys=True)
         calls, private, rows = len(w.calls), len(w.private), json.dumps(w.rows, sort_keys=True)
         out = w.click(ids[1], blank, channel, source_ts=ts, response=False)
         self.assertEqual((out["ok"], out["mode"], out["skipped"], out["error"]), (True, "blank", "a blank square", ""))
-        self.assertEqual(json.dumps(w.messages[(channel, ts)]["blocks"], sort_keys=True), snapshot)
+        self.assertEqual(json.dumps(w.ticket_of(ids[1])[2], sort_keys=True), snapshot)
         self.assertEqual((len(w.calls), len(w.private), json.dumps(w.rows, sort_keys=True)), (calls, private, rows),
                          "no message sent, no row touched, nothing asked of Slack or the table")
         # and it needs no table token, being nobody's game
@@ -3376,9 +3409,10 @@ class TestGames(unittest.TestCase):
 
         out = w.type_word(sam, self.CHANNEL, "itambola")                     # a player
         self.assertEqual((out["mode"], out["ok"]), ("ticket", True), out)
-        dms = sorted((ts, m) for (c, ts), m in w.messages.items() if c == "D" + sam)
-        newest = dms[-1][1]["blocks"]
-        self.assertIn(":white_check_mark: {}".format(number), all_text(newest), "their marks come back with it")
+        note = w.last_note(sam)
+        self.assertEqual((note["how"], note["channel"]), ("note", self.CHANNEL), "a new private note in the channel")
+        self.assertIn(":white_check_mark: {}".format(number), all_text(note["blocks"]), "their marks come back with it")
+        self.assertEqual([m for (c, _ts), m in w.messages.items() if c == "D" + sam], [], "no private message")
         self.assertEqual(len(w.rows_of(t.GAME_ROW)), games, "no new game")
         self.assertNotIn(t.ACTION_PREFIX + "set_all", [b["action_id"] for b in buttons_of(w.last_note(sam)["blocks"])])
 
@@ -3403,20 +3437,192 @@ class TestGames(unittest.TestCase):
         self.assertEqual(w.type_word(ids[1], self.CHANNEL, "itambola")["mode"], "setup")
         self.assertEqual(w.type_word(HOST, self.CHANNEL, "itambola")["mode"], "setup")
 
-    def test_the_board_only_offers_a_lost_ticket_while_the_game_is_on(self):
+    def board_buttons(self):
+        return [b["action_id"].replace(t.ACTION_PREFIX, "") for b in buttons_of(self.board())]
+
+    def test_the_board_only_offers_my_ticket_while_the_game_is_on(self):
         ids = self.people(2)
         self.open_game(ids, "small")
-        running = all_text(self.board())
-        self.assertIn("Playing and lost your ticket? Type `itambola` here and it is sent to you again", running)
+        self.assertEqual(self.board_buttons(), ["getticket"])
+        self.assertNotIn("lost your ticket", all_text(self.board()), "the footer no longer asks people to type")
         self.next_number()
         self.world.click(HOST, button_named(self.world.panel(HOST), "review"), self.CHANNEL)
+        self.assertEqual(self.board_buttons(), ["getticket"], "the review has it too")
         self.world.click(HOST, button_named(self.world.panel(HOST), "resume"), self.CHANNEL)
-        self.assertIn("lost your ticket", all_text(self.board()))
+        self.assertEqual(self.board_buttons(), ["getticket"])
         self.assertTrue(self.world.click(HOST, button_named(self.world.panel(HOST), "end"), self.CHANNEL)["ok"])
         over = all_text(self.board())
         self.assertIn("Game over", over)
-        self.assertNotIn("lost your ticket", over)
+        self.assertEqual(self.board_buttons(), [])
         self.assertIn("Hosted by", over)
+
+    # -- the ticket is a private note in the channel, under the board: nobody goes to a private message to play
+    def first_on_ticket(self, user):
+        """Call numbers until one on this person's ticket comes up: that number."""
+        mine = ticket_numbers_on(self.world.ticket_of(user)[2])
+        number = 0
+        while number not in mine:
+            number = self.next_number()["number"]
+        return number
+
+    def player_row(self, user):
+        return [r for r in self.world.rows_of(t.PLAYER_ROW) if r.get("group_id") == user][0]
+
+    def test_every_ticket_is_a_private_note_in_the_channel_and_not_a_private_message(self):
+        w = self.world
+        ids = self.people(4)
+        out = self.open_game(ids, "small")
+        for user in ids[1:]:
+            notes = w.notes_of(user)
+            self.assertEqual(len(notes), 1, user)
+            self.assertEqual(notes[0][0], self.CHANNEL, "in the game's channel, under the board")
+            self.assertEqual(len(ticket_numbers_on(notes[0][2])), 9)
+            self.assertEqual(w.dm_tickets_of(user), [])
+            self.assertIn("Hosted by", all_text(notes[0][2]))
+            self.assertNotIn("Game in <#", all_text(notes[0][2]), "it is in the channel: it need not say which")
+            kept = t.player_from_row(self.player_row(user))
+            self.assertEqual((kept["dm_channel"], kept["dm_ts"]), ("", ""), "a note has no address to keep")
+        self.assertEqual([key for key in w.messages if key[0].startswith("D")], [], "no private message at all")
+        self.assertEqual((out["dm_sent"], out["dm_failed"]), (3, []))
+
+    def test_the_lobby_and_the_join_note_say_where_the_ticket_is(self):
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        self.assertIn("right here in the channel", self.lobby_text)
+        self.assertNotIn("private message", self.lobby_text)
+
+    def test_a_tap_redraws_the_note_in_place_and_edits_no_private_message(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        sam = ids[1]
+        number = self.first_on_ticket(sam)
+        before = len(w.events(sam))
+        out = w.tap(sam, number)
+        self.assertEqual((out["ok"], out["marked"]), (True, number), out)
+        self.assertEqual(len(w.events(sam)), before + 1)
+        note = w.last_note(sam)
+        self.assertEqual(note["how"], "in place", "the press's response_url replaces the note")
+        self.assertIn(":white_check_mark: {}".format(number), all_text(note["blocks"]))
+        self.assertEqual(len(w.notes_of(sam)), 1, "one ticket, changing where it is")
+        self.assertEqual([key for key in w.updated if key[0] != self.CHANNEL], [])
+        # a number that has not been called is said on the ticket too
+        mine = ticket_numbers_on(w.ticket_of(sam)[2])
+        called = {n for n in range(1, t.NUMBERS + 1) if n in t.called_list(
+            t.game_from_row(w.rows_of(t.GAME_ROW)[0]))}
+        early = [n for n in mine if n not in called][0]
+        self.assertEqual(w.tap(sam, early)["marked"], 0)
+        self.assertIn("has not been called yet", all_text(w.last_note(sam)["blocks"]))
+        self.assertEqual(w.last_note(sam)["how"], "in place")
+
+    def test_a_tap_with_no_response_url_sends_the_ticket_again_as_a_new_note(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        sam = ids[1]
+        number = self.first_on_ticket(sam)
+        button = [b for b in buttons_of(w.ticket_of(sam)[2])
+                  if b["action_id"] == t.ACTION_PREFIX + "mark_{}".format(number)][0]
+        before = len(w.events(sam))
+        out = w.click(sam, button, self.CHANNEL, response=False)
+        self.assertEqual((out["ok"], out["marked"]), (True, number), out)
+        self.assertEqual(len(w.events(sam)), before + 1)
+        self.assertEqual(w.last_note(sam)["how"], "note")
+        self.assertIn(":white_check_mark: {}".format(number), all_text(w.last_note(sam)["blocks"]))
+
+    def test_a_ticket_in_the_channel_still_wins_and_ends_the_game(self):
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        calls, won = self.play_out(ids, t.SIZES["small"]["numbers"])
+        self.assertEqual(won[-1], "full", won)
+        self.assertIn("Game over", all_text(self.board()))
+        self.assertEqual([key for key in self.world.messages if key[0].startswith("D")], [])
+
+    def test_my_ticket_on_the_board_gives_a_player_their_ticket_back_with_their_marks(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        sam = ids[1]
+        number = self.first_on_ticket(sam)
+        self.assertEqual(w.tap(sam, number)["marked"], number)
+        updated, before = len(w.updated), len(w.events(sam))
+        out = w.click(sam, button_named(self.board(), "getticket"), self.CHANNEL, source_ts=self.board_ts)
+        self.assertEqual((out["ok"], out["mode"], out["error"]), (True, "getticket", ""), out)
+        self.assertEqual(len(w.events(sam)), before + 1)
+        note = w.last_note(sam)
+        self.assertEqual((note["how"], note["channel"]), ("note", self.CHANNEL),
+                         "a new note: a press on the public board must never replace the board")
+        self.assertIn(":white_check_mark: {}".format(number), all_text(note["blocks"]), "their marks come back")
+        self.assertEqual(ticket_numbers_on(note["blocks"]), ticket_numbers_on(w.notes_of(sam)[0][2]))
+        self.assertEqual(len(w.updated), updated, "the board is left as it was")
+        again = [b for b in buttons_of(note["blocks"]) if b["action_id"] == t.ACTION_PREFIX + "mark_{}".format(number)]
+        out = w.click(sam, again[0], self.CHANNEL)                # the new copy works too, and a number is marked once
+        self.assertEqual((out["ok"], out["marked"]), (True, 0), out)
+        self.assertIn("already marked", all_text(w.last_note(sam)["blocks"]))
+
+    def test_my_ticket_in_a_test_game_gives_the_same_ticket(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small", test=True)
+        sam = ids[1]
+        numbers = ticket_numbers_on(w.ticket_of(sam)[2])
+        out = w.click(sam, button_named(self.board(), "getticket"), self.CHANNEL, source_ts=self.board_ts)
+        self.assertEqual((out["ok"], out["mode"], out["error"]), (True, "getticket", ""), out)
+        self.assertEqual(ticket_numbers_on(w.last_note(sam)["blocks"]), numbers)
+        self.assertEqual(w.rows, {}, "a test game writes nothing")
+
+    def test_my_ticket_answers_an_outsider_the_organizer_and_a_stale_button(self):
+        w = self.world
+        ids = self.people(3)
+        self.open_game(ids, "small")
+        button = button_named(self.board(), "getticket")
+        press = lambda user: w.click(user, button, self.CHANNEL, source_ts=self.board_ts)
+        w.names["U0000009"] = "Late Joiner"
+        out = press("U0000009")
+        self.assertEqual((out["ok"], out["skipped"]), (True, "not a player"))
+        self.assertIn("not playing", w.last_note("U0000009")["text"])
+        self.assertEqual(w.tickets_of("U0000009"), [])
+        out = press(HOST)
+        self.assertEqual((out["ok"], out["skipped"]), (True, "the organizer's card is in their controls"))
+        self.assertIn("Show my card", w.last_note(HOST)["text"])
+        self.assertEqual(w.tickets_of(HOST), [])
+        self.assertTrue(w.click(HOST, button_named(w.panel(HOST), "end"), self.CHANNEL)["ok"])
+        out = press(ids[1])
+        self.assertEqual((out["ok"], out["skipped"]), (True, "the game is not running"))
+        self.assertIn("finished", w.last_note(ids[1])["text"])
+
+    def test_someone_the_channel_will_not_take_a_note_for_is_sent_their_ticket_by_private_message(self):
+        w = self.world
+        ids = self.people(3)
+        outsider = ids[2]
+        w.not_in_channel.add(outsider)
+        out = self.open_game(ids, "small")
+        self.assertEqual((out["dm_sent"], out["dm_failed"]), (2, []), "still dealt in and sent theirs")
+        self.assertTrue([x for x in out["warnings"] if "sent by private message" in x], out["warnings"])
+        self.assertEqual(w.notes_of(outsider), [])
+        channel, ts, blocks = w.ticket_of(outsider)
+        self.assertEqual(channel, "D" + outsider)
+        self.assertIn("Game in <#", all_text(blocks), "in a private message it says which channel the game is in")
+        self.assertEqual(t.player_from_row(self.player_row(outsider))["dm_ts"], ts, "the message is kept to edit")
+        number = self.first_on_ticket(outsider)
+        out = w.tap(outsider, number)
+        self.assertEqual((out["ok"], out["marked"]), (True, number), out)
+        self.assertIn((channel, ts), w.updated, "a private message is edited by its address")
+        self.assertIn(":white_check_mark: {}".format(number), all_text(w.ticket_of(outsider)[2]))
+
+    def test_a_ticket_nobody_can_be_sent_is_said_to_the_organizer(self):
+        w = self.world
+        ids = self.people(3)
+        w.not_in_channel.add(ids[2])
+        self.assertTrue(w.type_word(HOST, self.CHANNEL, "itambola")["ok"])
+        self.assertTrue(w.click(HOST, button_named(w.last_note(HOST)["blocks"], "set_all"), self.CHANNEL)["ok"])
+        with mock.patch.object(t, "slack_dm", lambda *args, **kwargs: ("", "", "cannot_dm_bot")):
+            out = w.click(HOST, button_named(w.panel(HOST), "start"), self.CHANNEL)
+        self.assertTrue(out["ok"], out)
+        self.assertEqual((out["dm_sent"], out["dm_failed"]), (1, [w.names[ids[2]]]))
+        self.assertTrue([x for x in out["warnings"] if "user_not_in_channel" in x and "cannot_dm_bot" in x],
+                        "both reasons are in the warnings")
+        self.assertIn("My ticket", all_text(w.panel(HOST)), "the organizer is told how they can get it")
 
     def test_the_channel_sees_the_title_once(self):
         ids = self.people(3)
@@ -3661,7 +3867,7 @@ class TestGames(unittest.TestCase):
                 numbers = ticket_numbers_on(blocks)
                 other = [n for n in numbers if n != out["number"]][0]
                 self.assertEqual(self.world.tap(player, other)["marked"], 0)
-                self.assertIn("has not been called yet", all_text(self.world.messages[(channel, ts)]["blocks"]))
+                self.assertIn("has not been called yet", all_text(self.world.ticket_of(player)[2]))
                 # review: no player figures
                 out = self.world.click(HOST, button_named(self.world.panel(HOST), "review"), self.CHANNEL)
                 self.assertTrue(out["ok"], out)

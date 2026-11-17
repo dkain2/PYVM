@@ -49,7 +49,7 @@
     "name": "mode",
     "type": "string",
     "optional": true,
-    "hint": "What the call was: setup (the word was typed), panel (the word brought the organizer's controls back), ticket (the word sent a player their ticket again; or a press of Show my card / Hide my card), set, size, board or winners (a choice on one of the setup card's dropdowns), pick, join, start, cancel, next, review, resume, end, blank (a blank square of a printed ticket was pressed: nothing happens), winners (Show winners / Hide winners pressed), mark (a number tapped, on a ticket in a private message or on the organizer's card in their note), or click when the press could not be read."
+    "hint": "What the call was: setup (the word was typed), panel (the word brought the organizer's controls back), ticket (the word sent a player their ticket again; or a press of Show my card / Hide my card), getticket (My ticket, on the board), set, size, board or winners (a choice on one of the setup card's dropdowns), pick, join, start, cancel, next, review, resume, end, blank (a blank square of a printed ticket was pressed: nothing happens), winners (Show winners / Hide winners pressed), mark (a number tapped, on a ticket note or on the organizer's card in their controls), or click when the press could not be read."
   },
   {
     "control_type": "checkbox",
@@ -203,7 +203,7 @@
     "name": "finished",
     "type": "boolean",
     "optional": true,
-    "hint": "True when the call ended the game: Full House, the 90th number, or End game.",
+    "hint": "True when the call ended the game: Full House or End game (the last number alone does not end it: the players are given time to tap it).",
     "toggle_hint": "Select from option list",
     "toggle_field": {
       "label": "Finished",
@@ -212,7 +212,7 @@
       "name": "finished",
       "type": "boolean",
       "optional": true,
-      "hint": "True when the call ended the game: Full House, the 90th number, or End game."
+      "hint": "True when the call ended the game: Full House or End game (the last number alone does not end it: the players are given time to tap it)."
     }
   },
   {
@@ -222,7 +222,7 @@
     "name": "dm_sent",
     "type": "integer",
     "optional": true,
-    "hint": "[start] How many players were sent their ticket by private message. The organizer is not one of them: their ticket opens in their controls (Show my card), so this is the number of players minus one.",
+    "hint": "[start] How many players were given their ticket: a private note in the channel, or where the channel would not take it a private message (the warnings say which). The organizer is not one of them: their ticket opens in their controls (Show my card), so this is the number of players minus one.",
     "render_input": "integer_conversion"
   },
   {
@@ -230,7 +230,7 @@
     "name": "dm_failed",
     "type": "array",
     "optional": true,
-    "hint": "[start] Names of players whose ticket could not be sent, or was not reached in time. They get theirs by typing the word again (the organizer, with My ticket).",
+    "hint": "[start] Names of players whose ticket could not be sent, or was not reached in time. They get theirs with the board's My ticket button, or by typing the word again.",
     "of": "string"
   },
   {

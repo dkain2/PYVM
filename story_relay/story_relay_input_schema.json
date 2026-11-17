@@ -1,0 +1,408 @@
+[
+  {
+    "control_type": "text",
+    "label": "Workato API token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bearer token for the Workato data table (the weekly story and the picks). Needed by every mode except a testing / skip_post preview.",
+    "details": {
+      "real_name": "workato_api_token"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bot token (xoxb-...). Posts the chapter, closes finished chapters, sends the private notes and reads names. Needed to post and for every click.",
+    "details": {
+      "real_name": "slack_bot_token"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Azure API key",
+    "name": "azure_api_key",
+    "type": "string",
+    "optional": true,
+    "hint": "Key for the Azure OpenAI deployment. Needed by prepare (cuts the story into four chapters) and by post on settling day and Friday. Without it a published story just sets out the chosen lines.",
+    "details": {
+      "real_name": "azure_api_key"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Azure URL",
+    "name": "azure_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. The Azure chat-completions URL, to use a different deployment than the built-in one.",
+    "details": {
+      "real_name": "azure_url"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "history",
+        "history"
+      ],
+      [
+        "prepare",
+        "prepare"
+      ],
+      [
+        "announce",
+        "announce"
+      ],
+      [
+        "post",
+        "post"
+      ],
+      [
+        "click",
+        "click"
+      ]
+    ],
+    "hint": "Blank is fine: action_value present means click, anything else is post. history (Sunday, before the genie): recent stories and themes. prepare (Sunday, after story_store): cut the stored story into four chapters. announce (Sunday): the short post about the story. post (daily Mon-Fri): settle the picks and post today's chapter, or the finished story on Friday. click: a Plot twist button was pressed.",
+    "details": {
+      "real_name": "mode"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack channel ID",
+    "name": "channel",
+    "type": "string",
+    "optional": true,
+    "hint": "Channel for the posts, for example C0ASWC1C11Q. For a click it is the channel the message is in. The bot must be a member.",
+    "details": {
+      "real_name": "channel"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack user ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "click: the person who pressed the button (Slack user id, U...).",
+    "details": {
+      "real_name": "user_id"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Week",
+    "name": "week",
+    "type": "string",
+    "optional": true,
+    "hint": "prepare / announce: the week's Monday as YYYY-MM-DD. Blank = the newest story still waiting (prepare) or the coming Monday (announce).",
+    "details": {
+      "real_name": "week"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Today (override)",
+    "name": "today",
+    "type": "string",
+    "optional": true,
+    "hint": "YYYY-MM-DD. Pretend it is this day, to try Monday to Friday on any day. Leave blank for the real day.",
+    "details": {
+      "real_name": "today"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Time zone offset (seconds)",
+    "parse_output": "integer_conversion",
+    "name": "tz_offset",
+    "type": "integer",
+    "optional": true,
+    "hint": "Seconds east of UTC that today is read on. Default 19800 (India). The chapter of the day depends on it.",
+    "details": {
+      "real_name": "tz_offset"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Chapter",
+    "parse_output": "integer_conversion",
+    "name": "chapter",
+    "type": "integer",
+    "optional": true,
+    "hint": "post: force a chapter (1-4) or the Friday story (5) instead of the one for today. Blank or 0 = today's.",
+    "details": {
+      "real_name": "chapter"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Weekly pick limit (optional)",
+    "parse_output": "integer_conversion",
+    "name": "picks_per_week",
+    "type": "integer",
+    "optional": true,
+    "hint": "Everyone gets one pick on every chapter, so they can take part in each daily post. Leave blank for that. Set 1 to 3 only to also limit how many chapters one person may pick on in a week. Applies from the next chapter posted.",
+    "details": {
+      "real_name": "picks_per_week"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Story shown (words)",
+    "parse_output": "integer_conversion",
+    "name": "passage_words",
+    "type": "integer",
+    "optional": true,
+    "hint": "How much of each chapter's story a post shows, 20 to 80 words. Default 50. Changes any run, with no model call.",
+    "details": {
+      "real_name": "passage_words"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Wrap width",
+    "parse_output": "integer_conversion",
+    "name": "wrap_chars",
+    "type": "integer",
+    "optional": true,
+    "hint": "Visible characters per line of the story text, 20 to 120. Default 84.",
+    "details": {
+      "real_name": "wrap_chars"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Banner",
+    "name": "banner",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional image above every post that has no banner of its own (see the three banner inputs below): an https:// image URL or a Slack file id (F...).",
+    "details": {
+      "real_name": "banner"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Banner: Sunday post",
+    "name": "banner_announce",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional image above the Sunday post about the new story: an https:// image URL or a Slack file id (F...). Blank uses Banner. story_relay/banners/story_new.png is made for it (1300 x 80), and story_new_200.png is the same banner taller (1300 x 200).",
+    "details": {
+      "real_name": "banner_announce"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Banner: daily chapter",
+    "name": "banner_daily",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional image above each chapter, Monday to Thursday. Blank uses Banner. story_relay/banners/story_daily.png is made for it (1300 x 80), and story_daily_200.png is the same banner taller (1300 x 200).",
+    "details": {
+      "real_name": "banner_daily"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Banner: Friday story",
+    "name": "banner_final",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional image above Friday's story. Blank uses Banner. story_relay/banners/story_final.png is made for it (1300 x 80), and story_final_200.png is the same banner taller (1300 x 200).",
+    "details": {
+      "real_name": "banner_final"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Picks close at (time)",
+    "name": "picks_close_time",
+    "type": "string",
+    "optional": true,
+    "hint": "post: the time of day, HH:MM, when a chapter stops taking picks. Default 12:00. Every reader sees it in their own time zone, and a pick after it is refused. Set the daily run for after this time: the run is what counts the picks.",
+    "details": {
+      "real_name": "picks_close_time"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Picks close time zone (seconds)",
+    "parse_output": "integer_conversion",
+    "name": "picks_close_tz",
+    "type": "integer",
+    "optional": true,
+    "hint": "Seconds east of UTC for the closing time above. Default -28800 (PST, 12:00 PST = 20:00 UTC). Use -25200 for PDT, 19800 for India.",
+    "details": {
+      "real_name": "picks_close_tz"
+    },
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Testing",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "testing",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Post (or preview) a sample or the real chapter with working buttons that write nothing: a click on it answers 'test'. Nothing is saved.",
+    "details": {
+      "real_name": "testing"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Testing",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "testing",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Post (or preview) a sample or the real chapter with working buttons that write nothing: a click on it answers 'test'. Nothing is saved.",
+      "details": {
+        "real_name": "testing"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Skip post",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "skip_post",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Post nothing. Returns blocks_json and a Block Kit Builder preview_url to look at the post first.",
+    "details": {
+      "real_name": "skip_post"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Skip post",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "skip_post",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Post nothing. Returns blocks_json and a Block Kit Builder preview_url to look at the post first.",
+      "details": {
+        "real_name": "skip_post"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Force",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "force",
+    "type": "boolean",
+    "optional": true,
+    "hint": "post / announce: post again although it was already posted (picks are kept). prepare: cut the chapters again, even for a story that has started.",
+    "details": {
+      "real_name": "force"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Force",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "force",
+      "type": "boolean",
+      "optional": true,
+      "hint": "post / announce: post again although it was already posted (picks are kept). prepare: cut the chapters again, even for a story that has started.",
+      "details": {
+        "real_name": "force"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Restart week",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "restart",
+    "type": "boolean",
+    "optional": true,
+    "hint": "A testing aid, never leave it on the scheduled recipe. Sets this week's picks aside, removes the week's messages from the channel and puts the story back to ready, so the week can be tried again today.",
+    "details": {
+      "real_name": "restart"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Restart week",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "restart",
+      "type": "boolean",
+      "optional": true,
+      "hint": "A testing aid, never leave it on the scheduled recipe. Sets this week's picks aside, removes the week's messages from the channel and puts the story back to ready, so the week can be tried again today.",
+      "details": {
+        "real_name": "restart"
+      }
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Approve",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "approve",
+    "type": "boolean",
+    "optional": true,
+    "hint": "prepare: save a story although it was flagged (words that do not belong in a workplace story) or was already used.",
+    "details": {
+      "real_name": "approve"
+    },
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Approve",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "approve",
+      "type": "boolean",
+      "optional": true,
+      "hint": "prepare: save a story although it was flagged (words that do not belong in a workplace story) or was already used.",
+      "details": {
+        "real_name": "approve"
+      }
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Action value",
+    "name": "action_value",
+    "type": "string",
+    "optional": true,
+    "hint": "click: the value of the button that was pressed (story|pick|<week>|<chapter>|<real|divert>).",
+    "details": {
+      "real_name": "action_value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Action timestamp",
+    "name": "action_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "click: Slack's action timestamp. It stops one press that arrives twice from counting twice.",
+    "details": {
+      "real_name": "action_ts"
+    }
+  }
+]

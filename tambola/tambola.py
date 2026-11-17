@@ -7,10 +7,11 @@ One Python step, two recipes (a Workato step is one file, so it routes on what i
     otherwise                               ->  someone typed itambola / ihousie
 
 WHO SEES WHAT
-    Everybody sees the grid: the BOARD, a message in the channel with no button on it. The one button a
-    participant can see is Join, on the lobby of a game that anyone may join. Every CONTROL belongs to the
-    organizer, whoever typed the word, and is a PRIVATE NOTE that only they see (Slack cannot show a button
-    to one person inside a public message):
+    Everybody sees the grid: the BOARD, a message in the channel. The buttons a participant can see are Join, on the
+    lobby of a game that anyone may join, and My ticket, on the board of a game that is on. Every CONTROL belongs to
+    the organizer, whoever typed the word, and is a PRIVATE NOTE that only they see (Slack cannot show a button
+    to one person inside a public message). So is every player's TICKET (see THE TICKET): the game is played in the
+    channel, with the board and your own ticket one under the other, and nobody goes to a private message to play:
 
         the setup card    dropdowns for Game size, Board style and Winners; Everyone in this channel /
                           I will pick the players / Anyone who wants to play
@@ -31,7 +32,7 @@ WHO SEES WHAT
     nobody else is in the game, whichever of the three ways of joining was chosen. It is NOT sent to them by private
     message (they are in the channel with their controls, and a second place to play would only be in the way): Show
     my card opens it inside their note, under the controls, and Hide my card tucks it away again. Tapping a number
-    there follows the same rules as a ticket in a private message (a number not called yet is refused, a called one
+    there follows the same rules as any other ticket (a number not called yet is refused, a called one
     turns green and can win a prize). The note says on every button whether the card is open, so the next press
     draws it the same way. Opening it redraws the note in place, so it needs `response_url` mapped; without it Show
     my card sends a new private note with the card in it, never a message.
@@ -46,9 +47,9 @@ HOW A GAME GOES
     2  The channel gets a LOBBY: three short rules, the prizes, who is in and, for an open game, a Join
        button. The organizer gets the lobby controls. "I will pick the players" gives them a menu of people
        and the lobby follows it. Each player is a row in the data table, name included.
-    3  Start (the organizer) posts the BOARD and sends every player but the organizer a TICKET by private message
-       (the organizer's opens in their controls). The lobby shrinks to one line and who is in (the board below it has
-       the title and the prizes: nothing is said twice).
+    3  Start (the organizer) posts the BOARD and gives every player but the organizer a TICKET, a private note under
+       it in the channel (the organizer's opens in their controls). The lobby shrinks to one line and who is in (the
+       board below it has the title and the prizes: nothing is said twice).
     4  The board is a grid of 90 white squares (in the default emoji style, see BOARD STYLE). Each Next number
        turns one into its number (two keycap digits) in the same message and says it in words, with the caller's
        name for it where there is one: "47: Forty-seven", "22: Twenty-two, two little ducks" (CALLS).
@@ -67,7 +68,23 @@ HOW A GAME GOES
     1 to 3 numbers in each, 5 in every row, in ascending order down a column and along a row (a smaller game has
     fewer columns, see GAME SIZE).
 
-THE TICKET  (three rows of numbers, every button a number)
+THE TICKET  (a private note in the channel; three rows of numbers, every button a number)
+    A player's ticket is a PRIVATE NOTE in the game's channel ("Only visible to you"), sent when the game starts and
+    sitting under the board, so the grid and the ticket are on the same screen. Slack cannot edit a private note, but
+    a press on it can replace it through the press's `response_url` (as the organizer's controls do), so a tap turns a
+    number green on the note where it is, and the note stays one note for the whole game (map `response_url`: without
+    it a tap sends the ticket again as a new note, and they pile up). A note holds no state: the ticket and the marks
+    are in the player's row (a test game's, in the buttons), so any copy of a ticket shows the marks as they stand and
+    works.
+
+    Slack drops private notes when it reloads or the app is restarted (a phone often does). The board's MY TICKET
+    button is how a player gets theirs back: one press sends them a new note with their ticket and every number they
+    marked. Typing the word does the same, but says itself in the channel, so the button is the way. The organizer
+    pressing it is pointed to Show my card, and someone who is not playing is told so. Where the channel will not take a
+    note for somebody (they are not in it: a game of "I will pick the players" can name anyone in the workspace) the
+    ticket goes to their private message with the bot instead, which names the channel the game is in and is edited
+    by its address as tickets always were (a ticket an earlier version sent is one too, and still works).
+
     A ticket is drawn as its three rows, a button for each number in the row, smallest first: 5 to a row in a large
     game, 4 in a medium one, 3 in a small one. There are NO BLANK BUTTONS and no "+ N more": Slack shows at most 5
     buttons of a row and folds any more behind a "+ N more" button, so a row is never longer than that (SIZES keeps
@@ -205,10 +222,10 @@ THE CARDS (kept short, as iMath's rules card is)
     Lobby      header (the one place the title and :tickets: are said, with the board's), host, 3 bullets,
                prizes, players, [ Join game ] on an open game and nothing else
     Board      header, the number just called, the grid in its style, the winners (names, or what the
-               organizer showed), a line on getting a lost ticket back. No button.
+               organizer showed), the My ticket button, who hosts and how many play
     Review     header, counts, the numbers called, prizes, the top of the ranking as one table, the spread
-    Ticket     a private message to each player but the organizer (whose opens in their controls): 3 rows of
-               buttons, every one a number, and a line of progress
+    Ticket     a private note under the board for each player but the organizer (whose opens in their controls):
+               3 rows of buttons, every one a number, and a line of progress
 
 TWO PRESSES AT ONCE
     Next number is the organizer's alone, and what it reveals is fixed in advance: the order of the numbers
@@ -272,13 +289,15 @@ THE TWO RECIPES
                  channel        <- container.channel_id
                  source_ts      <- container.message_ts
                  action_ts      <- actions[0].action_ts
-                 response_url   <- response_url               (top level; keeps the organizer to ONE note)
+                 response_url   <- response_url               (top level; keeps the organizer to ONE note and
+                                                               each ticket to ONE note: map it)
              plus slack_bot_token and workato_api_token. Nothing else but the optional `banners` and
-             `celebration_seconds` of CELEBRATIONS. A ticket press arrives from the player's private message, so
-             `channel` there is that message's channel, not the game's.
+             `celebration_seconds` of CELEBRATIONS. A press on a ticket in a private message (the fallback, or one
+             sent by an earlier version) arrives with that message's channel, not the game's.
 
 SLACK SCOPES   chat:write, users:read; channels:read (groups:read) for "Everyone in this channel";
-               channels:history (groups:history) only for test games; im:write is a fallback for DMs.
+               channels:history (groups:history) only for test games; im:write only for the rare ticket that has to
+               go to a private message (the person is not in the channel).
 
 BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<kind>|<game>|<arg>)
     size | board | winners           the setup card's dropdowns of game size, board style and winners display
@@ -290,11 +309,13 @@ BUTTONS  (every action_id starts `tambola_click_`; a real game's value is tb|<ki
                                      the channel has more people than one menu holds (100)
     start | cancel                   the organizer's lobby controls (private)
     join                             the lobby of an open game (public, everybody)
+    getticket                        My ticket, on the board (public, everybody; answered with a private note)
     next | review | resume | end     the organizer's game controls (private)
     showwinners                      Show winners / Hide winners, the organizer's (private)
     myticket                         Show my card / Hide my card, on the organizer's note (private)
     hmark_<number>                   a number on the organizer's card, in their note (private)
-    mark_<number>                    a number on a ticket (private message to the player)
+    mark_<number>                    a number on a ticket (a private note in the channel; a private message
+                                     where the channel would not take the note)
     blank_<row>_<column>             a blank square on a ticket sent before tickets lost their blanks: does nothing
     test games use  tbt|<kind>|<json>  for all of these.
 
@@ -540,7 +561,8 @@ STILL_TO_WIN = "*Still to win:*  {prizes}"
 NOT_WON = "*Not won:*  {prizes}"
 SIZE_OPTION = "{label}{tag}: numbers 1 to {numbers}, {ticket} on a ticket"
 BOARD_OPTION = "{label}: {text}"
-RULES = ("• Every player gets a ticket in a private message: {ticket} numbers in 3 rows.\n"
+RULES = ("• Every player gets a ticket right here in the channel, and only they can see it: {ticket} numbers in "
+         "3 rows.\n"
          "• Numbers from 1 to {numbers} are called on the board in this channel. Tap yours on your ticket when "
          "they come up.\n"
          "• First to finish a line, or the whole ticket, wins that prize.")
@@ -599,7 +621,6 @@ REVIEW_TEST = ":test_tube: Test game: each player's progress is only shown in a 
 BOARD_READY = ":game_die: *Ready.* Press *Next number* to call the first one."
 BOARD_CALLED = "*Called so far*\n"
 BOARD_FOOT = "Hosted by {host}  ·  {count} {players}"
-BOARD_FOOT_LOST = "  ·  Playing and lost your ticket? Type `{word}` here and it is sent to you again."
 OVER_FULL = ":trophy: *Game over.* {name} completed the Full House."
 OVER_NUMBERS = ":checkered_flag: *Game over.* All {numbers} numbers have been called."
 BOARD_LAST = (":hourglass_flowing_sand: *That was the last number.* Tap it on your ticket if you have it. {host} ends "
@@ -615,11 +636,13 @@ HIDE_WINNERS_TEXT = "Hide winners"
 END_TEXT = "End game"
 END_CONFIRM = "End the game for everyone? The board stays, the numbers stop."
 JOIN_TEXT = "Join game :raised_hand:"
+MY_TICKET_TEXT = "My ticket :ticket:"
 START_TEXT = "Start game :arrow_forward:"
 CANCEL_TEXT = "Cancel"
 
 TICKET_HEAD = ":tickets: *Your ticket*"
-TICKET_WHERE = "Game in <#{channel}>  ·  hosted by {host}. Tap a number when it is called on the board."
+TICKET_HERE = "Hosted by {host}. Tap a number when it is called on the board."
+TICKET_WHERE = "Game in <#{channel}>  ·  hosted by {host}. Tap a number when it is called on the board."   # in a DM
 TICKET_OVER = ":checkered_flag: This game has finished."
 
 SAID_GONE = ":warning: That game is not available any more."
@@ -631,8 +654,8 @@ SAID_ALL_CALLED = (":information_source: All {numbers} numbers have been called.
 SAID_NOT_PAUSED = ":information_source: The game is not paused."
 SAID_NOT_PLAYING = ":information_source: You are not playing in this game."
 SAID_ALREADY_IN = ":information_source: You are already in. Your ticket arrives when the game starts."
-SAID_JOINED = (":white_check_mark: You are in. Your ticket arrives in a private message when {host} "
-               "starts the game.")
+SAID_JOINED = (":white_check_mark: You are in. Your ticket appears here in the channel, for your eyes only, when "
+               "{host} starts the game.")
 SAID_FULL = ":warning: This game already has {count} players, which is the most it holds."
 SAID_OVER = ":checkered_flag: This game has finished."
 SAID_NO_WINNERS = (":information_source: Nobody has won a prize yet, so there are no winners to show. Press "
@@ -648,10 +671,13 @@ SAID_MEMBERS = (":warning: I could not read this channel's members ({error}). Pi
                 "or let anyone join.")
 SAID_TOO_MANY = (":warning: This channel has {count} people, and a game holds {max} players at most. Pick "
                  "the players yourself or let anyone join.")
-SAID_NO_TICKET = (":warning: I could not message {names}. Typing `{word}` in the channel sends them a ticket "
-                  "again.")
-SAID_TICKET_SENT = ":tickets: Your ticket is in a private message."
-SAID_TICKET_FAILED = ":warning: I could not message you just now. Please try again."
+SAID_NO_TICKET = (":warning: I could not send a ticket to {names}. They can press *My ticket* on the board, or "
+                  "type `{word}` in the channel, to get it.")
+SAID_TICKET_SENT = (":tickets: I could not put your ticket in the channel, so it is in a private message from me "
+                    "instead.")
+SAID_TICKET_FAILED = ":warning: I could not send you your ticket just now. Please try again."
+SAID_HOST_CARD = (":tickets: Your card is in your controls: press *Show my card* there. If they have gone, type "
+                  "`{word}` and they come back.")
 SAID_TEST_FULL = ":warning: A test game holds up to {count} players. Start a fresh test with fewer."
 SAID_TEST_LOST = (":warning: I could not read this test game back from its message. The bot needs "
                   "channels:history (groups:history in a private channel), and the message must still be there.")
@@ -1464,7 +1490,7 @@ def panel_status_line(g):
 
 
 def card_blocks(g, ticket, marks):
-    """The organizer's own card as part of their note: the same three rows of five as a ticket in a private message,
+    """The organizer's own card as part of their note: the same three rows of five as a player's ticket,
     but tapped here, so they need not leave the channel."""
     marks = set(marks)
     mask = mask_of(ticket, marks)
@@ -1652,18 +1678,20 @@ def winners_blocks(g):
 
 
 def board_foot(g, over=False):
-    """The board's last line. While the game is on it says how a player gets a lost ticket back (typing the word
-    sends it again to someone who is playing; to anyone else it opens a new game, which is why a game that is over
-    does not say it)."""
-    line = BOARD_FOOT.format(host=host_name_of(g), count=len(g["roster"]), players=plural(len(g["roster"]), "player"))
-    if not over and g["status"] in LIVE:
-        line += BOARD_FOOT_LOST.format(word=typed_word(g))
-    return line
+    """The board's last line: who hosts and how many are playing."""
+    return BOARD_FOOT.format(host=host_name_of(g), count=len(g["roster"]), players=plural(len(g["roster"]), "player"))
+
+
+def ticket_button(g):
+    """My ticket, the one button on a game that is on: it gives whoever presses it their own ticket again, as a private
+    note under the board. A private note is dropped when Slack reloads, and this is how a player gets theirs back
+    without typing in the channel."""
+    return _actions([_button(MY_TICKET_TEXT, ACTION_PREFIX + "getticket", value_for("getticket", g))])
 
 
 def board_blocks(g, over=""):
-    """The board everyone sees: the number just called, the grid, the prizes. No button on it. `over` is the
-    closing line of a game that has ended."""
+    """The board everyone sees: the number just called, the grid, the prizes, and My ticket while the game is on.
+    `over` is the closing line of a game that has ended."""
     called = called_list(g)
     style = parse_board_style(g["cfg"].get("board"))
     blocks = [_header(":tickets: " + g["word"])]
@@ -1688,6 +1716,8 @@ def board_blocks(g, over=""):
     else:
         blocks += [_section(row) for row in board_rows(called, g["cfg"]["cols"], numbers_of(g))]
     blocks += winners_blocks(g)
+    if not over and g["status"] in LIVE:
+        blocks.append(ticket_button(g))
     blocks.append(_context(board_foot(g, bool(over)) + ("  ·  " + TEST_NOTE if g["test"] else "")))
     return carry(blocks, g)
 
@@ -1801,14 +1831,17 @@ def review_blocks(g, stats):
         blocks.append(_context(REVIEW_SPREAD.format(spread="  ·  ".join(
             "{}-{}: {}".format(lo, hi, n) if lo != hi else "{}: {}".format(lo, n)
             for (lo, hi), n in zip(spread_buckets(ticket_size_of(g)), stats["spread"])))))
+    blocks.append(ticket_button(g))
     return carry(blocks, g)
 
 
-def ticket_blocks(g, ticket, marks, note="", over=False):
+def ticket_blocks(g, ticket, marks, note="", over=False, dm=False):
     """A player's ticket: three rows, each number a button and every button a number; a marked one is green with a
-    tick."""
+    tick. It is a private note in the game's channel; `dm` is for the one that is sent to a private message (where the
+    channel would not take it), which says which channel the game is in."""
     marks = set(marks)
-    where = TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g))
+    where = (TICKET_WHERE.format(channel=g["channel"], host=host_name_of(g)) if dm
+             else TICKET_HERE.format(host=host_name_of(g)))
     blocks = [_section(TICKET_HEAD.format(word=g["word"])), _context(where)]
     blocks += ticket_rows(g, ticket, marks, lambda number, marked: _button(
         (":white_check_mark: " if marked else "") + str(number), ACTION_PREFIX + "mark_{}".format(number),
@@ -2162,6 +2195,21 @@ def slack_dm(token, user_id, text, blocks):
             error = "{} / {}".format(error, open_error)
     body = body or {}
     return (body.get("channel") or ""), (body.get("ts") or ""), error
+
+
+def send_ticket(token, g, user, ticket, marks):
+    """Give a player their ticket: (where, dm channel, dm ts, error). `where` is "channel" for a private note in the
+    game's channel (nothing to keep: a note has no address to edit it by, a press on it redraws it) or "dm" for a
+    private message, which is only the way out when the channel will not take the note (the person is not in it). The
+    error is both reasons, when neither went."""
+    text = fallback_text(g, "your ticket")
+    error = slack_ephemeral(token, g["channel"], user, text, None, ticket_blocks(g, ticket, marks))
+    if not error:
+        return "channel", "", "", ""
+    dm_channel, dm_ts, dm_error = slack_dm(token, user, text, ticket_blocks(g, ticket, marks, dm=True))
+    if dm_error:
+        return "", "", "", "{} / {}".format(error, dm_error)
+    return "dm", dm_channel, dm_ts, ""
 
 
 def slack_user_info(token, user_id):
@@ -2693,9 +2741,9 @@ def find_active(table, channel, user):
 
 
 def resend_ticket(token, table, result, g, user, stamp, say):
-    """Send a player their ticket again, with the numbers they had marked. `say(text)` gives them the private note
-    that answers (a new private note, for the typed word). True when sent. Never used for the organizer, whose ticket
-    is in their controls."""
+    """Send a player their ticket again, with the numbers they had marked, as a new private note in the channel.
+    `say(text)` gives them the private note that answers when something is to be said. True when sent. Never used
+    for the organizer, whose ticket is in their controls."""
     mine = ticket = None
     marks, name = set(), ""
     if not g["test"]:
@@ -2714,7 +2762,7 @@ def resend_ticket(token, table, result, g, user, stamp, say):
             return False
         ticket = deal_ticket(g, user)         # dealt in, but the row was never written: the same ticket again
     name = name or g["names"].get(user) or name_of(slack_user_info(token, user))
-    dm_channel, dm_ts, error = slack_dm(token, user, fallback_text(g, "your ticket"), ticket_blocks(g, ticket, marks))
+    where, dm_channel, dm_ts, error = send_ticket(token, g, user, ticket, marks)
     if error:
         say(SAID_TICKET_FAILED)
         result["warnings"].append("ticket for {}: {}".format(user, error))
@@ -2722,7 +2770,8 @@ def resend_ticket(token, table, result, g, user, stamp, say):
         return False
     if not g["test"] and not save_player(table, g, user, name, ticket, marks, dm_channel, dm_ts, mine, stamp):
         result["warnings"].append("the row of {} was not saved".format(user))
-    say(SAID_TICKET_SENT)
+    if where == "dm":                         # the ticket itself is the answer when it is in the channel
+        say(SAID_TICKET_SENT)
     result["user_name"] = name
     return True
 
@@ -3145,23 +3194,23 @@ def click_join(input, result, token, table, parsed):
 
 def deal_tickets(token, table, g, ids, existing, stamp, deadline, result):
     """Send every player their ticket and write their row. (seated, no_ticket, waiting): the ones sent theirs,
-    the ones Slack would not message, and the ones not reached before `deadline`. The last two get theirs by
-    typing the word again.
+    the ones Slack would take no ticket for, and the ones not reached before `deadline`. The last two get theirs with
+    the board's My ticket button.
 
-    The organizer is dealt a ticket (and a row, so the review counts them) but is NOT sent it: theirs opens in their
-    own controls note, with Show my card, and a private message of it would only be a second copy to look after."""
+    A ticket is a private note in the game's channel, under the board; only where the channel will not take it does it
+    go to a private message. The organizer is dealt a ticket (and a row, so the review counts them) but is NOT sent
+    it: theirs opens in their own controls note, with Show my card, and a second copy would only be in the way."""
     def deal(user_id, send=True):
         name = g["names"].get(user_id) or ANONYMOUS
         ticket = deal_ticket(g, user_id)
-        dm_channel = dm_ts = dm_error = ""
+        where = dm_channel = dm_ts = dm_error = ""
         if send:
-            dm_channel, dm_ts, dm_error = slack_dm(token, user_id, fallback_text(g, "your ticket"),
-                                                   ticket_blocks(g, ticket, set()))
+            where, dm_channel, dm_ts, dm_error = send_ticket(token, g, user_id, ticket, set())
         saved = True
         if not g["test"]:
             saved = save_player(table, g, user_id, name, ticket, set(), dm_channel, dm_ts,
                                 existing.get(user_id), stamp)
-        return {"dm_error": dm_error, "saved": saved}
+        return {"dm_error": dm_error, "saved": saved, "where": where}
 
     seated, no_ticket, waiting = [], [], []
     if g["host"] in ids:
@@ -3180,6 +3229,9 @@ def deal_tickets(token, table, g, ids, existing, stamp, deadline, result):
                 result["warnings"].append("ticket for {}: {}".format(user_id, out["dm_error"]))
             else:
                 seated.append(user_id)
+                if out["where"] == "dm":
+                    result["warnings"].append(
+                        "ticket for {}: not in the channel, sent by private message".format(user_id))
             if not out["saved"]:
                 result["warnings"].append("the row of {} was not saved".format(user_id))
     return seated, no_ticket, waiting
@@ -3622,8 +3674,8 @@ def test_ticket(state):
 
 def settle_tap(result, token, table, g, row, ticket, marks, name, mine, number, stamp, user, show):
     """A tap on `number` of a player's ticket: judge it, save it, settle any prize and tell the channel. The same
-    rules whether the ticket is a private message or the organizer's card in their note. `show(game, marks, lines,
-    over)` gives the player their own view first, before anything is announced."""
+    rules whether the ticket is a note in the channel, a private message or the organizer's card. `show(game,
+    marks, lines, over)` gives the player their own view first, before anything is announced."""
     kind, marks_now, earned = judge_mark(g, ticket, marks, number)
     note = {"over": "", "again": TICKET_AGAIN.format(number=number),
             "wrong": TICKET_WRONG.format(number=number),
@@ -3676,16 +3728,38 @@ def settle_tap(result, token, table, g, row, ticket, marks, name, mine, number, 
     result["ok"] = True
 
 
+def show_ticket(result, token, input, g, user, channel, ts, ticket, marks, note="", over=False):
+    """Draw a ticket again where it was pressed. A ticket in the game's own channel is a private note: a press on it
+    replaces it through the press's `response_url`, so the player's ticket stays one note that changes in place (when
+    there is none, or Slack turns it down, a new note is sent under the board). A ticket in a private message (one an
+    earlier version sent, or one the channel would not take) is edited by its address."""
+    text = fallback_text(g, "your ticket")
+    if channel != g["channel"]:
+        error = slack_update(token, channel, ts, text, ticket_blocks(g, ticket, marks, note, over=over, dm=True))
+        if error:
+            result["warnings"].append("ticket: " + error)
+        return
+    blocks = ticket_blocks(g, ticket, marks, note, over=over)
+    url = usable_response_url(input)
+    if url:
+        error = respond(url, {"replace_original": True, "text": text, "blocks": blocks})
+        if not error:
+            return
+        result["warnings"].append("could not update the ticket in place: " + error)
+    tell(result, token, channel, user, text, blocks=blocks)
+
+
 def click_mark(input, result, token, table, parsed):
-    """A number on a ticket was tapped. It arrives from the player's private message, so `channel` is that
-    message's channel and everything said back is said on the ticket itself."""
+    """A number on a ticket was tapped. The ticket is a private note in the game's channel (or, for one sent by an
+    earlier version or where the channel would not take the note, a private message, whose channel is then the
+    press's); everything said back is said on the ticket itself."""
     clicker, dm_channel = result["user_id"], result["channel"]
     ticket_ts = str(input.get("source_ts") or "").strip()
     stamp = click_stamp(input)
     result["mode"], result["testing"] = "mark", parsed["test"]
     number = _int(parsed["arg"], 0, 0, NUMBERS)
-    if not number or not ticket_ts:
-        result["error"] = "a ticket press needs its number and source_ts (the ticket message)"
+    if not number:
+        result["error"] = "a ticket press needs its number"
         return
     result["marked"] = 0
     mine = None
@@ -3705,8 +3779,7 @@ def click_mark(input, result, token, table, parsed):
         g["board_ts"] = board_ts
         marks = marks_of(ticket, state.get("k"))
         if carried is None:
-            slack_update(token, dm_channel, ticket_ts, fallback_text(g, "your ticket"),
-                         ticket_blocks(g, ticket, marks, SAID_TEST_LOST))
+            show_ticket(result, token, input, g, clicker, dm_channel, ticket_ts, ticket, marks, SAID_TEST_LOST)
             result["ok"], result["skipped"] = True, "could not read the test board"
             return
     else:
@@ -3730,15 +3803,16 @@ def click_mark(input, result, token, table, parsed):
             result["ok"], result["skipped"] = True, "not a player"
             return
     result["game_id"], result["status"] = g["id"], g["status"]
+    if dm_channel != g["channel"] and not ticket_ts:
+        result["error"] = "a ticket press in a private message needs source_ts (the ticket message)"
+        return
     g["banners"], notes = read_banners(input.get("banners"))
     g["celebrate"] = _int(input.get("celebration_seconds"), CELEBRATION_SECONDS, 0, CELEBRATION_MAX)
     result["warnings"] += notes
 
     def show(game, marks_now, lines, over):
-        error = slack_update(token, dm_channel, ticket_ts, fallback_text(game, "your ticket"),
-                             ticket_blocks(game, ticket, marks_now, "\n".join(lines), over=over))
-        if error:
-            result["warnings"].append("ticket: " + error)
+        show_ticket(result, token, input, game, clicker, dm_channel, ticket_ts, ticket, marks_now, "\n".join(lines),
+                    over)
     settle_tap(result, token, table, g, row, ticket, marks, name, mine, number, stamp, clicker, show)
 
 
@@ -3807,12 +3881,42 @@ def click_hmark(input, result, token, table, parsed):
             reply(result, token, input, clicker, "\n".join(lines + [SAID_OVER]))
         else:
             show_controls(result, token, input, game, clicker, note="\n".join(lines), mine=(ticket, marks_now))
-        if kept and kept["dm_channel"] and kept["dm_ts"]:      # the ticket they were sent stays in step
+        if kept and kept["dm_channel"] and kept["dm_ts"]:      # a ticket an earlier version sent them stays in step
             error = slack_update(token, kept["dm_channel"], kept["dm_ts"], fallback_text(game, "your ticket"),
-                                 ticket_blocks(game, ticket, marks_now, over=over))
+                                 ticket_blocks(game, ticket, marks_now, over=over, dm=True))
             if error:
                 result["warnings"].append("ticket: " + error)
     settle_tap(result, token, table, g, row, ticket, marks, name, mine, number, stamp, clicker, show)
+
+
+def click_getticket(input, result, token, table, parsed):
+    """My ticket, on the board: whoever is playing gets their ticket again as a private note under the board, with the
+    numbers they have marked (a test game keeps no record of marks, so its ticket comes back clean). The note is new:
+    the press is on the public board, which must never be replaced by it. The organizer's ticket is in their controls,
+    so they are pointed there."""
+    clicker, channel = result["user_id"], result["channel"]
+    result["mode"], result["testing"] = "getticket", parsed["test"]
+    g, row, problem = open_game(token, table, parsed, input)
+    if problem:
+        tell(result, token, channel, clicker, problem)
+        result["ok"], result["skipped"] = problem != SAID_AGAIN, "game not available"
+        return
+    result["game_id"], result["status"] = g["id"], g["status"]
+    if g["status"] not in LIVE:
+        tell(result, token, channel, clicker, status_note(g))
+        result["ok"], result["skipped"] = True, "the game is not running"
+        return
+    if clicker == g["host"]:
+        tell(result, token, channel, clicker, SAID_HOST_CARD.format(word=typed_word(g)))
+        result["ok"], result["skipped"] = True, "the organizer's card is in their controls"
+        return
+    if clicker not in g["roster"]:
+        tell(result, token, channel, clicker, SAID_NOT_PLAYING)
+        result["ok"], result["skipped"] = True, "not a player"
+        return
+    resend_ticket(token, table, result, g, clicker, click_stamp(input),
+                  lambda text: tell(result, token, channel, clicker, text))
+    result["ok"] = not result.get("error")
 
 
 def click_ticket(input, result, token, table, parsed):
@@ -3852,7 +3956,8 @@ def click_ticket(input, result, token, table, parsed):
 CLICKS = {"set": click_set, "menu": click_menu, "blank": click_blank, "winners": click_winners,
           "pick": click_pick, "join": click_join,
           "start": click_start, "cancel": click_cancel, "next": click_next, "review": click_review,
-          "resume": click_resume, "end": click_end, "mark": click_mark, "hmark": click_hmark, "ticket": click_ticket}
+          "resume": click_resume, "end": click_end, "mark": click_mark, "hmark": click_hmark, "ticket": click_ticket,
+          "getticket": click_getticket}
 CLICK_INPUTS = ("payload", "action_value", "action_id", "selected_users", "selected_options", "selected_option",
                 "source_ts", "action_ts", "response_url", "state")
 

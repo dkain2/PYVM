@@ -1,0 +1,116 @@
+{
+	"view_submission": {
+		"type": "view_submission",
+		"team": {
+			"id": "T024R8JFQ",
+			"domain": "coursera",
+			"enterprise_id": "E03MQ8UE9CK",
+			"enterprise_name": "Coursera"
+		},
+		"user": {
+			"id": "U038ZCDAY6P",
+			"username": "dkain",
+			"name": "dkain",
+			"team_id": "T024R8JFQ"
+		},
+		"api_app_id": "A065GLAB6KT",
+		"trigger_id": "12623707410308.2161290534.63636a76075263b50e69ec236423b8a1",
+		"view": {
+			"id": "V0CK2B4PLC8",
+			"team_id": "T024R8JFQ",
+			"type": "modal",
+			"blocks": [
+				{
+					"type": "section",
+					"block_id": "N+k8D",
+					"text": {
+						"type": "mrkdwn",
+						"text": "*Does Ben let go of his anger, or hold onto his grudge?*",
+						"verbatim": false
+					}
+				},
+				{
+					"type": "input",
+					"block_id": "story_own",
+					"label": {
+						"type": "plain_text",
+						"text": "Your version of what happens next",
+						"emoji": true
+					},
+					"hint": {
+						"type": "plain_text",
+						"text": "As much or as little as you like, in your own words.",
+						"emoji": true
+					},
+					"optional": false,
+					"dispatch_action": false,
+					"element": {
+						"type": "plain_text_input",
+						"action_id": "value",
+						"multiline": true,
+						"max_length": 3000,
+						"dispatch_action_config": {
+							"trigger_actions_on": [
+								"on_enter_pressed"
+							]
+						}
+					}
+				},
+				{
+					"type": "context",
+					"block_id": "lhZye",
+					"elements": [
+						{
+							"type": "mrkdwn",
+							"text": "One pick each on every chapter. If your version wins, it becomes part of the story and is credited to you by name. Keep it workplace-friendly.",
+							"verbatim": false
+						}
+					]
+				}
+			],
+			"private_metadata": "{\"w\":\"2026-11-16\",\"c\":1,\"ch\":\"C0ASWC1C11Q\",\"ts\":\"1794858324.099609\",\"t\":0}",
+			"callback_id": "story_relay_submit",
+			"state": {
+				"values": {
+					"story_own": {
+						"value": {
+							"type": "plain_text_input",
+							"value": "ben goes to watch movie and sleep whole day"
+						}
+					}
+				},
+				"values_json": "{\"story_own\":{\"value\":{\"type\":\"plain_text_input\",\"value\":\"ben goes to watch movie and sleep whole day\"}}}"
+			},
+			"hash": "1794858762.CWiEc5Hl",
+			"title": {
+				"type": "plain_text",
+				"text": "Write your own plot",
+				"emoji": true
+			},
+			"clear_on_close": false,
+			"notify_on_close": false,
+			"close": {
+				"type": "plain_text",
+				"text": "Cancel",
+				"emoji": true
+			},
+			"submit": {
+				"type": "plain_text",
+				"text": "Lock it in",
+				"emoji": true
+			},
+			"previous_view_id": null,
+			"root_view_id": "V0CK2B4PLC8",
+			"app_id": "A065GLAB6KT",
+			"external_id": "",
+			"app_installed_team_id": "T024R8JFQ",
+			"bot_id": "B064XP1UN2J"
+		},
+		"response_urls": [],
+		"is_enterprise_install": false,
+		"enterprise": {
+			"id": "E03MQ8UE9CK",
+			"name": "Coursera"
+		}
+	}
+}

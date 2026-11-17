@@ -1,0 +1,508 @@
+[
+  {
+    "control_type": "text",
+    "label": "ok",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "ok",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "ok",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "error",
+    "name": "error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "warnings",
+    "name": "warnings",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "testing",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "testing",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "testing",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "testing",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "preview",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "preview",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "preview",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "preview",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "skipped",
+    "name": "skipped",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "week",
+    "name": "week",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "chapter",
+    "parse_output": "integer_conversion",
+    "name": "chapter",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "channel",
+    "name": "channel",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "recent_stories",
+    "name": "recent_stories",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "recent_themes",
+    "name": "recent_themes",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "stories_found",
+    "parse_output": "integer_conversion",
+    "name": "stories_found",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "saved",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "saved",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "saved",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "saved",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "status",
+    "name": "status",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "story_title",
+    "name": "story_title",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "kb_name",
+    "name": "kb_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "theme",
+    "name": "theme",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "author",
+    "name": "author",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "words",
+    "parse_output": "integer_conversion",
+    "name": "words",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "retry",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "retry",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "retry",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "retry",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "retry_reason",
+    "name": "retry_reason",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "problems",
+    "name": "problems",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "flagged",
+    "name": "flagged",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "chapters_preview",
+    "name": "chapters_preview",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "conversation_id",
+    "name": "conversation_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "genie_name",
+    "name": "genie_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "posted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "posted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "posted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "posted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "published",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "published",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "published",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "published",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "message_ts",
+    "name": "message_ts",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "text",
+    "name": "text",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "read_seconds",
+    "parse_output": "integer_conversion",
+    "name": "read_seconds",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "blocks_json",
+    "name": "blocks_json",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "preview_url",
+    "name": "preview_url",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "thread_ts",
+    "name": "thread_ts",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "settled",
+    "name": "settled",
+    "type": "array",
+    "of": "object",
+    "optional": true,
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "chapter",
+        "name": "chapter",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "choice",
+        "name": "choice",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "picks",
+        "name": "picks",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "quiet",
+        "name": "quiet",
+        "type": "boolean",
+        "optional": true,
+        "render_input": "boolean_conversion",
+        "parse_output": "boolean_conversion",
+        "toggle_hint": "Select from option list",
+        "toggle_field": {
+          "label": "quiet",
+          "control_type": "text",
+          "toggle_hint": "Use custom value",
+          "name": "quiet",
+          "type": "boolean",
+          "optional": true
+        }
+      }
+    ]
+  },
+  {
+    "control_type": "text",
+    "label": "user_id",
+    "name": "user_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "user_name",
+    "name": "user_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "pick",
+    "name": "pick",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "recorded",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "recorded",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "recorded",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "recorded",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "already",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "already",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "already",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "already",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "picks_in",
+    "parse_output": "integer_conversion",
+    "name": "picks_in",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "rows_written",
+    "parse_output": "integer_conversion",
+    "name": "rows_written",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "llm_calls",
+    "parse_output": "integer_conversion",
+    "name": "llm_calls",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "restarted",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "restarted",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "restarted",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "restarted",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "passage_words",
+    "parse_output": "integer_conversion",
+    "name": "passage_words",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "passage_shown",
+    "parse_output": "integer_conversion",
+    "name": "passage_shown",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  }
+]

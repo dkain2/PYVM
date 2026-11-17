@@ -13,7 +13,7 @@
     "name": "slack_bot_token",
     "type": "string",
     "optional": true,
-    "hint": "Bot token. Scopes: chat:write and users:read; channels:read (groups:read in a private channel) for Everyone in this channel; channels:history (groups:history) for test games only; im:write as a fallback for private messages."
+    "hint": "Bot token. Scopes: chat:write and users:read; channels:read (groups:read in a private channel) for Everyone in this channel; channels:history (groups:history) for test games only; im:write for the rare ticket that has to go to a private message (the person is not in the channel)."
   },
   {
     "control_type": "text",
@@ -37,7 +37,7 @@
     "name": "channel",
     "type": "string",
     "optional": false,
-    "hint": "[both] Channel id the message [typed] or the button [click] is in. A ticket press arrives from the player's private message, so there it is that message's channel; the game's own channel is read from the game."
+    "hint": "[both] Channel id the message [typed] or the button [click] is in. A ticket is a private note in the game's channel, so for a press on it this is the game's channel; a ticket in a private message (the fallback, or one an earlier version sent) arrives with that message's channel."
   },
   {
     "control_type": "text",
@@ -149,7 +149,7 @@
     "name": "response_url",
     "type": "string",
     "optional": true,
-    "hint": "[click] The press's response_url (the top-level response_url of the interaction payload, not inside actions). Optional but recommended: with it the organizer's private controls are UPDATED IN PLACE, one note for the whole game (Start turns the lobby's controls into the game's, each Next number shows what was just called, Review and Resume swap the buttons, a stale button turns into the right ones), instead of a new private note each time the game moves on. Only Slack's own response URLs are used; anything else is ignored with a warning."
+    "hint": "[click] The press's response_url (the top-level response_url of the interaction payload, not inside actions). Recommended: with it the organizer's private controls are UPDATED IN PLACE, one note for the whole game (Start turns the lobby's controls into the game's, each Next number shows what was just called, Review and Resume swap the buttons, a stale button turns into the right ones), and so is each player's ticket (a tap turns the number green on the note where it is), instead of a new private note each time. Without it a tap sends the ticket again as a new note and they pile up. Only Slack's own response URLs are used; anything else is ignored with a warning."
   },
   {
     "control_type": "text",
@@ -200,7 +200,7 @@
     "name": "max_players",
     "type": "integer",
     "optional": true,
-    "hint": "[typed] Most players a game holds. Default 60, never more than 100. Each player costs a table write and a private message, and a Workato Python step is stopped at 90 seconds.",
+    "hint": "[typed] Most players a game holds. Default 60, never more than 100. Each player costs a table write and a private note, and a Workato Python step is stopped at 90 seconds.",
     "render_input": "integer_conversion"
   },
   {
