@@ -1,0 +1,581 @@
+{
+ "error": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Sorry, I couldn't answer that one. Please try again in a minute, or ask the IT Integrations team.\n```boom```",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    }
+   ],
+   "color": "#C48B8B",
+   "fallback": "SNAP could not answer"
+  }
+ ],
+ "hello": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Hi! Ask me anything about *Proj*.\nFor example: `SNAP why did quote Q-123 not sync to NetSuite?`",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    }
+   ],
+   "color": "#9DB4A3",
+   "fallback": "Ask SNAP a question"
+  }
+ ],
+ "long": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 0 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 1 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 2 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 3 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 4 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 5 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 6 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 7 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 8 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 9 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 10 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 11 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 12 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 13 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 14 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 15 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 16 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 17 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 18 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 19 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 20 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 21 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 22 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 23 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 24 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 25 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 26 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 27 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 28 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 29 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 30 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 31 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 32 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 33 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 34 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 35 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 36 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 37 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word\n\nParagraph 38 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Paragraph 39 word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "elements": [
+      {
+       "text": "Asked by <@U1>  \u00b7  Reply in this thread to follow up",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "elements": [
+      {
+       "action_id": "genie_feedback",
+       "negative_button": {
+        "text": {
+         "text": "Bad response",
+         "type": "plain_text"
+        },
+        "value": "negative"
+       },
+       "positive_button": {
+        "text": {
+         "text": "Good response",
+         "type": "plain_text"
+        },
+        "value": "positive"
+       },
+       "type": "feedback_buttons"
+      }
+     ],
+     "type": "context_actions"
+    }
+   ],
+   "color": "#6B8FB3",
+   "fallback": "Paragraph 0 word word word word word word word word word word word word word word word word word word word word word word word word word word word wor"
+  }
+ ],
+ "plain": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "expand": true,
+     "text": {
+      "text": "Short answer.",
+      "type": "mrkdwn"
+     },
+     "type": "section"
+    },
+    {
+     "elements": [
+      {
+       "text": "Asked by <@U1>  \u00b7  Reply in this thread to follow up",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "elements": [
+      {
+       "action_id": "genie_feedback",
+       "negative_button": {
+        "text": {
+         "text": "Bad response",
+         "type": "plain_text"
+        },
+        "value": "negative"
+       },
+       "positive_button": {
+        "text": {
+         "text": "Good response",
+         "type": "plain_text"
+        },
+        "value": "positive"
+       },
+       "type": "feedback_buttons"
+      }
+     ],
+     "type": "context_actions"
+    }
+   ],
+   "color": "#6B8FB3",
+   "fallback": "Short answer."
+  }
+ ],
+ "rich_pages": [
+  [
+   {
+    "blocks": [
+     {
+      "elements": [
+       {
+        "text": "*SNAP*  \u00b7  Support",
+        "type": "mrkdwn"
+       }
+      ],
+      "type": "context"
+     },
+     {
+      "expand": true,
+      "text": {
+       "text": "*Why quote Q-123 did not sync*\n\nThe *quote* was rejected by NetSuite. See <https://app.workato.com/recipes/1|the recipe>.\n\n*What happened*\n\u2022 Step 1: the quote was *approved*\n  \u2022 nested detail\n\u2022 Step 2: NetSuite said `INVALID_KEY`\n\n> Retrying will not help until the customer exists.",
+       "type": "mrkdwn"
+      },
+      "type": "section"
+     },
+     {
+      "type": "divider"
+     },
+     {
+      "column_settings": [
+       {
+        "align": "left",
+        "is_wrapped": true
+       },
+       {
+        "align": "left",
+        "is_wrapped": true
+       }
+      ],
+      "rows": [
+       [
+        {
+         "elements": [
+          {
+           "elements": [
+            {
+             "style": {
+              "bold": true
+             },
+             "text": "Field",
+             "type": "text"
+            }
+           ],
+           "type": "rich_text_section"
+          }
+         ],
+         "type": "rich_text"
+        },
+        {
+         "elements": [
+          {
+           "elements": [
+            {
+             "style": {
+              "bold": true
+             },
+             "text": "Value",
+             "type": "text"
+            }
+           ],
+           "type": "rich_text_section"
+          }
+         ],
+         "type": "rich_text"
+        }
+       ],
+       [
+        {
+         "text": "Quote",
+         "type": "raw_text"
+        },
+        {
+         "text": "Q-123",
+         "type": "raw_text"
+        }
+       ],
+       [
+        {
+         "text": "Status",
+         "type": "raw_text"
+        },
+        {
+         "elements": [
+          {
+           "elements": [
+            {
+             "style": {
+              "bold": true
+             },
+             "text": "Failed",
+             "type": "text"
+            }
+           ],
+           "type": "rich_text_section"
+          }
+         ],
+         "type": "rich_text"
+        }
+       ]
+      ],
+      "type": "table"
+     }
+    ],
+    "color": "#6B8FB3",
+    "fallback": "# Why quote Q-123 did not sync\n\nThe **quote** was rejected by NetSuite. See [the recipe](https://app.workato.com/recipes/1).\n\n## What happened\n- Step "
+   }
+  ],
+  [
+   {
+    "blocks": [
+     {
+      "column_settings": [
+       {
+        "align": "left",
+        "is_wrapped": true
+       },
+       {
+        "align": "left",
+        "is_wrapped": true
+       }
+      ],
+      "rows": [
+       [
+        {
+         "elements": [
+          {
+           "elements": [
+            {
+             "style": {
+              "bold": true
+             },
+             "text": "Other",
+             "type": "text"
+            }
+           ],
+           "type": "rich_text_section"
+          }
+         ],
+         "type": "rich_text"
+        },
+        {
+         "elements": [
+          {
+           "elements": [
+            {
+             "style": {
+              "bold": true
+             },
+             "text": "Table",
+             "type": "text"
+            }
+           ],
+           "type": "rich_text_section"
+          }
+         ],
+         "type": "rich_text"
+        }
+       ],
+       [
+        {
+         "text": "a",
+         "type": "raw_text"
+        },
+        {
+         "text": "b",
+         "type": "raw_text"
+        }
+       ]
+      ],
+      "type": "table"
+     },
+     {
+      "expand": true,
+      "text": {
+       "text": "```\nprint('hi')\n```",
+       "type": "mrkdwn"
+      },
+      "type": "section"
+     },
+     {
+      "elements": [
+       {
+        "text": "Asked by <@U1>  \u00b7  Reply in this thread to follow up",
+        "type": "mrkdwn"
+       }
+      ],
+      "type": "context"
+     },
+     {
+      "elements": [
+       {
+        "action_id": "genie_feedback",
+        "negative_button": {
+         "text": {
+          "text": "Bad response",
+          "type": "plain_text"
+         },
+         "value": "negative"
+        },
+        "positive_button": {
+         "text": {
+          "text": "Good response",
+          "type": "plain_text"
+         },
+         "value": "positive"
+        },
+        "type": "feedback_buttons"
+       }
+      ],
+      "type": "context_actions"
+     }
+    ],
+    "color": "#6B8FB3",
+    "fallback": "| Other | Table |\n|---|---|\n| a | b |\n\n```python\nprint('hi')\n```"
+   }
+  ]
+ ],
+ "thinking": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support  is looking into it :loading-2:",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    }
+   ],
+   "color": "#A0AEC0",
+   "fallback": "SNAP is thinking"
+  }
+ ],
+ "thinking_with_plan": [
+  {
+   "blocks": [
+    {
+     "elements": [
+      {
+       "text": "*SNAP*  \u00b7  Support  is looking into it :loading-2:",
+       "type": "mrkdwn"
+      }
+     ],
+     "type": "context"
+    },
+    {
+     "tasks": [
+      {
+       "details": {
+        "elements": [
+         {
+          "elements": [
+           {
+            "text": "\u201cwhy?\u201d",
+            "type": "text"
+           }
+          ],
+          "type": "rich_text_section"
+         }
+        ],
+        "type": "rich_text"
+       },
+       "status": "complete",
+       "task_id": "read",
+       "title": "Read your question"
+      },
+      {
+       "details": {
+        "elements": [
+         {
+          "elements": [
+           {
+            "text": "Support",
+            "type": "text"
+           }
+          ],
+          "type": "rich_text_section"
+         }
+        ],
+        "type": "rich_text"
+       },
+       "status": "complete",
+       "task_id": "pick",
+       "title": "Picked SNAP"
+      },
+      {
+       "status": "in_progress",
+       "task_id": "work",
+       "title": "Looking into it"
+      },
+      {
+       "status": "pending",
+       "task_id": "write",
+       "title": "Write the answer"
+      }
+     ],
+     "title": "SNAP is working on it",
+     "type": "plan"
+    }
+   ],
+   "color": "#A0AEC0",
+   "fallback": "SNAP is thinking"
+  }
+ ]
+}

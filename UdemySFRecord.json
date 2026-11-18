@@ -1,0 +1,586 @@
+[
+  {
+    "control_type": "integer",
+    "label": "OffsetRows",
+    "parse_output": "integer_conversion",
+    "name": "OffsetRows",
+    "type": "integer",
+    "optional": true,
+    "details": {
+      "real_name": "OffsetRows"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "SuccessRecordCount",
+    "parse_output": "integer_conversion",
+    "name": "SuccessRecordCount",
+    "type": "integer",
+    "optional": true,
+    "details": {
+      "real_name": "SuccessRecordCount"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "FailedRecordCount",
+    "parse_output": "integer_conversion",
+    "name": "FailedRecordCount",
+    "type": "integer",
+    "optional": true,
+    "details": {
+      "real_name": "FailedRecordCount"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "date_time",
+    "label": "TempLastUpdatedDateTime",
+    "render_input": "date_time_conversion",
+    "parse_output": "date_time_conversion",
+    "name": "TempLastUpdatedDateTime",
+    "type": "date_time",
+    "optional": true,
+    "details": {
+      "real_name": "TempLastUpdatedDateTime"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true
+  },
+  {
+    "control_type": "integer",
+    "label": "BatchSize",
+    "parse_output": "integer_conversion",
+    "name": "BatchSize",
+    "type": "integer",
+    "optional": true,
+    "details": {
+      "real_name": "BatchSize"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Courera_Logo_Allowed__c",
+        "name": "Courera_Logo_Allowed__c",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "Courera_Logo_Allowed__c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "AccountSource",
+        "name": "AccountSource",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "AccountSource"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "OwnerId",
+        "name": "OwnerId",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "OwnerId"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Legal Team Logo Rights Notes c",
+        "name": "legal_team_logo_rights_notes_c",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "Legal Team Logo Rights Notes c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Winner",
+        "name": "Winner",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "Winner"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "ID",
+        "optional": true,
+        "type": "string",
+        "name": "Id",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera Legacy Account Segment c",
+        "name": "coursera_legacy_account_segment_c",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "Coursera Legacy Account Segment c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "number",
+        "label": "ZoomInfo Company Revenue c",
+        "parse_output": "float_conversion",
+        "name": "zoom_info_company_revenue_c",
+        "type": "number",
+        "optional": true,
+        "details": {
+          "real_name": "ZoomInfo Company Revenue c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true,
+        "render_input": "float_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Shipping street",
+        "optional": true,
+        "type": "string",
+        "name": "ShippingStreet",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Shipping city",
+        "optional": true,
+        "type": "string",
+        "name": "ShippingCity",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Shipping state",
+        "optional": true,
+        "type": "string",
+        "name": "ShippingState",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Shipping postal code",
+        "optional": true,
+        "type": "string",
+        "name": "ShippingPostalCode",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Shipping country",
+        "optional": true,
+        "type": "string",
+        "name": "ShippingCountry",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Billing street",
+        "optional": true,
+        "type": "string",
+        "name": "BillingStreet",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Billing city",
+        "optional": true,
+        "type": "string",
+        "name": "BillingCity",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Billing state",
+        "optional": true,
+        "type": "string",
+        "name": "BillingState",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Billing postal code",
+        "optional": true,
+        "type": "string",
+        "name": "BillingPostalCode",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Billing country",
+        "optional": true,
+        "type": "string",
+        "name": "BillingCountry",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "date",
+        "label": "Next Contract Renewal Date c",
+        "render_input": "date_conversion",
+        "parse_output": "date_conversion",
+        "name": "next_contract_renewal_date_c",
+        "type": "date",
+        "optional": true,
+        "details": {
+          "real_name": "Next Contract Renewal Date c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Customer Success Manager CSM c",
+        "name": "customer_success_manager_csm_c",
+        "type": "string",
+        "optional": true,
+        "details": {
+          "real_name": "Customer Success Manager CSM c"
+        },
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Account plan c",
+        "optional": true,
+        "type": "string",
+        "name": "Account_Plan__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy account group c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_Account_Group__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy account ID c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_Account_Id__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy legal entity name c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_Legal_Entity_Name__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy net suite ID c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_NetSuite_Id__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "LID linked in company ID c",
+        "optional": true,
+        "type": "string",
+        "name": "LID__LinkedIn_Company_Id__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "NAICS code 1 c",
+        "optional": true,
+        "type": "string",
+        "name": "NAICS_Code_1__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "NAICS description 1 c",
+        "optional": true,
+        "type": "string",
+        "name": "NAICS_Description_1__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Fferpcore vat registration number c",
+        "optional": true,
+        "type": "string",
+        "name": "fferpcore__VatRegistrationNumber__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Zoom info company revenue c",
+        "optional": true,
+        "type": "string",
+        "name": "ZoomInfo_Company_Revenue__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Zoom info employees c",
+        "parse_output": "integer_conversion",
+        "optional": true,
+        "type": "integer",
+        "name": "ZoomInfo_Employees__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Zoom info industry c",
+        "optional": true,
+        "type": "string",
+        "name": "ZoomInfo_Industry__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Zoom info website c",
+        "optional": true,
+        "type": "string",
+        "name": "ZoomInfo_Website__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Partner type c",
+        "optional": true,
+        "type": "string",
+        "name": "PartnerType__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Number of students c",
+        "optional": true,
+        "type": "string",
+        "name": "Number_of_Students__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera open pipeline c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Open_Pipeline__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera active ARR c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Active_ARR__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy AI account research doc c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_AI_Account_Research_Doc__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy account status c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_Account_Status__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Coursera legacy community college c",
+        "optional": true,
+        "type": "string",
+        "name": "Coursera_Legacy_Community_College__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Description",
+        "optional": true,
+        "type": "string",
+        "name": "Description",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Phone",
+        "optional": true,
+        "type": "string",
+        "name": "Phone",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "number",
+        "label": "Annual revenue",
+        "parse_output": "float_conversion",
+        "optional": true,
+        "type": "number",
+        "name": "AnnualRevenue",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Industry",
+        "optional": true,
+        "type": "string",
+        "name": "Industry",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Sic",
+        "optional": true,
+        "type": "string",
+        "name": "Sic",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Sic desc",
+        "optional": true,
+        "type": "string",
+        "name": "SicDesc",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "Website",
+        "optional": true,
+        "type": "string",
+        "name": "Website",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "text",
+        "label": "PO required c",
+        "optional": true,
+        "type": "string",
+        "name": "PO_Required__c",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Number of employees",
+        "parse_output": "integer_conversion",
+        "optional": true,
+        "type": "integer",
+        "name": "NumberOfEmployees",
+        "hint": "Defaults to nil if not supplied.",
+        "sticky": true
+      }
+    ],
+    "label": "UdemySFRecord",
+    "name": "UdemySFRecord",
+    "type": "object",
+    "optional": true,
+    "details": {
+      "real_name": "UdemySFRecord"
+    },
+    "initially_expanded": true,
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true
+  },
+  {
+    "control_type": "text",
+    "label": "DataTablePageToken",
+    "name": "DataTablePageToken",
+    "type": "string",
+    "optional": true,
+    "details": {
+      "real_name": "DataTablePageToken"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true
+  },
+  {
+    "control_type": "number",
+    "label": "SkippedCount",
+    "parse_output": "float_conversion",
+    "name": "SkippedCount",
+    "type": "number",
+    "optional": true,
+    "details": {
+      "real_name": "SkippedCount"
+    },
+    "hint": "Defaults to nil if not supplied.",
+    "sticky": true
+  }
+]

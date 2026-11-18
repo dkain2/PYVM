@@ -54,6 +54,22 @@ Input schema:
     seed_reaction   : put the reaction the closing line asks for on the post itself
                       (optional, default true; needs reactions:write, and is skipped
                       with a warning without it)
+    look            : new | old   (optional, default new) how the post is built, in either
+                      format. old is the post exactly as it always was: header, sections,
+                      fields, context. new uses Slack's newer blocks -- a tile grid (layout),
+                      a native chart (data_visualization), cards in a carousel, a native table
+                      and titled panels (container) -- with the same words and figures: in the
+                      weekly post the badges are the cards and the top contributors the table;
+                      in the classic summary the next milestones are the cards and the other
+                      activities the table. If Slack refuses a new block (invalid_blocks) that
+                      feature is left out and the post sent again, one feature at a time, down
+                      to the old post if need be; the error says which block Slack did not
+                      like, and `look_used` what went out: new, "new (without tiles)" or old.
+    new_features    : which parts of the new look to use (optional, default all): any of
+                      headers, tiles, charts, cards, tables, panels, separated by commas.
+                      "-charts" takes one away from the full set; "none" is the old post.
+                      Only read when look is new. (charts is the weekly post's chart; the
+                      classic summary has none, so for it that word changes nothing.)
     snapshot_row_type, today, local_data_file, local_snapshot_file : testing aids
 
 Output: see OUTPUT SCHEMA at the foot of this file.
@@ -386,6 +402,20 @@ def bar(activity, share):
     return fill * filled + BAR_EMPTY * (BAR_WIDTH - filled)
 
 
+# The same squares as characters. A card's body takes 200 characters, and ten :shortcodes:
+# are 193 of them before a word is said; as characters they are ten.
+BAR_SQUARES = {":large_blue_square:": "\U0001F7E6", ":large_yellow_square:": "\U0001F7E8",
+               ":large_green_square:": "\U0001F7E9", ":white_large_square:": "\u2B1C"}
+
+
+def compact_bar(activity, share):
+    """bar(), in emoji characters rather than :shortcodes:, for where length is limited."""
+    text = bar(activity, share)
+    for code, char in BAR_SQUARES.items():
+        text = text.replace(code, char)
+    return text
+
+
 BLOCK_FULL, BLOCK_EMPTY = "\u2588", "\u2591"
 
 
@@ -468,26 +498,24 @@ def progress_bars(facts):
     return "\n".join(lines)
 
 
-def build_classic_blocks(facts):
-    blocks = [{"type": "section", "text": {"type": "mrkdwn",
-               # A zero-width space on its own line. A bare "\n" gets trimmed
-               # by Slack; this survives and keeps the title off the app name.
-               "text": "\u200b\n{}  *How far we've come*".format(team_emoji())}}]
-
+def classic_line(facts):
+    """The line under the title: how many people, how many sessions, since when."""
     line = "*{}* people  ·  *{:,}* sessions".format(facts["people"], facts["logs"])
     if facts["since"]:
         line += "  ·  since {}".format(pretty_date(facts["since"]))
-    blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": line}})
+    return line
 
-    # Milestones the channel has already finished: a full lap (steps' "1 x
-    # 1,000,000, done") and, just as prominently, every rung cleared inside a
-    # lap still in progress (pushups' "3 x 1,000", plank's "3 x 1 hour"). All
-    # of it leads, because it is the part that never resets -- the bars below
-    # start from zero again after a lap, and without this the reset would
-    # read as losing ground. Everything here gets equal, bold billing -- a
-    # rung is as real a milestone as a lap, just a smaller one, and burying it
-    # in a dim context line under only steps' banner made it look like steps
-    # was the only activity with anything worth banking.
+
+def classic_banked(facts):
+    """The milestones the channel has already finished, one line each: a full lap (steps'
+    "1 x 1,000,000, done") and, just as prominently, every rung cleared inside a
+    lap still in progress (pushups' "3 x 1,000", plank's "3 x 1 hour"). All
+    of it leads, because it is the part that never resets -- the bars below
+    start from zero again after a lap, and without this the reset would
+    read as losing ground. Everything here gets equal, bold billing -- a
+    rung is as real a milestone as a lap, just a smaller one, and burying it
+    in a dim context line under only steps' banner made it look like steps
+    was the only activity with anything worth banking."""
     banked = []
     for activity in HEADLINE:
         value, _noun = headline_value(activity, facts)
@@ -506,15 +534,14 @@ def build_classic_blocks(facts):
             banked.append("{}  *{}*".format(
                 ICONS.get(activity, ""),
                 milestone_banner(activity, spot["rung_count"], spot["rung_step"])))
+    return banked
 
-    if banked:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "section", "text": {"type": "mrkdwn",
-                       "text": "*Already banked*\n" + "\n".join(banked)}})
 
-    # Closest to its milestone first. Leading with "4 minutes from two hours"
-    # is an invitation; leading with the goal 80% away buries the one thing
-    # somebody could actually finish tonight.
+def classic_standing(facts):
+    """[(share, activity, value, where it stands)] for the headline activities, the closest
+    to its milestone first. Leading with "4 minutes from two hours"
+    is an invitation; leading with the goal 80% away buries the one thing
+    somebody could actually finish tonight."""
     standing = []
     for activity in HEADLINE:
         value, _noun = headline_value(activity, facts)
@@ -522,75 +549,70 @@ def build_classic_blocks(facts):
         if value and spot:
             standing.append((spot["share"], activity, value, spot))
     standing.sort(reverse=True)
+    return standing
 
-    # A heading, or the bars just start after "Already banked" with nothing
-    # saying what they are counting towards.
-    if standing:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "section", "text": {"type": "mrkdwn",
-                       "text": ":dart:  *Up next*"}})
 
-    for share, activity, value, spot in standing:
-        line = "{}  *{}*  ·  {}".format(
-            ICONS.get(activity, ""), TITLE.get(activity, activity.title()),
-            humanize(activity, value))
-        if activity == "step":
-            line += "  ·  {:,.0f} km".format(
-                facts["totals"]["step"] * STRIDE_M / 1000.0)
-        # The percentage says how far along; the gap says what is left. They
-        # answer different questions, so the line carries both.
-        line += "  ·  *{:.0f}%*".format(share * 100)
-        if share >= 0.85:
-            line += " — almost there"
-        # "117 to 500" reads as "117 out of 500". It means 117 remaining.
-        line += "\n{}  *{}* to go \u2192 *{}*".format(
-            bar(activity, share), humanize(activity, spot["to_go"]),
-            humanize(activity, spot["next"]))
-        blocks.append({"type": "section",
-                       "text": {"type": "mrkdwn", "text": line}})
+def classic_standing_line(facts, share, activity, value, spot):
+    """One activity's progress as two lines of text: where it stands, then the bar."""
+    line = "{}  *{}*  ·  {}".format(
+        ICONS.get(activity, ""), TITLE.get(activity, activity.title()),
+        humanize(activity, value))
+    if activity == "step":
+        line += "  ·  {:,.0f} km".format(
+            facts["totals"]["step"] * STRIDE_M / 1000.0)
+    # The percentage says how far along; the gap says what is left. They
+    # answer different questions, so the line carries both.
+    line += "  ·  *{:.0f}%*".format(share * 100)
+    if share >= 0.85:
+        line += " — almost there"
+    # "117 to 500" reads as "117 out of 500". It means 117 remaining.
+    line += "\n{}  *{}* to go → *{}*".format(
+        bar(activity, share), humanize(activity, spot["to_go"]),
+        humanize(activity, spot["next"]))
+    return line
 
-    # For plank and pushup the record people care about is the single hold or
-    # single set -- one unbroken effort. A day total is a sum of several, and
-    # for steps it is the only thing there is, so steps alone uses the day.
-    # Everything else people log. Deliberately compact and without bars: these
-    # are small numbers, and a half-empty progress bar next to a 92% one reads
-    # as failure rather than variety. Shown as an opening instead -- the people
-    # doing them see their work counted, and newcomers see there is more here
-    # than planks, with room to be first at something.
-    others = []
-    for activity in sorted(facts["totals"], key=lambda a: -facts["sessions"][a]):
-        if activity in HEADLINE:
-            continue
-        count = facts["sessions"][activity]
-        # Name the activity. "6h 40m in the pool" leaves people working out
-        # which trigger that was.
-        others.append("{}  *{}*  ·  {} {}  ·  {} session{}".format(
-            ICONS.get(activity, ""), TITLE.get(activity, activity.title()),
-            humanize(activity, facts["totals"][activity]),
-            SECONDARY_NOUN.get(activity, activity), count,
-            "" if count == 1 else "s"))
-    if others:
-        blocks.append({"type": "divider"})
-        blocks.append({"type": "section", "text": {"type": "mrkdwn",
-                       "text": ":seedling:  *Also happening here*\n"
-                               + "\n".join(others)}})
-        blocks.append({"type": "context", "elements": [{"type": "mrkdwn",
-                       # An open invitation, not a ranking and not a nudge
-                       # towards whichever is "easiest" -- people pick up an
-                       # activity because it suits them, not because it is
-                       # unclaimed.
-                       "text": "Pick whichever one suits you — "
-                               "it all counts here."}]})
 
-    blocks.append({"type": "divider"})
-    blocks.append({"type": "section", "text": {"type": "mrkdwn",
-                   "text": ">That's the week. *Your streak holds over the weekend* "
-                           "— Monday picks up where Friday left off, so rest "
-                           "properly if you need it.\n>_Anything you log Saturday or "
-                           "Sunday is a bonus._ :wave:"}})
+def classic_other_activities(facts):
+    """The activities outside the headline three, the most logged first.
 
-    # The last word is an invitation, and it names whatever is genuinely
-    # closest rather than a fixed activity -- so it stays true every week.
+    For plank and pushup the record people care about is the single hold or
+    single set -- one unbroken effort. A day total is a sum of several, and
+    for steps it is the only thing there is, so steps alone uses the day.
+    Everything else people log. Deliberately compact and without bars: these
+    are small numbers, and a half-empty progress bar next to a 92% one reads
+    as failure rather than variety. Shown as an opening instead -- the people
+    doing them see their work counted, and newcomers see there is more here
+    than planks, with room to be first at something."""
+    return [a for a in sorted(facts["totals"], key=lambda a: -facts["sessions"][a])
+            if a not in HEADLINE]
+
+
+def classic_other_line(facts, activity):
+    """One of the other activities as a line. Named: "6h 40m in the pool" leaves people
+    working out which trigger that was."""
+    count = facts["sessions"][activity]
+    return "{}  *{}*  ·  {} {}  ·  {} session{}".format(
+        ICONS.get(activity, ""), TITLE.get(activity, activity.title()),
+        humanize(activity, facts["totals"][activity]),
+        SECONDARY_NOUN.get(activity, activity), count,
+        "" if count == 1 else "s")
+
+
+# An open invitation, not a ranking and not a nudge towards whichever is "easiest" -- people
+# pick up an activity because it suits them, not because it is unclaimed.
+CLASSIC_INVITE = "Pick whichever one suits you — it all counts here."
+
+
+def classic_closing_blocks(standing):
+    """The last two words of the post: that the streak holds over the weekend, then an
+    invitation that names whatever is genuinely closest rather than a fixed activity -- so
+    it stays true every week."""
+    blocks = [{"type": "divider"},
+              {"type": "section", "text": {"type": "mrkdwn",
+               "text": ">That's the week. *Your streak holds over the weekend* "
+                       "— Monday picks up where Friday left off, so rest "
+                       "properly if you need it.\n>_Anything you log Saturday or "
+                       "Sunday is a bonus._ :wave:"}}]
     if standing:
         share, activity, _value, spot = standing[0]
         name = TITLE.get(activity, activity.title()).lower()
@@ -605,6 +627,58 @@ def build_classic_blocks(facts):
         blocks.append({"type": "section",
                        "text": {"type": "mrkdwn", "text": call}})
     return blocks
+
+
+def old_classic_blocks(facts, team):
+    """The classic all-time summary as it always was: sections, a divider, one context line."""
+    blocks = [{"type": "section", "text": {"type": "mrkdwn",
+               # A zero-width space on its own line. A bare "\n" gets trimmed
+               # by Slack; this survives and keeps the title off the app name.
+               "text": "​\n{}  *How far we've come*".format(team)}}]
+    blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": classic_line(facts)}})
+
+    banked = classic_banked(facts)
+    if banked:
+        blocks.append({"type": "divider"})
+        blocks.append({"type": "section", "text": {"type": "mrkdwn",
+                       "text": "*Already banked*\n" + "\n".join(banked)}})
+
+    standing = classic_standing(facts)
+
+    # A heading, or the bars just start after "Already banked" with nothing
+    # saying what they are counting towards.
+    if standing:
+        blocks.append({"type": "divider"})
+        blocks.append({"type": "section", "text": {"type": "mrkdwn",
+                       "text": ":dart:  *Up next*"}})
+
+    for share, activity, value, spot in standing:
+        blocks.append({"type": "section", "text": {
+            "type": "mrkdwn",
+            "text": classic_standing_line(facts, share, activity, value, spot)}})
+
+    others = [classic_other_line(facts, a) for a in classic_other_activities(facts)]
+    if others:
+        blocks.append({"type": "divider"})
+        blocks.append({"type": "section", "text": {"type": "mrkdwn",
+                       "text": ":seedling:  *Also happening here*\n"
+                               + "\n".join(others)}})
+        blocks.append({"type": "context", "elements": [{"type": "mrkdwn",
+                       "text": CLASSIC_INVITE}]})
+
+    blocks.extend(classic_closing_blocks(standing))
+    return blocks
+
+
+def build_classic_blocks(facts, look=None, team=""):
+    """The classic all-time summary: totals, milestones banked, progress towards the next
+    rung. `look` is a Look (parse_look), as for the weekly post: the new look's features, or
+    OLD_LOOK / None for the summary as it always was. `team` is the team emoji it wears; one
+    is picked when it is blank."""
+    team = team or team_emoji()
+    if look is not None and look.new:
+        return new_classic_blocks(look, facts, team)
+    return old_classic_blocks(facts, team)
 
 
 def fallback_text(facts):
@@ -627,7 +701,13 @@ def post(token, channel, text, blocks, thread_ts=""):
         json=payload, timeout=30)
     body = response.json()
     if not body.get("ok"):
-        return False, str(body.get("error") or "unknown"), ""
+        error = str(body.get("error") or "unknown")
+        # For invalid_blocks Slack says which block and why ("unsupported type: layout
+        # [json-pointer:/blocks/4/type]"). Kept, so the error names the one to switch off.
+        notes = (body.get("response_metadata") or {}).get("messages") or []
+        if notes:
+            error += ": " + "; ".join(str(note) for note in notes[:2])[:300]
+        return False, error, ""
     return True, "", body.get("ts") or ""
 
 
@@ -1820,6 +1900,20 @@ def badge_cell(people, badge, pids, mention=False):
     return "{}  *{}*\n{}".format(badge["emoji"], badge["name"], names_text(labels, limit=shown))
 
 
+def badge_order(earned):
+    """What was earned, kind by kind and the highest tiers of a kind first."""
+    return sorted(earned, key=lambda item: (badge_kind(item[0]), -item[0]["prestige"]))
+
+
+def badge_fields(people, earned, mention=False):
+    """Every badge as a cell in a two-column grid (a section's fields). Ten cells fill a
+    block; more carry on in the next."""
+    cells = [{"type": "mrkdwn", "text": badge_cell(people, badge, pids, mention)}
+             for badge, pids in badge_order(earned)]
+    return [{"type": "section", "fields": cells[start:start + FIELDS_PER_BLOCK]}
+            for start in range(0, len(cells), FIELDS_PER_BLOCK)]
+
+
 def badge_blocks(people, earned, mention=False):
     """The "Badges this week" section as Slack blocks, [] when nobody earned one: a header,
     then every badge as a card in a two-column grid (a section's fields), kind by kind and
@@ -1827,12 +1921,7 @@ def badge_blocks(people, earned, mention=False):
     Spotter has already announced each of these as it happened; this is the week's recap."""
     if not earned:
         return []
-    ordered = sorted(earned, key=lambda item: (badge_kind(item[0]), -item[0]["prestige"]))
-    cells = [{"type": "mrkdwn", "text": badge_cell(people, badge, pids, mention)}
-             for badge, pids in ordered]
-    return [header_block(":medal:  Badges this week")] + [
-        {"type": "section", "fields": cells[start:start + FIELDS_PER_BLOCK]}
-        for start in range(0, len(cells), FIELDS_PER_BLOCK)]
+    return [header_block(":medal:  Badges this week")] + badge_fields(people, earned, mention)
 
 
 def current_badges(rows, today):
@@ -1857,19 +1946,19 @@ def journey_arrival_text(arrival, vol, facts):
         stop[0], stop[1], stop[4], STOP_KM[index] + (lap - 1) * LAP_KM)
 
 
-def journey_blocks(facts, vol, today):
-    """The journey as Slack blocks: where the channel is, how far to the next stop, and
-    -- with a pace to go on -- roughly when it lands."""
+def journey_parts(facts, vol, today):
+    """The journey as (where it is, the lines about it, the line under them), or None
+    before anyone has walked: where the channel is, how far to the next stop, and -- with
+    a pace to go on -- roughly when it lands. `where` reads "leg 3 of 20  ·  lap 2"."""
     steps = facts["totals"].get("step", 0)
     if not steps:
-        return []
+        return None
     pos = journey_position(steps)
     behind, ahead = pos["behind"], pos["ahead"]
-    head = ":world_map:  *{}*  ·  leg {} of {}".format(JOURNEY_NAME, pos["leg"], pos["legs"])
+    where = "leg {} of {}".format(pos["leg"], pos["legs"])
     if pos["lap"] > 1:
-        head += "  ·  lap {}".format(pos["lap"])
-    lines = [head,
-             "{} {}  →  {} {}".format(behind[1], stop_name(behind), ahead[1], stop_name(ahead)),
+        where += "  ·  lap {}".format(pos["lap"])
+    lines = ["{} {}  →  {} {}".format(behind[1], stop_name(behind), ahead[1], stop_name(ahead)),
              "{}  *{:.0f}%*  ·  *{:,.0f} km* to go".format(
                  bar("step", pos["share"]), pos["share"] * 100, pos["to_go"])]
     pace = None
@@ -1889,7 +1978,17 @@ def journey_blocks(facts, vol, today):
     if vol and vol["gain"].get("step"):
         together += "  ·  *+{:,.0f} km* {}".format(
             steps_to_km(vol["gain"]["step"]), span_label(vol["days"]))
-    return [{"type": "section", "text": {"type": "mrkdwn", "text": "\n".join(lines)}},
+    return where, lines, together
+
+
+def journey_blocks(facts, vol, today):
+    """The journey as Slack blocks (see journey_parts): a section, then a line under it."""
+    parts = journey_parts(facts, vol, today)
+    if not parts:
+        return []
+    where, lines, together = parts
+    head = ":world_map:  *{}*  ·  {}".format(JOURNEY_NAME, where)
+    return [{"type": "section", "text": {"type": "mrkdwn", "text": "\n".join([head] + lines)}},
             {"type": "context", "elements": [{"type": "mrkdwn", "text": together}]}]
 
 
@@ -2289,12 +2388,11 @@ def lede(facts, week, vol, today, doing=None):
     return "Another week of showing up — and every log counted. :muscle:", "people"
 
 
-def stat_tiles(week, vol, team=""):
-    """The week's numbers as tiles for a two-column fields block: the figure, bold, and
-    what it counts. Nothing else -- what they are compared with is one quiet line
-    underneath (last_week_text), not a second row of text under every tile."""
+def stat_tile_parts(week, vol, team=""):
+    """The week's numbers as (icon, figure, what it counts) -- the old look sets each as a
+    line of a two-column fields block (stat_tiles), the new one as a cell of a grid."""
     def tile(icon, figure, label):
-        return "{}  *{}* {}".format(icon, figure, label)
+        return (icon, figure, label)
 
     people = len(week["ids"])
     if not people:
@@ -2320,6 +2418,14 @@ def stat_tiles(week, vol, team=""):
     if new:
         tiles.append(tile(":wave:", new, "new face" if new == 1 else "new faces"))
     return tiles
+
+
+def stat_tiles(week, vol, team=""):
+    """The week's numbers as tiles for a two-column fields block: the figure, bold, and
+    what it counts. Nothing else -- what they are compared with is one quiet line
+    underneath (last_week_text), not a second row of text under every tile."""
+    return ["{}  *{}* {}".format(icon, figure, label)
+            for icon, figure, label in stat_tile_parts(week, vol, team)]
 
 
 def last_week_text(week, vol):
@@ -2419,7 +2525,7 @@ def record_blocks(rows, heading=RECORDS_HEADING):
             fields.append({"type": "mrkdwn", "text": "{}  {}".format(icon, what).strip()})
             fields.append({"type": "mrkdwn", "text": "{}  \u2014  *{}*".format(who, value)})
         block = {"type": "section", "fields": fields}
-        if start == 0:
+        if start == 0 and heading:
             block["text"] = {"type": "mrkdwn", "text": heading}
         blocks.append(block)
     return blocks
@@ -2482,10 +2588,10 @@ def week_amount(entry, start, today):
     return sum(inside), len(inside)
 
 
-def week_top(people, week, today):
+def week_top_rows(people, week, today):
     """This week's top contributor in each of the week's activities (week_activities), as
-    Slack blocks laid out like the records -- but the week's own figures, so the names move
-    as the weeks do. A tie names everyone in it. Names are plain, as in the records: a list
+    (icon, "*Activity*", figure, who) rows: the week's own figures, so the names move as
+    the weeks do. A tie names everyone in it. Names are plain, as in the records: a list
     should not ping."""
     start = week["start"]
     fields = {}
@@ -2513,7 +2619,14 @@ def week_top(people, week, today):
             figure += " " + unit_of(activity)
         rows.append((ICONS.get(activity, ""), "*{}*".format(TITLE.get(activity, activity.title())),
                      figure, names_text(sorted(name for name, _ in leaders), limit=len(leaders))))
-    return record_blocks(rows[:WEEK_TOP_LINES], WEEK_TOP_HEADING) if rows else []
+    return rows[:WEEK_TOP_LINES]
+
+
+def week_top(people, week, today):
+    """The week's top contributors as Slack blocks laid out like the records (see
+    week_top_rows and record_blocks)."""
+    rows = week_top_rows(people, week, today)
+    return record_blocks(rows, WEEK_TOP_HEADING) if rows else []
 
 
 def next_stop(facts, vol, today, active=0, doing=None):
@@ -2616,26 +2729,301 @@ def all_time_text(facts):
     return text
 
 
-def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
-    """The weekly dashboard. Returns (blocks, summary) -- summary is what the post said,
-    for the output and for the snapshot.
+# ------------------------------------------------------------------------- the new look
+#
+# Both formats, the weekly post and the classic all-time summary, can be built two ways,
+# chosen by the `look` input:
+#
+#   old   header, section, fields, context -- the blocks every Slack workspace takes. This is
+#         the post as it was before the new look existed, and it is what is posted when Slack
+#         refuses a new block (see main).
+#   new   the same words and figures, set with Slack's newer blocks:
+#           headers  header blocks with a level, so the title leads and the sections sit under it
+#           tiles    the week's numbers as a grid (a `layout` block), one cell each
+#           charts   a native bar chart (`data_visualization`): how many people logged each
+#                    activity this week -- what is being tried, most-done first
+#           cards    every badge as a card in a swipeable `carousel`, with what it took
+#           tables   the week's top contributors as a native `table` (Slack takes one a message)
+#           panels   titled `container` blocks for the calendar and the Great Walk, and for the
+#                    channel records -- folded away, since the same few names hold them week
+#                    on week -- so the post is shorter to scroll
+#
+#         The classic summary takes the same features, bar the chart (it is all-time, so there
+#         is no week to draw): a header, a grid of the all-time totals, the milestones banked
+#         as a panel, the next milestones as cards (each with its bar) and the other
+#         activities as a table.
+#
+#         In the new look the week's top contributors come straight after the numbers -- who
+#         did what is what people look for first -- where the old look keeps them lower down.
+#
+# `new_features` takes features away (or picks a few) without going back to the old post: a
+# workspace that refuses one block can still have the rest -- and the step does that by itself:
+# Slack names the block it refused in its error, that feature is left out and the post sent
+# again, so one refused block costs one feature. The error the step reports is Slack's own.
+#
+# The carousel and the table are blocks other steps here already post; the layout, container,
+# data_visualization blocks and the header level follow Slack's Block Kit Builder samples
+# (slack_block_kit/). Slack has taken them from this step, but a workspace may differ; a rule
+# it has taught us is in panel() (a container has a rule under its title OR folds, not both).
 
-    Top to bottom: what happened (headline, numbers, moments), when (the calendar), then
-    what is next (the milestone and the ask). All-time totals are one footer line.
-    """
-    people = gather_people(rows)
-    week = week_facts(people, today)
-    vol = volume_changes(facts, runs, today)
+NEW_FEATURES = ("headers", "tiles", "charts", "cards", "tables", "panels")
+OLD_WORDS = ("old", "plain", "original", "legacy", "previous")
+TILES_PER_ROW = 3
+CHART_ACTIVITIES = 10       # bars in the chart of activities; the most-done ones
+CAROUSEL_MAX = 10           # Slack's limit on the cards of a carousel
+CARD_TEXT_LIMIT = 150       # ... on a card's title and subtitle
+CARD_BODY_LIMIT = 200       # ... and on its body
+BADGE_KIND_LABELS = ("Daily streak", "Weekly streak", "Attendance", "Variety", "Special")
+EMOJI_TOKEN = re.compile(r":([a-z0-9_+\-]+(?:::skin-tone-[2-6])?):")
 
-    doing = active_fields(people, today)
-    opening, story = lede(facts, week, vol, today, doing)
-    title = week_title(facts, week, today)
-    team = team_emoji()                       # one per post, so it reads as a choice
-    moments = moments_from_table(people, week, facts, today, team, mention) + \
-        moments_from_snapshot(facts, vol, story, doing)
-    moments.sort(key=lambda m: -m[0])
-    moments = moments[:MAX_MOMENTS]
 
+class Look(object):
+    """Which features of the new look a post uses. None at all is the old look.
+
+    It also hands out block ids -- fs_tile_1, fs_tile_2, ... -- for the blocks that sit inside
+    a layout or a container, which Slack's samples always give one; they are the same on every
+    run, so a re-run changes nothing."""
+
+    def __init__(self, features=()):
+        self.features = frozenset(features)
+        self._counts = {}
+
+    @property
+    def new(self):
+        return bool(self.features)
+
+    def on(self, feature):
+        return feature in self.features
+
+    def block_id(self, kind):
+        self._counts[kind] = self._counts.get(kind, 0) + 1
+        return "fs_{}_{}".format(kind, self._counts[kind])
+
+    def without(self, features):
+        """The same look with some features taken away (a fresh one, so ids start again)."""
+        return Look(self.features - set(features))
+
+
+OLD_LOOK = Look()
+# The classic all-time summary has no chart (there is no week to draw), so that feature is not
+# one of its features: asked for, it changes nothing, and a refusal never has to name it.
+CLASSIC_UNUSED = ("charts",)
+FEATURE_OF_BLOCK = {"layout": "tiles", "data_visualization": "charts", "container": "panels",
+                    "carousel": "cards", "card": "cards", "table": "tables"}
+# When Slack does not say which block it refused, the features go in this order: the ones
+# least likely to be accepted first, so the likeliest ones are the last to go.
+PEEL_ORDER = ("panels", "tiles", "charts", "headers", "tables", "cards")
+
+
+def refused_features(error, blocks, look):
+    """The features of `look` whose blocks Slack named in an invalid_blocks error.
+
+    Slack's error carries a json-pointer for each fault, "/blocks/15/has_header_divider",
+    counted from the top of the message; the block at that place says which feature it was.
+    With no pointer that points at a feature in use, the next feature in PEEL_ORDER goes, so
+    a refusal costs one feature at a time and never the whole new look in one go."""
+    found = []
+    for match in re.finditer(r"/blocks/(\d+)", error):
+        index = int(match.group(1))
+        if index >= len(blocks):
+            continue
+        kind = blocks[index].get("type")
+        feature = "headers" if kind == "header" and "level" in blocks[index] \
+            else FEATURE_OF_BLOCK.get(kind)
+        if feature and look.on(feature) and feature not in found:
+            found.append(feature)
+    if found:
+        return found
+    for feature in PEEL_ORDER:
+        if look.on(feature):
+            return [feature]
+    return sorted(look.features)
+
+
+def parse_look(value, features=None):
+    """The Look the `look` and `new_features` inputs ask for. new is the default; anything
+    unrecognised is new rather than a failure, as with choose_format. Features: blank or
+    "all" is every one; a list picks those; "-charts" takes one off; "none" is the old look."""
+    if str(value or "").strip().lower() in OLD_WORDS:
+        return OLD_LOOK
+    tokens = [t for t in re.split(r"[\s,;]+", str(features or "").strip().lower()) if t]
+    if "none" in tokens:
+        return OLD_LOOK
+    picked = [t for t in tokens if t in NEW_FEATURES or t == "all"]
+    dropped = set(t[1:] for t in tokens if t[:1] == "-" and t[1:] in NEW_FEATURES)
+    chosen = set(NEW_FEATURES) if not picked or "all" in picked else set(picked)
+    return Look(chosen - dropped)
+
+
+def heading(look, text, level=2):
+    """A header block; with the `headers` feature it carries its level (1 is the largest)."""
+    block = header_block(text)
+    if look.on("headers"):
+        block["level"] = level
+    return block
+
+
+def with_ids(look, blocks, kind):
+    """Copies of blocks, each with a block id: for blocks that go inside a container."""
+    out = []
+    for block in blocks:
+        block = dict(block)
+        block.setdefault("block_id", look.block_id(kind))
+        out.append(block)
+    return out
+
+
+def context_block(text):
+    return {"type": "context", "elements": [{"type": "mrkdwn", "text": text}]}
+
+
+def tile_layout(look, parts, caption="The week in numbers"):
+    """Numbers as a grid: a `layout` block, TILES_PER_ROW cells to a row, each cell centred --
+    the figure in bold with its icon, what it counts under it -- under a visible `caption`."""
+    rows = []
+    for start in range(0, len(parts), TILES_PER_ROW):
+        items = []
+        for icon, figure, label in parts[start:start + TILES_PER_ROW]:
+            items.append({"block": {
+                "type": "section", "block_id": look.block_id("tile"),
+                "text": {"type": "mrkdwn",
+                         "text": "{} *{}*\n{}".format(icon, figure, label).strip()}},
+                "width": "standard", "horizontal_alignment": "center"})
+        rows.append({"items": items})
+    return {"type": "layout", "block_id": look.block_id("tiles"), "label": caption,
+            "is_label_visible": True, "grid_lines": "outer", "rows": rows}
+
+
+def activity_chart(look, week):
+    """What is being tried this week: a bar chart of how many people logged each activity, the
+    most-done first (ties by check-ins, then name), at most CHART_ACTIVITIES bars. A bar chart,
+    not a pie: its axis puts a figure on every bar. None under two activities -- one bar has
+    nothing to be compared with."""
+    counts = week.get("by_activity") or {}
+    ranked = sorted(((people, days, TITLE.get(a, a.replace("_", " ").title()))
+                     for a, (people, days) in counts.items() if people),
+                    key=lambda item: (-item[0], -item[1], item[2]))
+    if len(ranked) < 2:
+        return None
+    data = [{"label": name, "value": people} for people, _days, name in ranked[:CHART_ACTIVITIES]]
+    return {"type": "data_visualization", "block_id": look.block_id("chart"),
+            "title": "People per activity this week",
+            "chart": {"type": "bar", "series": [{"name": "People", "data": data}],
+                      "axis_config": {"categories": [d["label"] for d in data],
+                                      "x_label": "Activity", "y_label": "People"}}}
+
+
+def badge_card(people, badge, pids, mention=False):
+    """One badge as a card: its emoji and name, the kind and how many earned it, then who --
+    as many names as fit a card's body, the rest counted -- and what it takes."""
+    labels = [person_label(people, pid, mention) for pid in pids]
+    about = "_{}_".format(badge["about"])
+    room = CARD_BODY_LIMIT - len(about) - 1
+    shown = len(labels)
+    while shown > 1 and len(names_text(labels, limit=shown)) > room:
+        shown -= 1
+    kind = BADGE_KIND_LABELS[min(badge_kind(badge), len(BADGE_KIND_LABELS) - 1)]
+    return {"type": "card",
+            "title": {"type": "mrkdwn",
+                      "text": "{}  {}".format(badge["emoji"], badge["name"])[:CARD_TEXT_LIMIT]},
+            "subtitle": {"type": "mrkdwn", "text": "{}  ·  {} {}".format(
+                kind, len(pids), "person" if len(pids) == 1 else "people")[:CARD_TEXT_LIMIT]},
+            "body": {"type": "mrkdwn",
+                     "text": (names_text(labels, limit=shown) + "\n" + about)[:CARD_BODY_LIMIT]}}
+
+
+def badge_carousels(people, earned, mention=False):
+    """Every badge as a card, in carousels of CAROUSEL_MAX: kind by kind, highest tier first."""
+    cards = [badge_card(people, badge, pids, mention) for badge, pids in badge_order(earned)]
+    return [{"type": "carousel", "elements": cards[start:start + CAROUSEL_MAX]}
+            for start in range(0, len(cards), CAROUSEL_MAX)]
+
+
+def rich_cell(text, bold=False):
+    """A table cell as rich text, so a custom emoji in it is drawn rather than spelled out."""
+    elements, position = [], 0
+
+    def add(piece):
+        if piece:
+            element = {"type": "text", "text": piece}
+            if bold:
+                element["style"] = {"bold": True}
+            elements.append(element)
+
+    for match in EMOJI_TOKEN.finditer(text):
+        add(text[position:match.start()])
+        elements.append({"type": "emoji", "name": match.group(1)})
+        position = match.end()
+    add(text[position:])
+    return {"type": "rich_text", "elements": [
+        {"type": "rich_text_section", "elements": elements or [{"type": "text", "text": " "}]}]}
+
+
+def raw_cell(text):
+    return {"type": "raw_text", "text": str(text).strip() or " "}      # a cell may not be empty
+
+
+def native_table(head, body, aligns):
+    """A native Slack table: a bold header row over `body` (rows of cells), one column per
+    entry of `aligns` ("left", "right", "center"). One real settings object per column -- a
+    null there makes Slack refuse the table. Slack takes one table a message."""
+    return {"type": "table", "rows": [[rich_cell(text, bold=True) for text in head]] + body,
+            "column_settings": [{"align": align, "is_wrapped": True} for align in aligns]}
+
+
+def top_table(rows):
+    """The week's top contributors (week_top_rows) as a native Slack table: the activity with
+    its emoji, the figure and the name."""
+    body = [[rich_cell("{} {}".format(icon, what.replace("*", "")).strip(), bold=True),
+             raw_cell(figure), raw_cell(who)] for icon, what, figure, who in rows]
+    return native_table(("Activity", "This week", "Top contributor"), body,
+                        ("left", "right", "left"))
+
+
+def panel(look, title, children, subtitle="", collapsed=None, kind="panel"):
+    """A titled `container` block. `collapsed` None is an ordinary panel, with a rule under
+    its title; True or False makes it collapsible instead, closed or open to begin with.
+    Slack takes one or the other, never both: has_header_divider "can only be set when
+    is_collapsible is false" -- it refused the post that set both. The title and subtitle
+    are plain text and carry no emoji: Slack does not draw a :shortcode: there, it shows it
+    as typed (a header block does draw them)."""
+    block = {"type": "container", "block_id": look.block_id(kind),
+             "title": {"type": "plain_text", "text": title, "emoji": True},
+             "child_blocks": with_ids(look, children, kind + "_part")}
+    if subtitle:
+        block["subtitle"] = {"type": "plain_text", "text": subtitle, "emoji": True}
+    if collapsed is None:
+        block["has_header_divider"] = True
+    else:
+        block["is_collapsible"] = True
+        block["default_collapsed"] = bool(collapsed)
+    return block
+
+
+def calendar_parts(week, today):
+    """(the grid, the line about the busiest day, the legend) of the who-showed-up calendar,
+    or None when there is nothing to draw."""
+    grid = calendar_text(week)
+    if not grid:
+        return None
+    busiest, quietest = weekday_pace(week)
+    insight = ""
+    if busiest:
+        insight = "{}s are our busiest day, {}s our quietest.".format(busiest, quietest)
+    if today.weekday() >= 4:
+        insight = (insight + " " if insight else "") + \
+            "Streaks hold over the weekend, so rest is free."
+    first = today + timedelta(days=1)
+    # "busy" read as people being too busy to log -- the opposite of what the colours
+    # mean. Quiet to very active says it: more people logging that day.
+    legend = "Each row is the 7 days to that date, {} → {}  ·  {}  quiet → very active".format(
+        first.strftime("%a"), today.strftime("%a"), "".join(GRID_LEVELS))
+    return grid, insight, legend
+
+
+def old_look_blocks(facts, people, week, vol, today, doing, image_url, title, opening, team,
+                    moments, earned, stop, mention):
+    """The weekly dashboard as it always was: header, sections, fields and context only."""
     blocks = []
     if image_url:
         blocks.append({"type": "image", "image_url": image_url,
@@ -2655,8 +3043,6 @@ def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
             blocks.append({"type": "context",
                            "elements": [{"type": "mrkdwn", "text": before}]})
 
-    state = badge_state(people, today)
-    earned = new_badges(state, today, previous_badges(runs, today))
     badges = badge_blocks(people, earned, mention)
 
     if moments:
@@ -2668,20 +3054,9 @@ def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
         blocks.append({"type": "divider"})
         blocks.extend(badges)
 
-    grid = calendar_text(week)
-    if grid:
-        busiest, quietest = weekday_pace(week)
-        insight = ""
-        if busiest:
-            insight = "{}s are our busiest day, {}s our quietest.".format(busiest, quietest)
-        if today.weekday() >= 4:
-            insight = (insight + " " if insight else "") + \
-                "Streaks hold over the weekend, so rest is free."
-        first = today + timedelta(days=1)
-        # "busy" read as people being too busy to log -- the opposite of what the colours
-        # mean. Quiet to very active says it: more people logging that day.
-        legend = "Each row is the 7 days to that date, {} → {}  ·  {}  quiet → very active".format(
-            first.strftime("%a"), today.strftime("%a"), "".join(GRID_LEVELS))
+    calendar = calendar_parts(week, today)
+    if calendar:
+        grid, insight, legend = calendar
         blocks.append({"type": "divider"})
         blocks.append(header_block(":calendar:  Who showed up, day by day"))
         blocks.append(text_section(grid))
@@ -2706,7 +3081,6 @@ def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
         blocks.append({"type": "divider"})
         blocks.extend(road)
 
-    stop = next_stop(facts, vol, today, len(week["ids"]), doing)
     if stop:
         blocks.append({"type": "divider"})
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": stop}})
@@ -2717,6 +3091,245 @@ def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
 
     blocks.append({"type": "context", "elements": [
         {"type": "mrkdwn", "text": all_time_text(facts)}]})
+    return blocks
+
+
+def new_look_blocks(look, facts, people, week, vol, today, doing, image_url, title, opening,
+                    team, moments, earned, stop, mention):
+    """The weekly dashboard in the new look (see the notes above): the same sections in the
+    same order as old_look_blocks, each in the newest block that suits it, and the old one
+    wherever its feature is switched off."""
+    blocks = []
+    if image_url:
+        blocks.append({"type": "image", "image_url": image_url,
+                       "alt_text": "Weekly channel summary"})
+    blocks.append(heading(look, title, 1))
+    blocks.append(text_section(opening))
+
+    parts = stat_tile_parts(week, vol, team)
+    if parts:
+        if look.on("tiles"):
+            blocks.append(tile_layout(look, parts))
+        else:
+            tiles = stat_tiles(week, vol, team)
+            for start in range(0, len(tiles), FIELDS_PER_BLOCK):
+                blocks.append({"type": "section", "fields": [
+                    {"type": "mrkdwn", "text": t} for t in tiles[start:start + FIELDS_PER_BLOCK]]})
+        before = last_week_text(week, vol)
+        if before:
+            blocks.append(context_block(before))
+
+    # Who did what is what people look for first, so the week's top contributors follow the
+    # numbers (the old look keeps them lower down).
+    if look.on("tables"):
+        rows = week_top_rows(people, week, today)
+        if rows:
+            blocks.append({"type": "divider"})
+            blocks.append(heading(look, ":first_place_medal:  This week's top contributors"))
+            blocks.append(top_table(rows))
+    else:
+        top = week_top(people, week, today)
+        if top:
+            blocks.append({"type": "divider"})
+            blocks.extend(top)
+
+    if moments:
+        blocks.append({"type": "divider"})
+        blocks.append(heading(look, ":sparkles:  Shout-outs"))
+        blocks.append(text_section("\n".join(
+            "{}  {}".format(icon, text) for _, icon, text in moments)))
+
+    if earned:
+        blocks.append({"type": "divider"})
+        blocks.append(heading(look, ":medal:  Badges this week"))
+        if look.on("cards"):
+            blocks.extend(badge_carousels(people, earned, mention))
+        else:
+            blocks.extend(badge_fields(people, earned, mention))
+
+    # Like the tiles, left out when nobody logged: a chart of nothing is not worth posting on
+    # the week that most needs to be gentle.
+    if look.on("charts") and week["ids"]:
+        chart = activity_chart(look, week)
+        if chart:                                   # it has a title of its own
+            blocks.append({"type": "divider"})
+            blocks.append(chart)
+
+    calendar = calendar_parts(week, today)
+    if calendar:
+        grid, insight, legend = calendar
+        children = [text_section(grid), context_block((insight + "\n" if insight else "") + legend)]
+        if look.on("panels"):
+            blocks.append(panel(look, "Who showed up, day by day", children,
+                                subtitle="{} weeks, a square a day".format(len(week["grid"])),
+                                kind="calendar"))
+        else:
+            blocks.append({"type": "divider"})
+            blocks.append(heading(look, ":calendar:  Who showed up, day by day"))
+            blocks.extend(children)
+
+    which, spot = spotlight_turn(facts, people, week, today)
+    records = spot if which is spotlight_records else []
+    if spot and not records:
+        blocks.append({"type": "divider"})
+        blocks.extend(spot)
+
+    road = journey_parts(facts, vol, today)
+    if road and look.on("panels"):
+        where, lines, together = road
+        blocks.append(panel(look, JOURNEY_NAME,
+                            [text_section("\n".join(lines)), context_block(together)],
+                            subtitle=where.replace("  ·  ", " · ").capitalize(),
+                            kind="walk"))
+    elif road:
+        blocks.append({"type": "divider"})
+        blocks.extend(journey_blocks(facts, vol, today))
+
+    if stop:
+        blocks.append({"type": "divider"})
+        blocks.append(text_section(stop))
+
+    if records:
+        if look.on("panels"):
+            # The same few names hold the records week after week, so they are folded away.
+            kids = [dict(block) for block in records]
+            kids[0].pop("text", None)                    # the panel's title says it
+            blocks.append(panel(look, "Channel records to beat", kids,
+                                subtitle="Tap to see who holds what", collapsed=True,
+                                kind="records"))
+        else:
+            blocks.append({"type": "divider"})
+            blocks.extend(records)
+
+    blocks.append(context_block(all_time_text(facts)))
+    return blocks
+
+
+def classic_tile_parts(facts, team):
+    """The channel's all-time numbers as (icon, figure, what it counts), for the tile grid."""
+    totals = facts["totals"]
+    tiles = [(team, facts["people"], "person" if facts["people"] == 1 else "people"),
+             (":white_check_mark:", "{:,}".format(facts["logs"]),
+              "session" if facts["logs"] == 1 else "sessions")]
+    if len(totals) > 1:
+        tiles.append((":jigsaw:", len(totals), "different activities"))
+    steps = totals.get("step", 0)
+    if steps:
+        tiles.append((ICONS.get("step", ""), "{:,}".format(steps),
+                      "steps  \u00b7  {:,.0f} km".format(steps * STRIDE_M / 1000.0)))
+    for activity, label in (("pushup", "pushups"), ("plank", "of plank")):
+        if totals.get(activity):
+            tiles.append((ICONS.get(activity, ""), humanize(activity, totals[activity]), label))
+    return tiles
+
+
+def milestone_card(facts, share, activity, value, spot):
+    """One headline activity's progress as a card: its name, where it stands and how far along,
+    then the bar and what is left to the next rung."""
+    subtitle = humanize(activity, value)
+    if activity == "step":
+        subtitle += "  \u00b7  {:,.0f} km".format(facts["totals"]["step"] * STRIDE_M / 1000.0)
+    subtitle += "  \u00b7  {:.0f}%".format(share * 100)
+    if share >= 0.85:
+        subtitle += " \u2014 almost there"
+    body = "{}\n*{}* to go \u2192 *{}*".format(
+        compact_bar(activity, share), humanize(activity, spot["to_go"]),
+        humanize(activity, spot["next"]))
+    return {"type": "card",
+            "title": {"type": "mrkdwn", "text": "{}  {}".format(
+                ICONS.get(activity, ""), TITLE.get(activity, activity.title())).strip()[:CARD_TEXT_LIMIT]},
+            "subtitle": {"type": "mrkdwn", "text": subtitle[:CARD_TEXT_LIMIT]},
+            "body": {"type": "mrkdwn", "text": body[:CARD_BODY_LIMIT]}}
+
+
+def others_table(facts, activities):
+    """The other activities as a native table: each with its emoji, what it has added up to
+    and how many sessions that was."""
+    body = [[rich_cell("{} {}".format(ICONS.get(a, ""), TITLE.get(a, a.title())).strip(), bold=True),
+             raw_cell("{} {}".format(humanize(a, facts["totals"][a]), SECONDARY_NOUN.get(a, a))),
+             raw_cell("{:,}".format(facts["sessions"][a]))] for a in activities[:99]]
+    return native_table(("Activity", "All time", "Sessions"), body, ("left", "left", "right"))
+
+
+def new_classic_blocks(look, facts, team):
+    """The classic all-time summary in the new look: the same words in the same order as
+    old_classic_blocks, each part in the newest block that suits it, and the old one wherever
+    its feature is switched off."""
+    blocks = [heading(look, "{}  How far we've come".format(team), 1),
+              text_section(classic_line(facts))]
+    if look.on("tiles"):
+        blocks.append(tile_layout(look, classic_tile_parts(facts, team), "All time in numbers"))
+
+    banked = classic_banked(facts)
+    if banked:
+        text = "\n".join(banked)
+        if look.on("panels"):
+            blocks.append(panel(look, "Already banked", [text_section(text)],
+                                subtitle="Milestones that never reset", kind="banked"))
+        else:
+            blocks.append({"type": "divider"})
+            blocks.append(heading(look, ":star2:  Already banked"))
+            blocks.append(text_section(text))
+
+    standing = classic_standing(facts)
+    if standing:
+        blocks.append({"type": "divider"})
+        blocks.append(heading(look, ":dart:  Up next"))
+        if look.on("cards"):
+            blocks.append({"type": "carousel", "elements": [
+                milestone_card(facts, share, activity, value, spot)
+                for share, activity, value, spot in standing]})
+        else:
+            for share, activity, value, spot in standing:
+                blocks.append(text_section(classic_standing_line(facts, share, activity, value, spot)))
+
+    others = classic_other_activities(facts)
+    if others:
+        blocks.append({"type": "divider"})
+        blocks.append(heading(look, ":seedling:  Also happening here"))
+        if look.on("tables"):
+            blocks.append(others_table(facts, others))
+        else:
+            blocks.append(text_section("\n".join(classic_other_line(facts, a) for a in others)))
+        blocks.append(context_block(CLASSIC_INVITE))
+
+    blocks.extend(classic_closing_blocks(standing))
+    return blocks
+
+
+def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False, look=None, team=""):
+    """The weekly dashboard. Returns (blocks, summary) -- summary is what the post said,
+    for the output and for the snapshot.
+
+    Top to bottom: what happened (headline, numbers, moments), when (the calendar), then
+    what is next (the milestone and the ask). All-time totals are one footer line.
+
+    `look` is a Look (parse_look): the new look's features, or OLD_LOOK -- the post as it was
+    before there was a choice. `team` is the team emoji the post wears; one is picked when
+    it is blank, and the same one is passed back when the post is rebuilt as the old look.
+    """
+    look = look or OLD_LOOK
+    people = gather_people(rows)
+    week = week_facts(people, today)
+    vol = volume_changes(facts, runs, today)
+
+    doing = active_fields(people, today)
+    opening, story = lede(facts, week, vol, today, doing)
+    title = week_title(facts, week, today)
+    team = team or team_emoji()               # one per post, so it reads as a choice
+    moments = moments_from_table(people, week, facts, today, team, mention) + \
+        moments_from_snapshot(facts, vol, story, doing)
+    moments.sort(key=lambda m: -m[0])
+    moments = moments[:MAX_MOMENTS]
+
+    state = badge_state(people, today)
+    earned = new_badges(state, today, previous_badges(runs, today))
+    stop = next_stop(facts, vol, today, len(week["ids"]), doing)
+
+    compose = new_look_blocks if look.new else old_look_blocks
+    args = (facts, people, week, vol, today, doing, image_url, title, opening, team,
+            moments, earned, stop, mention)
+    blocks = compose(look, *args) if look.new else compose(*args)
 
     standing = nearest_stop(facts, doing)
     summary = {"people": len(week["ids"]), "checkins": week["checkins"],
@@ -2727,7 +3340,8 @@ def build_weekly_blocks(facts, rows, today, runs, image_url="", mention=False):
                               for b, pids in earned],
                "journey_km": round(steps_to_km(facts["totals"].get("step", 0)), 1),
                # the emoji the closing line asks for, so the post can wear it first
-               "react": ICONS.get(standing[0][1], "") if stop and standing else ""}
+               "react": ICONS.get(standing[0][1], "") if stop and standing else "",
+               "team": team}
     return blocks, summary
 
 
@@ -2796,6 +3410,7 @@ def main(input):
         "headline": "", "moments": [],
         "new_badges": [], "journey_km": 0, "journey_next_stop": "",
         "totals": [], "bests": [], "next_stops": [],
+        "look_used": "",
     }
 
     token = (input.get("workato_dev_api") or "").strip()
@@ -2804,6 +3419,7 @@ def main(input):
     save_snapshot = truthy(input.get("save_snapshot"), default=True)
     snapshot_row_type = (input.get("snapshot_row_type") or "").strip() or SNAPSHOT_ROW_TYPE
     today = channel_today(input.get("tz_offset"), input.get("today"))
+    look = parse_look(input.get("look"), input.get("new_features"))
 
     if input.get("local_data_file"):
         with open(input["local_data_file"], "r", encoding="utf-8") as handle:
@@ -2859,11 +3475,14 @@ def main(input):
 
     fmt = choose_format(input.get("format"))
     result["format_used"] = fmt
-    summary = None
+    if fmt == "classic":
+        look = look.without(CLASSIC_UNUSED)
+    result["look_used"] = "new" if look.new else "old"
+    summary, classic_team = None, ""
     if fmt == "weekly":
         blocks, summary = build_weekly_blocks(
             facts, rows, today, runs, (input.get("header_image_url") or "").strip(),
-            mention=truthy(input.get("mention_people")))
+            mention=truthy(input.get("mention_people")), look=look)
         text = weekly_fallback(summary)
         result["week_people"] = summary["people"]
         result["week_checkins"] = summary["checkins"]
@@ -2872,7 +3491,8 @@ def main(input):
         result["moments"] = summary["moments"]
         result["new_badges"] = summary["new_badges"]
     else:
-        blocks = build_classic_blocks(facts)
+        classic_team = team_emoji()
+        blocks = build_classic_blocks(facts, look=look, team=classic_team)
         text = fallback_text(facts)
     result["message_json"] = json.dumps(blocks)
     result["message_text"] = text
@@ -2889,13 +3509,36 @@ def main(input):
         result["error"] = "slack_bot_token and channel_id are required to post"
         return result
 
-    sent, error, ts = post(slack_token, result["channel_id"], text, blocks,
-                           (input.get("thread_ts") or "").strip())
+    thread_ts = (input.get("thread_ts") or "").strip()
+    sent, error, ts = post(slack_token, result["channel_id"], text, blocks, thread_ts)
+    asked, notes = look, []
+    while not sent and look.new and "invalid_blocks" in error:
+        # A workspace that does not take one of the newer blocks: the week is still worth
+        # posting. The feature Slack named is taken out and the post built again, so the
+        # rest of the new look stays; with nothing left it is the old post, which only uses
+        # blocks every workspace takes. Slack's own words go in the error, to see which.
+        refused = refused_features(error, json.loads(result["message_json"]), look)
+        notes.append("new look refused by Slack ({}); trying without {}".format(
+            error[:300], ", ".join(refused)))
+        look = look.without(refused)
+        if fmt == "weekly":
+            blocks, summary = build_weekly_blocks(
+                facts, rows, today, runs, (input.get("header_image_url") or "").strip(),
+                mention=truthy(input.get("mention_people")), look=look, team=summary["team"])
+            text = weekly_fallback(summary)
+        else:
+            blocks = build_classic_blocks(facts, look=look, team=classic_team)
+        result["message_json"] = json.dumps(blocks)
+        sent, error, ts = post(slack_token, result["channel_id"], text, blocks, thread_ts)
+    dropped = [f for f in NEW_FEATURES if f in asked.features and f not in look.features]
+    result["look_used"] = ("old" if not look.new else "new" if not dropped
+                           else "new (without {})".format(", ".join(dropped)))
+    warnings.extend(notes)
     result["posted"] = sent
     result["message_ts"] = ts
     result["ok"] = sent
     if not sent:
-        result["error"] = error
+        result["error"] = "; ".join(notes + [error])
         return result
 
     # The closing line asks people to react; the post wears that reaction first, so

@@ -4,8 +4,7 @@ Genie Responder -- answer Slack questions with the master genie.
 ONE PYTHON STEP, TWO CALLS PER QUESTION (plus one when someone rates the answer)
     action = "ask"    (the Slack message trigger)
         Is this message for a genie? If so, post a "thinking" message in the
-        thread (with a plan block: read your question, picked the genie, looking
-        into it, write the answer) and return everything "Assign task to genie"
+        thread ("<genie> is thinking... :loading-2:") and return everything "Assign task to genie"
         needs: the genie handle, the task text, and the thread's conversation_id
         if the genie has already been talking in this thread.
     -- the recipe runs "Assign task to genie" and waits for the answer --
@@ -49,9 +48,21 @@ THE ANSWER CARD (reply)
     Everything is an attachment with a calm colour per persona. The genie's
     markdown is converted to Slack mrkdwn (headings, bold, bullets, links) and split
     into sections of under 3,000 characters at paragraph breaks, never inside a code
-    block. The first table in an answer is a native Slack table block (TABLE_STYLE);
-    further tables, a table over Slack's limits, or a message Slack rejects use a text
-    table drawn with box characters in a code block, wrapped to BOX_WIDTH.
+    block. Every table in an answer is a native Slack table block, never text drawn in a
+    code block. Slack allows one table block per message, so an answer with several tables
+    is sent as consecutive messages in the thread, one table each, in reading order (the
+    first replaces the "thinking" message; the byline is on the first message, the footer
+    and feedback buttons on the last). A table over Slack's limits is cut to them, with a
+    note under it.
+
+THE LOOK (input `look` = new | old, blank = LOOK_DEFAULT)
+    new: the answer's own first heading becomes a header block, the body is Slack markdown
+         blocks (real headings, quotes, nested lists, code with its language), every table
+         is a native table block (one message per table), rules are dividers, and the hello message is a card block.
+         An answer longer than Slack's 12,000 characters of markdown keeps section blocks.
+    old: the sections-and-mrkdwn card described above, unchanged.
+    If Slack rejects the new look the old look is sent instead (a warning says why, with
+    Slack's own reason), then no feedback buttons.
 
 WHAT THE GENIE IS FOR
     The row's genie_purpose (edited from the console's Manage card) is sent in the genie_context
@@ -94,7 +105,6 @@ import json
 import os
 import re
 import sys
-import textwrap
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -115,24 +125,32 @@ SECTION_LIMIT = 2900             # Slack rejects section text over 3,000 charact
 MAX_SECTIONS = 40                # an attachment holds at most 50 blocks
 FOLLOWUP_WITHOUT_KEYWORD = True  # a reply in the genie's thread needs no keyword
 
-# Tables. "native" sends a real Slack table block (bold header, wrapping cells, code and
-# links inside cells); "text" always draws the box-character table in a code block. Slack
-# allows one table block per message and 10,000 characters in it: anything beyond that, or
-# a message Slack rejects, falls back to the text table by itself.
-TABLE_STYLE = "native"
-MAX_NATIVE_TABLES = 1
+# Tables are always native Slack table blocks (bold header, wrapping cells, code and links
+# inside cells). Slack allows one table block per message and 10,000 characters in it, so an
+# answer with several tables is split into one message per table, and a table over the limits
+# is cut to them.
 NATIVE_TABLE_ROWS = 100
 NATIVE_TABLE_COLUMNS = 20
 NATIVE_TABLE_CHARS = 9000
-BOX_WIDTH = 60                   # text table: widest line, in characters (a code block wraps past ~62)
-BOX_MIN_COLUMN = 8               # text table: a column is never squeezed narrower than this
 
 # Thinking plan and feedback buttons. Both are newer Slack blocks: if Slack rejects the
 # message the responder sends it again without them (see post_thinking and reply).
-SHOW_PLAN = True                 # the "thinking" message shows a plan: what is done, what is next
+# (The new look's waiting message is a plain line, not a card: see thinking_text.)
+SHOW_PLAN = False                # a plan block in the "thinking" message. Off: Slack rejects it in a
+                                 # normal message every time (it seems to be for streamed messages only)
 FEEDBACK_BUTTONS = True          # good / bad response buttons under every answer
 FEEDBACK_ACTION_ID = "genie_feedback"
 FEEDBACK_VALUES = ("positive", "negative")
+
+# The look of the cards. "new" uses more of Slack's Block Kit: a header block for the answer's
+# title, markdown blocks for the body (real headings, quotes, nested lists, code with its language)
+# and a card block for the hello message. "old" is the look before that, kept exactly as it was.
+# The `look` input (new / old, blank = LOOK_DEFAULT) picks one per call, so you can flip back
+# without redeploying. If Slack rejects the new look, the old look is sent instead.
+LOOK_DEFAULT = "new"
+MARKDOWN_TOTAL = 11000           # Slack: markdown blocks hold 12,000 characters per message in all
+HEADER_LIMIT = 150               # Slack: a header's text is at most 150 characters
+HEADER_RE = re.compile(r"^\s*#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\n|$)")
 
 GENIE_TYPE = "channel_genie"
 CONVERSATION_TYPE = "genie_conversation"
@@ -275,7 +293,10 @@ class Slack(object):
             self.errors.append("slack.{} {}".format(method, error))
             return None
         if not body.get("ok"):
-            self.errors.append("slack.{}: {}".format(method, body.get("error")))
+            # invalid_blocks comes with the reason (which block, which field) in response_metadata.
+            why = "; ".join(str(m) for m in (body.get("response_metadata") or {}).get("messages", [])[:3])
+            self.errors.append("slack.{}: {}{}".format(method, body.get("error"),
+                                                       " ({})".format(why[:300]) if why else ""))
             return None
         return body
 
@@ -311,6 +332,13 @@ class Slack(object):
         """Replaces the whole message: text and blocks cleared, attachments set."""
         return bool(self._call("chat.update", {"channel": channel, "ts": ts, "text": "",
                                                "blocks": [], "attachments": attachments}))
+
+    def post_blocks(self, channel, thread_ts, blocks):
+        """A message of blocks only, with no `text`: the message trigger sees an empty text, so
+        the app's own message can never look like a question that names a genie."""
+        body = self._call("chat.postMessage", {"channel": channel, "thread_ts": thread_ts,
+                                               "blocks": blocks})
+        return (body or {}).get("ts") or ""
 
     def say(self, channel, thread_ts, text):
         """A plain text message in the thread (not an attachment): the one that notifies
@@ -425,53 +453,21 @@ def _native_table(rows):
 
 
 def _plain_cell(text):
-    """A cell as plain text for the code block, where markdown marks would show as is."""
+    """Markdown marks taken out of a piece of text (used for a header block's title)."""
     text = CELL_LINK.sub(r"\1", text)
     text = text.replace("**", "").replace("__", "").replace("~~", "").replace("`", "")
     return re.sub(r"^\*(\S.*?)\*$", r"\1", text.strip())
 
 
-def _text_table(rows):
-    """A table drawn with box characters, for a code block: every line the same width,
-    never wider than BOX_WIDTH (long cells wrap onto extra lines), a double rule under the
-    header and a rule between rows."""
-    columns = max(len(row) for row in rows)
-    cells = [[_plain_cell(row[i]) if i < len(row) else "" for i in range(columns)]
-             for row in rows]
-    widths = [max(len(row[i]) for row in cells) or 1 for i in range(columns)]
-    room = BOX_WIDTH - (3 * columns + 1)                    # borders and one space each side
-    while sum(widths) > room:
-        widest = max(range(columns), key=lambda i: widths[i])
-        if widths[widest] <= BOX_MIN_COLUMN:
-            break
-        widths[widest] -= 1
-
-    def rule(left, middle, right, fill="\u2500"):
-        return left + middle.join(fill * (w + 2) for w in widths) + right
-
-    lines = [rule("\u250c", "\u252c", "\u2510")]
-    for n, row in enumerate(cells):
-        wrapped = [textwrap.wrap(c, widths[i], break_long_words=True,
-                                 break_on_hyphens=False) or [""] for i, c in enumerate(row)]
-        for k in range(max(len(w) for w in wrapped)):
-            lines.append("\u2502" + "\u2502".join(
-                " " + (w[k] if k < len(w) else "").ljust(widths[i]) + " "
-                for i, w in enumerate(wrapped)) + "\u2502")
-        if n == len(cells) - 1:
-            lines.append(rule("\u2514", "\u2534", "\u2518"))
-        elif n == 0:
-            lines.append(rule("\u255e", "\u256a", "\u2561", "\u2550"))
-        else:
-            lines.append(rule("\u251c", "\u253c", "\u2524"))
-    return "```" + "\n".join(lines) + "```"
-
-
-def to_mrkdwn(markdown, tables=None):
+def to_mrkdwn(markdown, tables=None, keep_markdown=False):
     """What a model writes -> what Slack renders. Code blocks are left alone.
-    Markdown tables become a text table in a code block, or, when `tables` is a list, a
-    native Slack table: its block is appended to `tables` and a marker (TABLE_MARK) is left
-    in the text for answer_attachments to swap for the block."""
+    A markdown table becomes a native Slack table: its block is appended to `tables` and a
+    marker (TABLE_MARK) is left in the text for the card builder to swap for the block. A
+    table over Slack's limits is cut to them, with a note under it.
+    keep_markdown=True leaves headings, bold, bullets, links and the code language as they
+    are, for a Slack markdown block; tables and rules are still handled as above."""
     out, table, in_fence = [], [], False
+    tables = [] if tables is None else tables
 
     def flush_table():
         if not table:
@@ -481,21 +477,22 @@ def to_mrkdwn(markdown, tables=None):
         del table[:]
         if not rows:
             return
-        columns = max(len(row) for row in rows)
-        size = sum(len(cell) for row in rows for cell in row)
-        if (tables is not None and TABLE_STYLE == "native" and len(rows) > 1
-                and len(tables) < MAX_NATIVE_TABLES and len(rows) <= NATIVE_TABLE_ROWS
-                and columns <= NATIVE_TABLE_COLUMNS and size <= NATIVE_TABLE_CHARS):
-            out.append(TABLE_MARK.format(len(tables)))
-            tables.append(_native_table([row + [""] * (columns - len(row)) for row in rows]))
-        else:
-            out.append(_text_table(rows))
+        columns = min(max(len(row) for row in rows), NATIVE_TABLE_COLUMNS)
+        kept = rows[:NATIVE_TABLE_ROWS]
+        while len(kept) > 1 and sum(len(cell) for row in kept for cell in row) > NATIVE_TABLE_CHARS:
+            kept.pop()
+        out.append(TABLE_MARK.format(len(tables)))
+        tables.append(_native_table([(row + [""] * columns)[:columns] for row in kept]))
+        if len(kept) < len(rows) or columns < max(len(row) for row in rows):
+            out.append("_The table was too big for one Slack table and was cut short "
+                       "({} of {} rows)._".format(len(kept) - 1, len(rows) - 1))
 
     for line in (markdown or "").replace("\r\n", "\n").split("\n"):
         if line.strip().startswith("```"):
             flush_table()
             in_fence = not in_fence
-            out.append("```")                    # Slack ignores a language tag
+            # A section ignores a language tag; a markdown block uses it.
+            out.append(line.strip() if keep_markdown and in_fence else "```")
             continue
         if in_fence:
             out.append(line)
@@ -507,6 +504,9 @@ def to_mrkdwn(markdown, tables=None):
         if re.match(r"^\s*([-*_])(\s*\1){2,}\s*$", line):    # ---, ***, ___
             out.append(DIVIDER_MARK)
             continue
+        if keep_markdown:
+            out.append(line)
+            continue
         heading = re.match(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$", line)
         if heading:
             out.append("*{}*".format(heading.group(1).replace("**", "").replace("*", "")))
@@ -517,6 +517,59 @@ def to_mrkdwn(markdown, tables=None):
     if in_fence:
         out.append("```")
     return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
+TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
+HEADING_LINE = re.compile(r"^\s{0,3}#{1,6}\s+\S")
+
+
+def split_tables(markdown):
+    """The answer cut into pieces of at most one table each (Slack allows one table block per
+    message), in reading order. Text between two tables stays with the first, except what
+    introduces the second: a heading, or a line ending in a colon (with the heading above it),
+    which goes with the table it introduces. An answer with no or one table comes back whole,
+    as a one-item list."""
+    lines = (markdown or "").replace("\r\n", "\n").split("\n")
+    fenced, in_fence = [], False
+    for line in lines:                       # True for lines inside (or fencing) a code block
+        marks = line.strip().startswith("```")
+        fenced.append(in_fence or marks)
+        if marks:
+            in_fence = not in_fence
+    runs = []                                # [first line, last line + 1] of each table
+    for n, line in enumerate(lines):
+        if not fenced[n] and TABLE_ROW.match(line):
+            if runs and runs[-1][1] == n:
+                runs[-1][1] = n + 1
+            else:
+                runs.append([n, n + 1])
+
+    def intro(lo, hi):
+        """Where the second table's own piece starts, between the previous table's end (lo)
+        and the table's first line (hi)."""
+        j = hi - 1
+        while j >= lo and not lines[j].strip():
+            j -= 1
+        if j < lo or fenced[j]:
+            return hi
+        single = j == lo or not lines[j - 1].strip()           # a one-line paragraph
+        if not (single and (HEADING_LINE.match(lines[j]) or lines[j].rstrip().endswith(":"))):
+            return hi
+        k = j - 1
+        while k >= lo and not lines[k].strip():
+            k -= 1
+        if (k >= lo and not fenced[k] and HEADING_LINE.match(lines[k]) and not HEADING_LINE.match(lines[j])):
+            return k
+        return j
+
+    cuts = [intro(runs[k - 1][1], runs[k][0]) for k in range(1, len(runs))]
+    pieces, begin = [], 0
+    for cut in cuts + [len(lines)]:
+        piece = "\n".join(lines[begin:cut]).strip("\n")
+        if piece.strip():
+            pieces.append(piece)
+        begin = cut
+    return pieces or [markdown or ""]
 
 
 def split_sections(text, limit=SECTION_LIMIT):
@@ -624,11 +677,30 @@ def thinking_attachments(genie_name, persona, question="", plan=True):
              "blocks": blocks}]
 
 
-def post_thinking(slack, result, question):
-    """Posts the thinking message (with its plan) in the thread and puts its ts in
-    result["thinking_ts"]. If Slack rejects the plan, posts the plain message instead."""
+def thinking_text(genie_name):
+    """The waiting message of the new look: one plain line, no card, no grey bar."""
+    return "*{}* is thinking\u2026 {}".format(genie_name or "The genie", LOADING_EMOJI)
+
+
+# The waiting line as it reads in a message event, if it ever reaches the trigger as text.
+OWN_THINKING = re.compile(r"^\s*\*[^*\n]+\*\s+is thinking(?:\u2026|\.\.\.)\s*:loading-2:\s*$")
+
+
+def post_thinking(slack, result, question, look="old"):
+    """Posts the thinking message in the thread and puts its ts in result["thinking_ts"].
+    New look: one plain line (thinking_text); if Slack rejects it, the old card is posted.
+    Old look: the card, with its plan block only when SHOW_PLAN is on (then, if Slack rejects
+    the plan, the plain card instead)."""
     name, persona = result["genie_name"], result["persona"]
     errors_before = len(slack.errors)
+    if look == "new":
+        ts = slack.post_blocks(result["channel"], result["reply_thread_ts"], [
+            {"type": "section", "text": {"type": "mrkdwn", "text": thinking_text(name)}}])
+        if ts:
+            result["thinking_ts"] = ts
+            return
+        del slack.errors[errors_before:]
+        result["warnings"].append("thinking line rejected by Slack: posted the old thinking card")
     ts = slack.post(result["channel"], result["reply_thread_ts"],
                     thinking_attachments(name, persona, question))
     if not ts and SHOW_PLAN:
@@ -651,11 +723,14 @@ def has_table_block(attachments):
     return any(b.get("type") == "table" for a in attachments for b in a.get("blocks", []))
 
 
-def answer_attachments(genie_name, persona, answer, asked_by="", native=True, feedback=True):
+def answer_attachments(genie_name, persona, answer, asked_by="", feedback=True,
+                       first=True, last=True):
     # A markdown rule (---) becomes a real divider between sections; a markdown table
-    # becomes a native table block (native=False: a text table in a code block).
+    # becomes a native table block. `answer` holds at most one table (see split_tables);
+    # first / last say which message of a split answer this is: the byline is on the first,
+    # the footer and feedback buttons on the last.
     body, used, cut = [], 0, False
-    tables = [] if native and TABLE_STYLE == "native" else None
+    tables = []
     for part in to_mrkdwn(answer, tables).split(DIVIDER_MARK):
         pieces = TABLE_MARK_RE.split(part)           # text, table number, text, ...
         for n, piece in enumerate(pieces):
@@ -673,16 +748,17 @@ def answer_attachments(genie_name, persona, answer, asked_by="", native=True, fe
         body.pop()
     while body and body[0]["type"] == "divider":
         body.pop(0)
-    blocks = [_context(_who(genie_name, persona))] + body
+    blocks = ([_context(_who(genie_name, persona))] if first else []) + body
     if cut:
         blocks.append(_context("_The answer was too long for one message and was cut "
                                "short. Ask a narrower question for the rest._"))
-    footer = "Reply in this thread to follow up"
-    if asked_by:
-        footer = "Asked by <@{}>  \u00b7  {}".format(asked_by, footer)
-    blocks.append(_context(footer))
-    if feedback and FEEDBACK_BUTTONS:
-        blocks.append(feedback_block())
+    if last:
+        footer = "Reply in this thread to follow up"
+        if asked_by:
+            footer = "Asked by <@{}>  \u00b7  {}".format(asked_by, footer)
+        blocks.append(_context(footer))
+        if feedback and FEEDBACK_BUTTONS:
+            blocks.append(feedback_block())
     return [{"color": PERSONA_COLORS.get(persona, COLOR_DEFAULT),
              "fallback": (answer or "")[:150], "blocks": blocks}]
 
@@ -693,6 +769,123 @@ def error_attachments(genie_name, persona, error):
                         _section("Sorry, I couldn't answer that one. Please try again in a "
                                  "minute, or ask the IT Integrations team.\n"
                                  "```{}```".format((error or "no answer came back")[:500]))]}]
+
+
+# --- the new look ---------------------------------------------------------
+# Same cards, built with more of Slack's Block Kit (see slack_block_kit/). Each builder
+# here has an old-look twin above that is left exactly as it was.
+
+def look_of(value):
+    """"old" or "new": the `look` input, blank = LOOK_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in ("old", "new") else LOOK_DEFAULT
+
+
+def _markdown(text):
+    return {"type": "markdown", "text": text}
+
+
+def _header(text):
+    return {"type": "header", "text": {"type": "plain_text", "text": text[:HEADER_LIMIT],
+                                       "emoji": True}}
+
+
+def _split_title(answer):
+    """(title, rest): a heading on the answer's first line becomes the card's header block.
+    No title when the answer is only that heading."""
+    match = HEADER_RE.match(answer or "")
+    if not match:
+        return "", answer
+    title = _plain_cell(match.group(1)).strip()
+    rest = answer[match.end():].strip()
+    return (title, rest) if title and rest else ("", answer)
+
+
+def _body_blocks(answer, markdown):
+    """(blocks, cut, characters) for the answer's body: markdown blocks, or sections when
+    `markdown` is False. Rules become dividers, a table a native table block."""
+    body, used, cut, size = [], 0, False, 0
+    tables = []
+    for part in to_mrkdwn(answer, tables, keep_markdown=markdown).split(DIVIDER_MARK):
+        for n, piece in enumerate(TABLE_MARK_RE.split(part)):     # text, table number, text, ...
+            if n % 2:
+                body.append(tables[int(piece)])
+                continue
+            for section in split_sections(piece.strip()):
+                if used >= MAX_SECTIONS:
+                    cut = True
+                    break
+                body.append(_markdown(section) if markdown else _section(section))
+                used += 1
+                size += len(section)
+        body.append({"type": "divider"})
+    while body and body[-1]["type"] == "divider":
+        body.pop()
+    while body and body[0]["type"] == "divider":
+        body.pop(0)
+    return body, cut, size
+
+
+def answer_attachments_new(genie_name, persona, answer, asked_by="", feedback=True,
+                           first=True, last=True):
+    """The answer card, new look: byline, header (the answer's own title), markdown blocks,
+    native table, dividers, footer, feedback buttons. An answer too long for markdown blocks
+    (Slack allows 12,000 characters of them per message) keeps the old section body.
+    first / last: which message of a split answer this is (see split_tables)."""
+    title, rest = _split_title(answer) if first else ("", answer)
+    body, cut, size = _body_blocks(rest, markdown=True)
+    if size > MARKDOWN_TOTAL:
+        body, cut, size = _body_blocks(rest, markdown=False)
+    blocks = [_context(_who(genie_name, persona))] if first else []
+    if title:
+        blocks.append(_header(title))
+    blocks += body
+    if cut:
+        blocks.append(_context("_The answer was too long for one message and was cut "
+                               "short. Ask a narrower question for the rest._"))
+    if last:
+        footer = "Reply in this thread to follow up"
+        if asked_by:
+            footer = "Asked by <@{}>  \u00b7  {}".format(asked_by, footer)
+        blocks.append(_context(footer))
+        if feedback and FEEDBACK_BUTTONS:
+            blocks.append(feedback_block())
+    return [{"color": PERSONA_COLORS.get(persona, COLOR_DEFAULT),
+             "fallback": (answer or "")[:150], "blocks": blocks}]
+
+
+def build_answer(look, genie_name, persona, answer, asked_by="", feedback=True,
+                 first=True, last=True):
+    make = answer_attachments_new if look == "new" else answer_attachments
+    return make(genie_name, persona, answer, asked_by, feedback=feedback, first=first, last=last)
+
+
+def hello_attachments_new(genie_name, persona, keyword, projects):
+    """The hello message as a card block: the genie's icon, name, persona and an example."""
+    names = ", ".join(p.get("name") or str(p.get("id")) for p in projects) or "this project"
+    return [{"color": COLOR_HELLO, "fallback": "Ask {} a question".format(genie_name),
+             "blocks": [{
+                 "type": "card",
+                 "slack_icon": {"type": "icon", "name": "sparkles"},
+                 "title": {"type": "mrkdwn", "text": "*{}*".format(genie_name or "Genie")},
+                 "subtitle": {"type": "mrkdwn", "text": PERSONA_LABELS.get(persona, persona or "")
+                              or "Genie"},
+                 "body": {"type": "mrkdwn", "text": "Hi! Ask me anything about *{}*.\nFor example: "
+                          "`{} why did quote Q-123 not sync to NetSuite?`".format(names, keyword)},
+             }]}]
+
+
+def post_hello(slack, result, projects, look):
+    """Posts the hello message; the new look falls back to the old one if Slack rejects it."""
+    name, persona, keyword = result["genie_name"], result["persona"], result["keyword"]
+    channel, thread = result["channel"], result["reply_thread_ts"]
+    if look == "new":
+        errors_before = len(slack.errors)
+        if slack.post(channel, thread, hello_attachments_new(name, persona, keyword, projects)):
+            return
+        del slack.errors[errors_before:]
+        result["warnings"].append("hello card rejected by Slack: posted the old look")
+    slack.post(channel, thread, hello_attachments(name, persona, keyword, projects))
 
 
 # --------------------------------------------------------------------------
@@ -817,6 +1010,9 @@ def ask(input, table, slack, result):
     if not text.strip() or not channel:
         result["skipped"] = "no text or no channel"
         return
+    if OWN_THINKING.match(text):
+        result["skipped"] = "the app's own waiting message"
+        return
 
     rows, error = table.query({"$and": [{"record_type": {"$eq": GENIE_TYPE}},
                                         {"status": {"$eq": STATUS_ACTIVE}},
@@ -881,12 +1077,11 @@ def ask(input, table, slack, result):
 
     if not question:
         # Only the keyword was sent: say hello instead of asking the genie nothing.
-        slack.post(channel, result["reply_thread_ts"],
-                   hello_attachments(result["genie_name"], result["persona"], keyword, projects))
+        post_hello(slack, result, projects, look_of(input.get("look")))
         return
 
     result["call_genie"] = True
-    post_thinking(slack, result, question)
+    post_thinking(slack, result, question, look_of(input.get("look")))
 
 
 # --------------------------------------------------------------------------
@@ -985,39 +1180,63 @@ def reply(input, table, slack, result):
     answered = bool(answer) and not genie_error
     wants_feedback = FEEDBACK_BUTTONS and answered and not blocked   # a refusal needs no rating
 
-    def build(native, feedback):
-        if answered:
-            return answer_attachments(genie_name, persona, answer, asker_id,
-                                      native=native, feedback=feedback)
-        return error_attachments(genie_name, persona, genie_error)
+    # An answer with several tables goes out as several messages, one table each (Slack allows
+    # one table block per message). A failed answer or an empty one is one error card.
+    chunks = split_tables(answer) if answered else [None]
 
-    def deliver(cards):
-        """Edit the thinking message into the answer; post fresh if there is none."""
-        if thinking_ts and slack.update(channel, thinking_ts, cards):
+    def build(look, index, feedback):
+        if not answered:
+            return error_attachments(genie_name, persona, genie_error)
+        return build_answer(look, genie_name, persona, chunks[index], asker_id, feedback=feedback,
+                            first=index == 0, last=index == len(chunks) - 1)
+
+    def deliver(cards, index):
+        """The first message edits the thinking message into the answer (a fresh post when
+        there is none); the others are posted after it in the thread."""
+        if index == 0 and thinking_ts and slack.update(channel, thinking_ts, cards):
             return thinking_ts
         return slack.post(channel, thread_ts, cards)
 
-    # The card with every newer block first. If Slack rejects it, the same answer is sent
-    # again with a text table, then also without the feedback buttons. A step that would
-    # build the same card as one already sent is skipped.
-    errors_before = len(slack.errors)
-    sent, attachments = [], None
-    for native, feedback in ((True, wants_feedback), (False, wants_feedback), (False, False)):
-        cards = build(native, feedback)
-        if cards in sent:
-            continue
-        if sent:
-            del slack.errors[errors_before:]
-            result["warnings"].append("answer card rejected by Slack: retried with {}".format(
-                " and ".join(([] if native else ["a text table"])
-                             + ([] if feedback or not wants_feedback else ["no feedback buttons"]))))
-        sent.append(cards)
-        attachments = cards
-        result["message_ts"] = deliver(cards)
-        if result["message_ts"]:
+    # Each message: the card with every newer block first. If Slack rejects it, the same text
+    # is sent again in the old look, then also without the feedback buttons. A step that would
+    # build the same card as one already sent is skipped. Once a step worked, the next message
+    # starts from it.
+    look = look_of(input.get("look"))
+    steps = [(look, wants_feedback)]
+    if look == "new":
+        steps.append(("old", wants_feedback))
+    steps.append(("old", False))
+    posted_ts, all_cards, begin = [], [], 0
+    for index in range(len(chunks)):
+        errors_before = len(slack.errors)
+        sent, ts = [], ""
+        for number in range(begin, len(steps)):
+            step_look, feedback = steps[number]
+            cards = build(step_look, index, feedback)
+            if cards in sent:
+                continue
+            if sent:
+                reason = (slack.errors[-1] if slack.errors else "")[:300]
+                del slack.errors[errors_before:]
+                result["warnings"].append("answer card rejected by Slack: retried with {}{}".format(
+                    " and ".join(([] if step_look == look else ["the old look"])
+                                 + ([] if feedback or not wants_feedback else ["no feedback buttons"])),
+                    " ({})".format(reason) if reason else ""))
+            sent.append(cards)
+            ts = deliver(cards, index)
+            if ts:
+                begin = number
+                all_cards.append(cards)
+                break
+        if not ts:
+            if index:
+                result["warnings"].append("part {} of {} of the answer could not be posted".format(
+                    index + 1, len(chunks)))
             break
-    result["posted"] = bool(result["message_ts"])
-    result["answer_sections"] = len([b for b in attachments[0]["blocks"]
+        posted_ts.append(ts)
+    result["message_ts"] = posted_ts[0] if posted_ts else ""
+    result["posted"] = bool(posted_ts)
+    result["answer_sections"] = len([b for cards in all_cards for b in cards[0]["blocks"]
                                      if b["type"] not in ("context", "context_actions")])
 
     if escalate:

@@ -1,0 +1,430 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":teamwork-2:  How far we've come",
+        "emoji": true
+      },
+      "level": 1
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*13* people  ·  *1,213* sessions  ·  since 3 August"
+      }
+    },
+    {
+      "type": "layout",
+      "block_id": "fs_tiles_1",
+      "label": "All time in numbers",
+      "is_label_visible": true,
+      "grid_lines": "outer",
+      "rows": [
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_1",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":teamwork-2: *13*\npeople"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_2",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":white_check_mark: *1,213*\nsessions"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_3",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":jigsaw: *7*\ndifferent activities"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_4",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":athletic_shoe: *4,916,539*\nsteps  ·  3,515 km"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_5",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":plank-3: *7,636*\npushups"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_6",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":plank-4: *6h 7m*\nof plank"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "container",
+      "block_id": "fs_banked_1",
+      "title": {
+        "type": "plain_text",
+        "text": "Already banked",
+        "emoji": true
+      },
+      "child_blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":athletic_shoe:  *4 × 1,000,000 steps, done*\n:plank-3:  *1 × 5,000 pushups, done*\n:plank-4:  *1 × 5 hours of plank, done*"
+          },
+          "block_id": "fs_banked_part_1"
+        }
+      ],
+      "subtitle": {
+        "type": "plain_text",
+        "text": "Milestones that never reset",
+        "emoji": true
+      },
+      "has_header_divider": true
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":dart:  Up next",
+        "emoji": true
+      },
+      "level": 2
+    },
+    {
+      "type": "carousel",
+      "elements": [
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":athletic_shoe:  Steps"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "4,916,539  ·  3,515 km  ·  67%"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "🟦🟦🟦🟦🟦🟦🟦⬜⬜⬜\n*83,461* to go → *1,000,000*"
+          }
+        },
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":plank-3:  Pushups"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "7,636  ·  64%"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "🟨🟨🟨🟨🟨🟨⬜⬜⬜⬜\n*364* to go → *3,000*"
+          }
+        },
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":plank-4:  Plank"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "6h 7m  ·  13%"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜\n*52m 3s* to go → *2h*"
+          }
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":seedling:  Also happening here",
+        "emoji": true
+      },
+      "level": 2
+    },
+    {
+      "type": "table",
+      "rows": [
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "Activity",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "All time",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "Sessions",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "person_in_lotus_position"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Yoga",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "62h 13m on the mat"
+          },
+          {
+            "type": "raw_text",
+            "text": "92"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "books"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Reading",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "1,837 pages read"
+          },
+          {
+            "type": "raw_text",
+            "text": "73"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "brain"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Meditation",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "12h 28m sitting"
+          },
+          {
+            "type": "raw_text",
+            "text": "52"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "swimmer"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Swimming",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "19h 41m in the pool"
+          },
+          {
+            "type": "raw_text",
+            "text": "35"
+          }
+        ]
+      ],
+      "column_settings": [
+        {
+          "align": "left",
+          "is_wrapped": true
+        },
+        {
+          "align": "left",
+          "is_wrapped": true
+        },
+        {
+          "align": "right",
+          "is_wrapped": true
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Pick whichever one suits you — it all counts here."
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ">That's the week. *Your streak holds over the weekend* — Monday picks up where Friday left off, so rest properly if you need it.\n>_Anything you log Saturday or Sunday is a bonus._ :wave:"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "Nearest one up is *steps* — *83,461* to go. Every log counts toward it. :dart:"
+      }
+    }
+  ]
+}

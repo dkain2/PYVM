@@ -1,0 +1,179 @@
+[
+  {
+    "control_type": "password",
+    "label": "Workato API token",
+    "name": "workato_dev_api",
+    "type": "string",
+    "optional": false
+  },
+  {
+    "control_type": "password",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": false,
+    "hint": "xoxb-... needs chat:write"
+  },
+  {
+    "control_type": "text",
+    "label": "Channel ID",
+    "name": "channel_id",
+    "type": "string",
+    "optional": false,
+    "hint": "e.g. C0123ABCD"
+  },
+  {
+    "control_type": "select",
+    "label": "Format",
+    "name": "format",
+    "type": "string",
+    "pick_list": [
+      [
+        "Weekly dashboard (default)",
+        "weekly"
+      ],
+      [
+        "Classic all-time summary",
+        "classic"
+      ],
+      [
+        "Random (one of the two)",
+        "random"
+      ]
+    ],
+    "optional": true,
+    "hint": "Leave blank for the weekly dashboard."
+  },
+  {
+    "control_type": "select",
+    "label": "Look",
+    "name": "look",
+    "type": "string",
+    "pick_list": [
+      [
+        "New look (default)",
+        "new"
+      ],
+      [
+        "Old look (as before)",
+        "old"
+      ]
+    ],
+    "optional": true,
+    "hint": "Leave blank for the new look. Both formats, the weekly dashboard and the classic summary, have the two looks. If Slack refuses a new block (invalid_blocks) that feature is left out and the post sent again, down to the old look if need be; the error says which block it did not like and look_used says what went out."
+  },
+  {
+    "control_type": "text",
+    "label": "New look features",
+    "name": "new_features",
+    "type": "string",
+    "optional": true,
+    "hint": "Only used with the new look. Leave blank for all of: headers, tiles, charts, cards, tables, panels (comma separated). Pick some, e.g. cards,tables, or take one away with a minus, e.g. -charts. none gives the old look. (charts is the weekly post's chart; the classic summary has none.)"
+  },
+  {
+    "control_type": "text",
+    "label": "Banner image URL",
+    "name": "header_image_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. A banner shown above the weekly post. Must be a public image URL."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "@mention people",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "mention_people",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default off. Names people in the weekly moments with a real @mention, which notifies them. Off shows names in bold.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "@mention people",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "mention_people",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default off. Names people in the weekly moments with a real @mention, which notifies them. Off shows names in bold."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Add the reaction",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "seed_reaction",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Puts the reaction the closing line asks for on the post. Needs reactions:write; skipped with a warning without it.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Add the reaction",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "seed_reaction",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Puts the reaction the closing line asks for on the post. Needs reactions:write; skipped with a warning without it."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Thread ts",
+    "name": "thread_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "Leave blank to post to the channel."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Dry run",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "dry_run",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Build the message and return it without posting.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Dry run",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "dry_run",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Build the message and return it without posting."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Save snapshot",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "save_snapshot",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Saves this run so the next post can say what changed. A dry run never saves.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Save snapshot",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "save_snapshot",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Saves this run so the next post can say what changed. A dry run never saves."
+    }
+  },
+  {
+    "control_type": "number",
+    "label": "Timezone offset (seconds)",
+    "parse_output": "integer_conversion",
+    "name": "tz_offset",
+    "type": "integer",
+    "optional": true,
+    "hint": "Seconds east of UTC, to decide what today is. Default -25200 (as spotter).",
+    "render_input": "integer_conversion"
+  }
+]

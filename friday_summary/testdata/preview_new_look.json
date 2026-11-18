@@ -1,0 +1,738 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "Friday check-in, team: week 15 is complete :white_check_mark:",
+        "emoji": true
+      },
+      "level": 1
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":trophy:  Our busiest week yet — more of us logged than in any week before!"
+      }
+    },
+    {
+      "type": "layout",
+      "block_id": "fs_tiles_1",
+      "label": "The week in numbers",
+      "is_label_visible": true,
+      "grid_lines": "outer",
+      "rows": [
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_1",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":teamwork-2: *13*\npeople active"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_2",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":white_check_mark: *48*\ncheck-ins"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_3",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":athletic_shoe: *393,324*\nsteps"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_4",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":plank-3: *611*\npushups"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_5",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":plank-4: *29m 27s*\nof plank"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_6",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":person_in_lotus_position: *4h 59m*\nof yoga"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_7",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":books: *147*\npages read"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_8",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":swimmer: *1h 35m*\nof swimming"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_9",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":brain: *1h*\nof meditation"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_10",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":fire: *5*\npeople logged every working day"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_11",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":jigsaw: *7*\ndifferent activities"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            },
+            {
+              "block": {
+                "type": "section",
+                "block_id": "fs_tile_12",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ":wave: *2*\nnew faces"
+                }
+              },
+              "width": "standard",
+              "horizontal_alignment": "center"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "The week before:  *10* people active  ·  *36* check-ins"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":first_place_medal:  This week's top contributors",
+        "emoji": true
+      },
+      "level": 2
+    },
+    {
+      "type": "table",
+      "rows": [
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "Activity",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "This week",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "Top contributor",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "athletic_shoe"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Steps",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "69,729 steps"
+          },
+          {
+            "type": "raw_text",
+            "text": "Ben Carter"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "plank-3"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Pushups",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "163 pushups"
+          },
+          {
+            "type": "raw_text",
+            "text": "Noah Fischer"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "plank-4"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Plank",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "7m 37s"
+          },
+          {
+            "type": "raw_text",
+            "text": "Kavya Nair"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "person_in_lotus_position"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Yoga",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "2h 1m"
+          },
+          {
+            "type": "raw_text",
+            "text": "Asha Rao"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "books"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Reading",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "51 pages read"
+          },
+          {
+            "type": "raw_text",
+            "text": "Dev Patel"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "swimmer"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Swimming",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "1h 11m"
+          },
+          {
+            "type": "raw_text",
+            "text": "Elena Rossi"
+          }
+        ],
+        [
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "emoji",
+                    "name": "brain"
+                  },
+                  {
+                    "type": "text",
+                    "text": " Meditation",
+                    "style": {
+                      "bold": true
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "raw_text",
+            "text": "32m"
+          },
+          {
+            "type": "raw_text",
+            "text": "Chitra Iyer"
+          }
+        ]
+      ],
+      "column_settings": [
+        {
+          "align": "left",
+          "is_wrapped": true
+        },
+        {
+          "align": "right",
+          "is_wrapped": true
+        },
+        {
+          "align": "left",
+          "is_wrapped": true
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":sparkles:  Shout-outs",
+        "emoji": true
+      },
+      "level": 2
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":athletic_shoe:  We passed *4,750,000* steps this week\n:plank-4:  We passed *6 hours* of plank this week\n:wave:  Welcome *Grace Lee* and *Hiro Tanaka* — first logs this week\n:raised_hands:  Welcome back *Farid Khan* — first log in 5 weeks\n:sports_medal:  *Noah Fischer* set a new pushups personal best: *80* (was 55)\n:star2:  *Asha Rao* passed *75* days logged\n:star2:  *Jon Smith* passed *10m* of plank all time"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":medal:  Badges this week",
+        "emoji": true
+      },
+      "level": 2
+    },
+    {
+      "type": "carousel",
+      "elements": [
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":fire:  Unstoppable"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "Daily streak  ·  1 person"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "*Asha Rao*\n_logged on 50 working days in a row_"
+          }
+        },
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":repeat:  Eight-Week Rhythm"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "Weekly streak  ·  1 person"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "*Noah Fischer*\n_logged in 8 weeks in a row_"
+          }
+        },
+        {
+          "type": "card",
+          "title": {
+            "type": "mrkdwn",
+            "text": ":white_check_mark:  Twelve Perfect Weeks"
+          },
+          "subtitle": {
+            "type": "mrkdwn",
+            "text": "Attendance  ·  1 person"
+          },
+          "body": {
+            "type": "mrkdwn",
+            "text": "*Asha Rao*\n_twelve weeks with every working day logged_"
+          }
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "data_visualization",
+      "block_id": "fs_chart_1",
+      "title": "People per activity this week",
+      "chart": {
+        "type": "bar",
+        "series": [
+          {
+            "name": "People",
+            "data": [
+              {
+                "label": "Steps",
+                "value": 13
+              },
+              {
+                "label": "Pushups",
+                "value": 8
+              },
+              {
+                "label": "Plank",
+                "value": 7
+              },
+              {
+                "label": "Yoga",
+                "value": 3
+              },
+              {
+                "label": "Reading",
+                "value": 3
+              },
+              {
+                "label": "Swimming",
+                "value": 3
+              },
+              {
+                "label": "Meditation",
+                "value": 2
+              }
+            ]
+          }
+        ],
+        "axis_config": {
+          "categories": [
+            "Steps",
+            "Pushups",
+            "Plank",
+            "Yoga",
+            "Reading",
+            "Swimming",
+            "Meditation"
+          ],
+          "x_label": "Activity",
+          "y_label": "People"
+        }
+      }
+    },
+    {
+      "type": "container",
+      "block_id": "fs_calendar_1",
+      "title": {
+        "type": "plain_text",
+        "text": "Who showed up, day by day",
+        "emoji": true
+      },
+      "child_blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_orange_square::large_red_square::large_orange_square:   16 Oct  ·  10 people\n:large_yellow_square::large_yellow_square::large_yellow_square::large_red_square::large_red_square::large_red_square::large_orange_square:   23 Oct  ·  10 people\n:large_yellow_square::large_yellow_square::large_red_square::large_red_square::large_orange_square::large_red_square::large_orange_square:   30 Oct  ·  9 people\n:large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_orange_square::large_orange_square::large_orange_square:   6 Nov  ·  10 people\n:large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_red_square::large_red_square::large_red_square:   *13 Nov  ·  13 people*"
+          },
+          "block_id": "fs_calendar_part_1"
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "Tuesdays are our busiest day, Sundays our quietest. Streaks hold over the weekend, so rest is free.\nEach row is the 7 days to that date, Sat → Fri  ·  :white_large_square::large_yellow_square::large_orange_square::large_red_square:  quiet → very active"
+            }
+          ],
+          "block_id": "fs_calendar_part_2"
+        }
+      ],
+      "subtitle": {
+        "type": "plain_text",
+        "text": "5 weeks, a square a day",
+        "emoji": true
+      },
+      "has_header_divider": true
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":person_in_lotus_position:  *Spotlight: Yoga*\n*4* people in the last four weeks  ·  62h 13m on the mat all time\n_Pick whichever one suits you — it all counts here._"
+      }
+    },
+    {
+      "type": "container",
+      "block_id": "fs_walk_1",
+      "title": {
+        "type": "plain_text",
+        "text": "The Great Walk",
+        "emoji": true
+      },
+      "child_blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": ":flag-us: Chicago  →  :flag-us: New York\n:large_blue_square::large_blue_square::large_blue_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square:  *34%*  ·  *755 km* to go\nAt this pace we reach *New York* around *Wed 2 Dec*."
+          },
+          "block_id": "fs_walk_part_1"
+        },
+        {
+          "type": "context",
+          "elements": [
+            {
+              "type": "mrkdwn",
+              "text": "Together we've walked *3,515 km*  ·  *8.7%* of the way round the world  ·  *+281 km* this week"
+            }
+          ],
+          "block_id": "fs_walk_part_2"
+        }
+      ],
+      "subtitle": {
+        "type": "plain_text",
+        "text": "Leg 5 of 20",
+        "emoji": true
+      },
+      "has_header_divider": true
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":dart:  *Next stop: Steps → 5,000,000*\n:large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::white_large_square::white_large_square::white_large_square:  *67%*\n*83,461* to go — about *6,421* each from the 13 of us who logged this week. At this pace, around *Sun 15 Nov*. Who's closing it out? React :athletic_shoe: if you're in.\n_Also climbing: Pushups 64% · Yoga 49% · Plank 13%_"
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "All time  ·  *13* people  ·  *1,213* sessions since 3 August  ·  *3,515 km* walked (83 marathons)  ·  *7,636* pushups  ·  *6h 7m* of plank"
+        }
+      ]
+    }
+  ]
+}

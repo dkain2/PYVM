@@ -5,12 +5,14 @@ Run:  python3 test_responder.py        (from this folder)
 Run it before and after every change to responder.py.
 """
 
+import json
 import os
 import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import responder as r                                          # noqa: E402
+from testdata.samples import SAMPLES                            # noqa: E402
 
 NARROW_TABLE = "| Name | Qty |\n|---|---|\n| apple | 3 |\n| fig | 12 |"
 
@@ -22,6 +24,11 @@ WIDE_TABLE = (
     "| *(hardcoded)* | `ContextName` | Always `\"Company\"` |\n"
     "| Workspace `author_email` | `Author` | **Resolved** via [Gainsight](https://x.io/a) lookup |"
 )
+
+
+def table_count(text):
+    """How many markdown tables a text holds (their separator rows)."""
+    return sum(1 for line in text.split("\n") if line.startswith("|--") or line.startswith("|:-"))
 
 
 def table_block(attachments):
@@ -43,53 +50,6 @@ class PlainMarkdown(unittest.TestCase):
     def test_fenced_code_untouched(self):
         out = r.to_mrkdwn("```python\n**x** | y\n```")
         self.assertEqual(out, "```\n**x** | y\n```")
-
-
-class TextTable(unittest.TestCase):
-    """No `tables` list given: a table is drawn with box characters in a code block."""
-
-    def setUp(self):
-        self.out = r.to_mrkdwn(WIDE_TABLE)
-        self.lines = self.out.strip("`").split("\n")
-
-    def test_is_a_code_block(self):
-        self.assertTrue(self.out.startswith("```") and self.out.endswith("```"))
-
-    def test_every_line_has_the_same_width_and_fits(self):
-        widths = {len(line) for line in self.lines}
-        self.assertEqual(len(widths), 1, widths)
-        self.assertLessEqual(widths.pop(), r.BOX_WIDTH)
-
-    def test_borders_and_header_rule(self):
-        self.assertTrue(self.lines[0].startswith("┌") and self.lines[0].endswith("┐"))
-        self.assertTrue(self.lines[-1].startswith("└") and self.lines[-1].endswith("┘"))
-        self.assertTrue(any(line.startswith("╞") for line in self.lines))   # under header
-
-    def test_markdown_noise_is_removed(self):
-        for noise in ("`", "**", "(https://"):
-            self.assertNotIn(noise, self.out.replace("```", ""))
-        self.assertIn("(hardcoded)", self.out)
-        self.assertNotIn("*(hardcoded)*", self.out)
-
-    def test_long_cells_wrap_onto_extra_lines(self):
-        self.assertIn("Deduplication", self.out)
-        self.assertIn("update", self.out)
-        self.assertGreater(len(self.lines), 2 + 2 * 5)
-
-    def test_narrow_table_keeps_natural_widths(self):
-        lines = r.to_mrkdwn(NARROW_TABLE).strip("`").split("\n")
-        self.assertEqual(lines[0], "┌───────┬"
-                         "─────┐")
-        self.assertEqual(lines[1], "│ Name  │ Qty │")
-        self.assertIn("│ apple │ 3   │", lines)
-
-    def test_survives_splitting(self):
-        for piece in r.split_sections(self.out):
-            self.assertLessEqual(len(piece), r.SECTION_LIMIT)
-
-    def test_text_around_table_kept(self):
-        out = r.to_mrkdwn("Before\n\n" + WIDE_TABLE + "\n\nAfter")
-        self.assertTrue(out.startswith("Before") and out.endswith("After"))
 
 
 class NativeTable(unittest.TestCase):
@@ -138,20 +98,82 @@ class NativeTable(unittest.TestCase):
                     for el in cell["elements"][0]["elements"]:
                         self.assertTrue(el["text"])
 
-    def test_only_one_native_table_per_message(self):
-        card = r.answer_attachments("S", "", WIDE_TABLE + "\n\ntext\n\n" + NARROW_TABLE)
-        blocks = card[0]["blocks"]
-        self.assertEqual(sum(b["type"] == "table" for b in blocks), 1)
-        self.assertTrue(any("┌" in b.get("text", {}).get("text", "") for b in blocks))
+    def test_a_table_is_never_drawn_as_text(self):
+        for look in ("old", "new"):
+            for text in (WIDE_TABLE, NARROW_TABLE, "x\n\n" + WIDE_TABLE + "\n\n" + NARROW_TABLE,
+                         SAMPLES["rich"]):
+                for page in r.split_tables(text):
+                    card = r.build_answer(look, "S", "", page)
+                    shown = json.dumps([b for b in card[0]["blocks"] if b["type"] != "table"])
+                    for box in ("\u250c", "\u2502", "\u2550", "\u2514"):
+                        self.assertNotIn(box, shown)
+                    self.assertEqual(sum(b["type"] == "table" for b in card[0]["blocks"]),
+                                     table_count(page))
 
-    def test_text_fallback_when_native_is_off(self):
-        card = r.answer_attachments("S", "", WIDE_TABLE, native=False)
-        self.assertIsNone(table_block(card))
-        self.assertIn("┌", card[0]["blocks"][1]["text"]["text"])
+    def test_header_only_table_is_still_a_table(self):
+        card = r.answer_attachments("S", "", "| A | B |\n|---|---|")
+        self.assertEqual(len(table_block(card)["rows"]), 1)
 
-    def test_too_many_rows_falls_back_to_text(self):
+    def test_too_many_rows_is_cut_with_a_note(self):
         big = "| A | B |\n|--|--|\n" + "\n".join("| r{} | v |".format(i) for i in range(120))
-        self.assertIsNone(table_block(r.answer_attachments("S", "", big)))
+        card = r.answer_attachments("S", "", big)
+        self.assertEqual(len(table_block(card)["rows"]), r.NATIVE_TABLE_ROWS)
+        self.assertIn("cut short", json.dumps(card[0]["blocks"]))
+        self.assertIn("99 of 120", json.dumps(card[0]["blocks"]))
+
+    def test_too_many_columns_and_characters_are_cut(self):
+        wide = "| " + " | ".join("c%d" % i for i in range(30)) + " |\n|" + "--|" * 30 + "\n"
+        wide += "| " + " | ".join("v" for _ in range(30)) + " |"
+        card = r.answer_attachments("S", "", wide)
+        self.assertEqual(len(table_block(card)["rows"][0]), r.NATIVE_TABLE_COLUMNS)
+        heavy = "| A |\n|--|\n" + "\n".join("| " + "x" * 500 + " |" for _ in range(40))
+        rows = table_block(r.answer_attachments("S", "", heavy))["rows"]
+        self.assertLessEqual(json.dumps(rows).count("x"), r.NATIVE_TABLE_CHARS)
+
+
+class SplitTables(unittest.TestCase):
+    def test_no_or_one_table_is_one_piece(self):
+        for text in ("Just text", "Intro\n\n" + WIDE_TABLE + "\n\nOutro", ""):
+            self.assertEqual(len(r.split_tables(text)), 1)
+
+    def test_two_tables_two_pieces_in_order(self):
+        pieces = r.split_tables("Intro\n\n" + WIDE_TABLE + "\n\nNote on the first.\n\n"
+                                "## Second\n\n" + NARROW_TABLE + "\n\nOutro")
+        self.assertEqual(len(pieces), 2)
+        self.assertTrue(pieces[0].startswith("Intro") and pieces[0].endswith("Note on the first."))
+        self.assertEqual([table_count(p) for p in pieces], [1, 1])
+        self.assertTrue(pieces[1].startswith("## Second") and pieces[1].endswith("Outro"))
+
+    def test_tables_back_to_back_split_right_after_the_first(self):
+        pieces = r.split_tables(WIDE_TABLE + "\n\n" + NARROW_TABLE)
+        self.assertEqual(pieces, [WIDE_TABLE, NARROW_TABLE])
+
+    def test_three_tables_and_nothing_lost(self):
+        text = "A\n\n" + NARROW_TABLE + "\n\nB\n\n" + NARROW_TABLE + "\n\nC\n\n" + NARROW_TABLE
+        pieces = r.split_tables(text)
+        self.assertEqual(len(pieces), 3)
+        self.assertEqual(sum(table_count(p) for p in pieces), 3)
+        for word in "ABC":
+            self.assertEqual(sum(("\n" + p + "\n").count("\n" + word + "\n") for p in pieces), 1)
+
+    def test_a_heading_or_lead_in_goes_with_the_table_it_introduces(self):
+        pieces = r.split_tables(WIDE_TABLE + "\n\nNote.\n\n## Two\n\nSome intro:\n\n" + NARROW_TABLE)
+        self.assertTrue(pieces[0].endswith("Note."))
+        self.assertTrue(pieces[1].startswith("## Two\n\nSome intro:"))
+
+    def test_a_table_inside_a_code_block_is_not_a_table(self):
+        text = "```\n" + NARROW_TABLE + "\n```\n\n" + NARROW_TABLE
+        self.assertEqual(len(r.split_tables(text)), 1)
+
+    def test_first_message_has_the_byline_last_has_the_footer_and_buttons(self):
+        for look in ("old", "new"):
+            first = r.build_answer(look, "S", "support", "a", "U1", first=True, last=False)[0]["blocks"]
+            last = r.build_answer(look, "S", "support", "b", "U1", first=False, last=True)[0]["blocks"]
+            self.assertEqual(first[0]["type"], "context")
+            self.assertNotIn("context_actions", [b["type"] for b in first])
+            self.assertNotIn("Reply in this thread", json.dumps(first))
+            self.assertNotIn("*S*", json.dumps(last))
+            self.assertEqual(last[-1]["type"], "context_actions")
 
 
 class Matching(unittest.TestCase):
@@ -166,7 +188,7 @@ class Matching(unittest.TestCase):
 
 
 class ReplyFallback(unittest.TestCase):
-    """Slack rejects the native table -> the same answer is sent again as a text table."""
+    """What happens when Slack rejects a card: old look, no buttons, never a text table."""
 
     class FakeSlack(r.Slack):
         def __init__(self, reject=()):
@@ -199,14 +221,12 @@ class ReplyFallback(unittest.TestCase):
         self.assertTrue(result["posted"])
         self.assertEqual(slack.sent[0][0], "chat.update")
 
-    def test_rejected_then_text_table(self):
+    def test_a_rejected_table_is_never_swapped_for_a_text_table(self):
         slack, result = self.run_reply({"table"})
-        self.assertTrue(result["posted"])
-        self.assertEqual(slack.errors, [])
-        self.assertTrue(any("text table" in w for w in result["warnings"]))
-        blocks = slack.sent[0][1]["attachments"][0]["blocks"]
-        self.assertFalse(any(b["type"] == "table" for b in blocks))
-        self.assertTrue(any(b["type"] == "context_actions" for b in blocks))   # buttons kept
+        self.assertFalse(result["posted"])
+        self.assertTrue(slack.errors)                       # Slack's refusal is reported
+        self.assertEqual(slack.sent, [])
+        self.assertFalse(any("\u250c" in json.dumps(p) for _m, p in slack.sent))
 
     def test_rejected_feedback_buttons_are_dropped(self):
         slack, result = self.run_reply({"context_actions"}, answer="Just text")
@@ -225,6 +245,74 @@ class ReplyFallback(unittest.TestCase):
         slack, _ = self.run_reply(answer="I can't help with that here. [[BLOCKED]]")
         blocks = slack.sent[0][1]["attachments"][0]["blocks"]
         self.assertFalse(any(b["type"] == "context_actions" for b in blocks))
+
+
+class SeveralTables(unittest.TestCase):
+    """Slack allows one table block per message: one message per table, in order."""
+
+    TWO = "Intro\n\n" + WIDE_TABLE + "\n\n## Second\n\n" + NARROW_TABLE + "\n\nOutro"
+
+    def run_reply(self, reject=(), look="", answer=TWO):
+        slack = ReplyFallback.FakeSlack(reject)
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": answer, "genie_name": "SNAP", "thinking_ts": "1.1",
+                 "user_id": "U1", "look": look}, FakeTable(), slack, result)
+        return slack, result
+
+    def blocks(self, slack, n):
+        return slack.sent[n][1]["attachments"][0]["blocks"]
+
+    def test_one_message_per_table_first_edits_the_thinking_message(self):
+        for look in ("new", "old"):
+            slack, result = self.run_reply(look=look)
+            self.assertEqual([m for m, _p in slack.sent], ["chat.update", "chat.postMessage"])
+            self.assertEqual(slack.sent[0][1]["ts"], "1.1")
+            self.assertEqual(slack.sent[1][1]["thread_ts"], "1.0")
+            for n in (0, 1):
+                self.assertEqual(types(self.blocks(slack, n)).count("table"), 1)
+            self.assertTrue(result["posted"])
+            self.assertEqual(slack.errors, [])
+
+    def test_byline_first_footer_and_buttons_last(self):
+        slack, _ = self.run_reply()
+        first, second = self.blocks(slack, 0), self.blocks(slack, 1)
+        self.assertIn("SNAP", json.dumps(first[0]))
+        self.assertNotIn("context_actions", types(first))
+        self.assertNotIn("SNAP", json.dumps(second[0]))
+        self.assertEqual(types(second)[-2:], ["context", "context_actions"])
+
+    def test_the_order_of_the_answer_is_kept(self):
+        slack, _ = self.run_reply(look="old")
+        flat = json.dumps([self.blocks(slack, 0), self.blocks(slack, 1)])
+        self.assertLess(flat.index("Intro"), flat.index("Rocketlane Source"))
+        self.assertLess(flat.index("Rocketlane Source"), flat.index("Second"))
+        self.assertLess(flat.index("Second"), flat.index("apple"))
+        self.assertLess(flat.index("apple"), flat.index("Outro"))
+
+    def test_one_table_is_still_one_message(self):
+        slack, _ = self.run_reply(answer="Intro\n\n" + WIDE_TABLE)
+        self.assertEqual(len(slack.sent), 1)
+
+    def test_rejected_buttons_are_dropped_on_the_last_message_only(self):
+        slack, result = self.run_reply({"context_actions"})
+        self.assertEqual(len(slack.sent), 2)
+        self.assertFalse(any("context_actions" in types(self.blocks(slack, n)) for n in (0, 1)))
+        self.assertEqual(slack.errors, [])
+
+    def test_second_message_failing_is_reported_not_hidden(self):
+        class SecondFails(ReplyFallback.FakeSlack):
+            def _call(self, method, payload):
+                if method == "chat.postMessage":
+                    self.errors.append("slack.chat.postMessage: invalid_blocks")
+                    return None
+                return ReplyFallback.FakeSlack._call(self, method, payload)
+        slack = SecondFails()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": self.TWO, "genie_name": "SNAP", "thinking_ts": "1.1"},
+                FakeTable(), slack, result)
+        self.assertTrue(result["posted"])                    # the first part went out
+        self.assertTrue(any("part 2 of 2" in w for w in result["warnings"]))
+        self.assertTrue(slack.errors)
 
 
 class FeedbackButtons(unittest.TestCase):
@@ -249,9 +337,28 @@ class FeedbackButtons(unittest.TestCase):
         self.assertNotIn("context_actions", [b["type"] for b in card[0]["blocks"]])
 
 
+class plan_on(object):
+    """SHOW_PLAN is off by default (Slack rejects a plan block in a normal message); these
+    tests switch it on to check the plan code that is kept behind it."""
+
+    def __enter__(self):
+        self.old, r.SHOW_PLAN = r.SHOW_PLAN, True
+
+    def __exit__(self, *exc):
+        r.SHOW_PLAN = self.old
+
+
 class PlanBlock(unittest.TestCase):
-    def test_thinking_message_has_a_plan(self):
-        card = r.thinking_attachments("rocket", "support", "why <b>no</b> sync?")
+    """The plan block code is kept behind SHOW_PLAN, which is off."""
+
+    def test_plan_is_off_by_default(self):
+        self.assertFalse(r.SHOW_PLAN)
+        card = r.thinking_attachments("rocket", "support", "q")
+        self.assertEqual([b["type"] for b in card[0]["blocks"]], ["context"])
+
+    def test_thinking_message_has_a_plan_when_switched_on(self):
+        with plan_on():
+            card = r.thinking_attachments("rocket", "support", "why <b>no</b> sync?")
         plan = [b for b in card[0]["blocks"] if b["type"] == "plan"][0]
         self.assertEqual([t["status"] for t in plan["tasks"]],
                          ["complete", "complete", "in_progress", "pending"])
@@ -262,27 +369,129 @@ class PlanBlock(unittest.TestCase):
         self.assertNotIn("<", quoted)
 
     def test_plain_thinking_message_without_plan(self):
-        card = r.thinking_attachments("rocket", "support", "q", plan=False)
+        with plan_on():
+            card = r.thinking_attachments("rocket", "support", "q", plan=False)
         self.assertEqual([b["type"] for b in card[0]["blocks"]], ["context"])
 
-    def test_plan_can_be_switched_off(self):
-        old, r.SHOW_PLAN = r.SHOW_PLAN, False
-        try:
-            card = r.thinking_attachments("rocket", "support", "q")
-        finally:
-            r.SHOW_PLAN = old
-        self.assertEqual([b["type"] for b in card[0]["blocks"]], ["context"])
-
-    def test_ask_falls_back_when_slack_rejects_the_plan(self):
-        slack = ReplyFallback.FakeSlack({"plan"})
+    def run_post_thinking(self, reject, look="old"):
+        slack = ReplyFallback.FakeSlack(reject)
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "genie_name": "SNAP",
                   "persona": "support"}
-        r.post_thinking(slack, result, "why?")
+        r.post_thinking(slack, result, "why?", look)
+        return slack, result
+
+    def test_with_the_plan_off_nothing_is_rejected_and_no_warning(self):
+        slack, result = self.run_post_thinking({"plan"})
+        self.assertEqual(result["thinking_ts"], "1.2")
+        self.assertEqual((slack.errors, result["warnings"]), ([], []))
+        self.assertEqual(len(slack.sent), 1)                  # one call, no failed attempt
+
+    def test_plan_on_falls_back_when_slack_rejects_it(self):
+        with plan_on():
+            slack, result = self.run_post_thinking({"plan"})
         self.assertEqual(result["thinking_ts"], "1.2")
         self.assertEqual(slack.errors, [])
         self.assertTrue(any("plan" in w for w in result["warnings"]))
         self.assertEqual([b["type"] for b in slack.sent[0][1]["attachments"][0]["blocks"]],
                          ["context"])
+
+
+class ThinkingLine(unittest.TestCase):
+    """The new look's waiting message: one plain line, no card."""
+
+    def test_text(self):
+        self.assertEqual(r.thinking_text("rocket"), "*rocket* is thinking\u2026 :loading-2:")
+
+    def test_no_name_falls_back(self):
+        self.assertEqual(r.thinking_text(""), "*The genie* is thinking\u2026 :loading-2:")
+
+    def test_new_look_posts_blocks_only_no_text_and_no_attachment(self):
+        # No `text`: the message trigger must see an empty message, or the app's own line
+        # ("*rocket* is thinking...") would match the keyword ROCKET and start a second run.
+        slack = ReplyFallback.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "genie_name": "rocket",
+                  "persona": "support"}
+        r.post_thinking(slack, result, "why?", "new")
+        payload = slack.sent[0][1]
+        self.assertNotIn("attachments", payload)
+        self.assertNotIn("text", payload)
+        self.assertIn("rocket", json.dumps(payload["blocks"]))
+        self.assertEqual((result["thinking_ts"], result["warnings"]), ("1.2", []))
+
+    def test_own_waiting_line_never_starts_a_run(self):
+        class OneGenie(FakeTable):
+            def query(self, where, limit=200):
+                if "$and" in where:
+                    return [{"record_type": "channel_genie", "status": "active", "channel": "C1",
+                             "invoke_keyword": "ROCKET", "genie_name": "rocket",
+                             "persona": "support", "id": "gin-1"}], None
+                return FakeTable.query(self, where, limit)
+
+        for text in (r.thinking_text("rocket"), "*rocket* is thinking... :loading-2:"):
+            slack = ReplyFallback.FakeSlack()
+            result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "matched": False}
+            r.ask({"text": text, "user_id": "U1"}, OneGenie(), slack, result)
+            self.assertFalse(result.get("call_genie"))
+            self.assertEqual(result["skipped"], "the app's own waiting message")
+            self.assertEqual(slack.sent, [])
+        # a real question that merely contains those words still gets answered
+        slack = ReplyFallback.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "matched": False}
+        r.ask({"text": "ROCKET why is the sync thinking so long?", "user_id": "U1"},
+              OneGenie(), slack, result)
+        self.assertTrue(result["call_genie"])
+
+    def test_old_look_still_posts_the_card(self):
+        slack = ReplyFallback.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "genie_name": "rocket",
+                  "persona": "support"}
+        r.post_thinking(slack, result, "why?", "old")
+        self.assertEqual(slack.sent[0][1]["attachments"][0]["blocks"][0]["type"], "context")
+        self.assertNotIn("text", slack.sent[0][1])
+
+    def test_rejected_line_falls_back_to_the_old_card(self):
+        class NoPlainText(ReplyFallback.FakeSlack):
+            def _call(self, method, payload):
+                if "attachments" not in payload:
+                    self.errors.append("slack.chat.postMessage: invalid_blocks")
+                    return None
+                return ReplyFallback.FakeSlack._call(self, method, payload)
+        slack = NoPlainText()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "genie_name": "rocket",
+                  "persona": "support"}
+        r.post_thinking(slack, result, "why?", "new")
+        self.assertEqual(result["thinking_ts"], "1.2")
+        self.assertEqual(slack.errors, [])
+        self.assertTrue(any("thinking line rejected" in w for w in result["warnings"]))
+
+    def test_the_answer_replaces_the_plain_line(self):
+        slack = ReplyFallback.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": "Hi", "genie_name": "rocket", "thinking_ts": "1.1"},
+                FakeTable(), slack, result)
+        method, payload = slack.sent[0]
+        self.assertEqual((method, payload["ts"], payload["text"]), ("chat.update", "1.1", ""))
+        self.assertTrue(payload["attachments"])
+
+    def test_ask_uses_the_look_input(self):
+        class OneGenie(FakeTable):
+            def query(self, where, limit=200):
+                if "$and" in where:
+                    return [{"record_type": "channel_genie", "status": "active", "channel": "C1",
+                             "invoke_keyword": "ROCKET", "genie_name": "rocket",
+                             "persona": "support", "id": "gin-1"}], None
+                return FakeTable.query(self, where, limit)
+
+        for look, plain_line in (("new", True), ("", True), ("old", False)):
+            slack = ReplyFallback.FakeSlack()
+            result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "matched": False}
+            r.ask({"text": "ROCKET why no sync?", "user_id": "U1", "look": look},
+                  OneGenie(), slack, result)
+            self.assertTrue(result["call_genie"])
+            payload = slack.sent[-1][1]
+            self.assertEqual("blocks" in payload and "attachments" not in payload, plain_line, look)
+            self.assertEqual(result["thinking_ts"], "1.2")
+            self.assertEqual(result["warnings"], [])
 
 
 class FakeTable(object):
@@ -374,6 +583,182 @@ class FeedbackAction(unittest.TestCase):
         # ask() reads rows with record_type channel_genie; a feedback row must not look like one.
         self.assertNotEqual(r.FEEDBACK_TYPE, r.GENIE_TYPE)
         self.assertNotEqual(r.FEEDBACK_TYPE, r.CONVERSATION_TYPE)
+
+
+def types(blocks):
+    return [b["type"] for b in blocks]
+
+
+class OldLookIsUnchanged(unittest.TestCase):
+    """testdata/golden_old.json was made from responder.py before the new look existed."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata",
+                               "golden_old.json")) as handle:
+            cls.golden = json.load(handle)
+
+    def same(self, name, built):
+        self.assertEqual(json.loads(json.dumps(built, sort_keys=True)), self.golden[name])
+
+    def test_answers(self):
+        for name in ("plain", "long"):
+            text = SAMPLES[name]
+            self.same(name, r.answer_attachments("SNAP", "support", text, "U1"))
+            self.same(name, r.build_answer("old", "SNAP", "support", text, "U1"))
+
+    def test_answer_with_two_tables_is_one_message_per_table(self):
+        # The one change to the old look: tables are native blocks, never box characters.
+        pages = r.split_tables(SAMPLES["rich"])
+        built = [r.build_answer("old", "SNAP", "support", page, "U1", first=i == 0,
+                                last=i == len(pages) - 1) for i, page in enumerate(pages)]
+        self.same("rich_pages", built)
+
+    def test_hello_thinking_error(self):
+        self.same("hello", r.hello_attachments("SNAP", "support", "SNAP", [{"name": "Proj"}]))
+        self.same("thinking", r.thinking_attachments("SNAP", "support", "why?"))
+        with plan_on():
+            self.same("thinking_with_plan", r.thinking_attachments("SNAP", "support", "why?"))
+        self.same("error", r.error_attachments("SNAP", "support", "boom"))
+
+    def test_reply_with_look_old_sends_the_golden_card(self):
+        slack = ReplyFallback.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": SAMPLES["rich"], "genie_name": "SNAP", "persona": "support",
+                 "user_id": "U1", "thinking_ts": "1.1", "look": "old"},
+                FakeTable(), slack, result)
+        self.assertEqual(json.loads(json.dumps([p["attachments"] for _m, p in slack.sent],
+                                               sort_keys=True)), self.golden["rich_pages"])
+
+
+class NewLook(unittest.TestCase):
+    def card(self, text, **kw):
+        return r.build_answer("new", "SNAP", "support", text, "U1", **kw)[0]["blocks"]
+
+    def test_look_input(self):
+        self.assertEqual(r.look_of("OLD"), "old")
+        self.assertEqual(r.look_of(" new "), "new")
+        self.assertEqual(r.look_of(""), r.LOOK_DEFAULT)
+        self.assertEqual(r.look_of("classic"), r.LOOK_DEFAULT)
+
+    def test_title_becomes_a_header(self):
+        blocks = self.card(SAMPLES["rich"])
+        self.assertEqual(types(blocks)[:3], ["context", "header", "markdown"])
+        self.assertEqual(blocks[1]["text"], {"type": "plain_text", "emoji": True,
+                                             "text": "Why quote Q-123 did not sync"})
+        self.assertNotIn("Why quote Q-123 did not sync", blocks[2]["text"])
+
+    def test_header_is_cut_to_slacks_limit_and_has_no_markdown(self):
+        blocks = self.card("## **{}**\n\nBody".format("x" * 400))
+        self.assertEqual(len(blocks[1]["text"]["text"]), r.HEADER_LIMIT)
+        self.assertNotIn("*", blocks[1]["text"]["text"])
+
+    def test_no_header_when_the_answer_is_only_a_heading_or_has_none(self):
+        self.assertNotIn("header", types(self.card("# Only a title")))
+        self.assertNotIn("header", types(self.card("Just an answer\n\n# Later heading")))
+
+    def test_body_keeps_markdown_as_written(self):
+        text = "\n".join(b["text"] for b in self.card(SAMPLES["rich"]) if b["type"] == "markdown")
+        for kept in ("## What happened", "**quote**", "[the recipe](https://app.workato.com/recipes/1)",
+                     "  - nested detail", "> Retrying", "```python"):
+            self.assertIn(kept, text)
+
+    def test_table_is_native_and_rule_is_a_divider(self):
+        first = r.split_tables(SAMPLES["rich"])[0]
+        blocks = self.card(first)
+        self.assertEqual(types(blocks).count("table"), 1)
+        self.assertIn("divider", types(blocks))
+        self.assertNotIn("\u250c", json.dumps(blocks))                       # no box table
+
+    def test_footer_and_feedback_buttons_stay(self):
+        blocks = self.card("Hello")
+        self.assertEqual(types(blocks)[-2:], ["context", "context_actions"])
+        self.assertNotIn("context_actions", types(self.card("Hello", feedback=False)))
+
+    def test_markdown_total_stays_under_slacks_limit(self):
+        blocks = self.card(SAMPLES["long"])            # 40 long paragraphs: too long for markdown
+        self.assertNotIn("markdown", types(blocks))
+        self.assertIn("section", types(blocks))
+        medium = "\n\n".join("Paragraph " + "word " * 100 for _ in range(10))
+        blocks = self.card(medium)
+        self.assertLessEqual(sum(len(b["text"]) for b in blocks if b["type"] == "markdown"),
+                             r.MARKDOWN_TOTAL)
+        self.assertNotIn("section", types(blocks))
+
+    def test_every_markdown_block_is_text_and_no_empty_ones(self):
+        for text in SAMPLES.values():
+            for block in self.card(text):
+                if block["type"] == "markdown":
+                    self.assertTrue(block["text"].strip())
+
+    def test_hello_is_a_card(self):
+        card = r.hello_attachments_new("SNAP", "support", "SNAP", [{"name": "Proj"}])[0]["blocks"][0]
+        self.assertEqual(card["type"], "card")
+        self.assertIn("SNAP", card["title"]["text"])
+        self.assertIn("Proj", card["body"]["text"])
+
+
+class NewLookFallback(unittest.TestCase):
+    def run_reply(self, reject, look=""):
+        slack = ReplyFallback.FakeSlack(reject)
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": SAMPLES["rich"], "genie_name": "SNAP", "thinking_ts": "1.1",
+                 "look": look}, FakeTable(), slack, result)
+        return slack, result
+
+    def test_new_look_is_sent_first(self):
+        slack, result = self.run_reply(())
+        self.assertIn("markdown", types(slack.sent[0][1]["attachments"][0]["blocks"]))
+        self.assertFalse([w for w in result["warnings"] if "rejected" in w])
+
+    def test_rejected_markdown_sends_the_old_look(self):
+        slack, result = self.run_reply({"markdown", "header"})
+        blocks = slack.sent[0][1]["attachments"][0]["blocks"]
+        self.assertNotIn("markdown", types(blocks))
+        self.assertIn("section", types(blocks))
+        self.assertIn("table", types(blocks))                  # still the native table
+        self.assertEqual(slack.errors, [])
+        self.assertTrue(any("the old look" in w for w in result["warnings"]))
+
+    def test_look_old_never_sends_a_markdown_block(self):
+        slack, _ = self.run_reply((), look="old")
+        self.assertNotIn("markdown", types(slack.sent[0][1]["attachments"][0]["blocks"]))
+
+    def test_slacks_own_reason_is_in_the_warning(self):
+        class Reasoned(ReplyFallback.FakeSlack):
+            def _call(self, method, payload):
+                blocks = [b for a in payload.get("attachments", []) for b in a["blocks"]]
+                if any(b["type"] == "markdown" for b in blocks):
+                    self.errors.append("slack.chat.update: invalid_blocks "
+                                       "(unsupported block type: markdown)")
+                    return None
+                return ReplyFallback.FakeSlack._call(self, method, payload)
+        slack = Reasoned()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply({"genie_response": "Hi", "genie_name": "SNAP", "thinking_ts": "1.1"},
+                FakeTable(), slack, result)
+        self.assertTrue(any("unsupported block type: markdown" in w for w in result["warnings"]))
+
+    def test_slack_call_puts_response_metadata_in_the_error(self):
+        slack = r.Slack("x")
+        original = r._request
+        r._request = lambda *a, **k: ({"ok": False, "error": "invalid_blocks",
+                                       "response_metadata": {"messages": ["[ERROR] bad card"]}},
+                                      None)
+        try:
+            self.assertIsNone(slack._call("chat.postMessage", {}))
+        finally:
+            r._request = original
+        self.assertIn("bad card", slack.errors[0])
+
+    def test_hello_falls_back_to_the_old_look(self):
+        slack = ReplyFallback.FakeSlack({"card"})
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "genie_name": "SNAP",
+                  "persona": "support", "keyword": "SNAP"}
+        r.post_hello(slack, result, [{"name": "Proj"}], "new")
+        self.assertEqual(slack.errors, [])
+        self.assertEqual(types(slack.sent[0][1]["attachments"][0]["blocks"]), ["context", "section"])
+        self.assertTrue(any("hello" in w for w in result["warnings"]))
 
 
 if __name__ == "__main__":

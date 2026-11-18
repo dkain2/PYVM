@@ -1,0 +1,280 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "Friday check-in, team: week 15 is complete :white_check_mark:",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":trophy:  Our busiest week yet — more of us logged than in any week before!"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": ":teamwork-2:  *13* people active"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":white_check_mark:  *48* check-ins"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":athletic_shoe:  *393,324* steps"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":plank-3:  *611* pushups"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":plank-4:  *29m 27s* of plank"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":person_in_lotus_position:  *4h 59m* of yoga"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":books:  *147* pages read"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":swimmer:  *1h 35m* of swimming"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":brain:  *1h* of meditation"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":fire:  *5* people logged every working day"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": ":jigsaw:  *7* different activities"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":wave:  *2* new faces"
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "The week before:  *10* people active  ·  *36* check-ins"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":sparkles:  Shout-outs",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":athletic_shoe:  We passed *4,750,000* steps this week\n:plank-4:  We passed *6 hours* of plank this week\n:wave:  Welcome *Grace Lee* and *Hiro Tanaka* — first logs this week\n:raised_hands:  Welcome back *Farid Khan* — first log in 5 weeks\n:sports_medal:  *Noah Fischer* set a new pushups personal best: *80* (was 55)\n:star2:  *Asha Rao* passed *75* days logged\n:star2:  *Jon Smith* passed *10m* of plank all time"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":medal:  Badges this week",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": ":fire:  *Unstoppable*\n*Asha Rao*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":repeat:  *Eight-Week Rhythm*\n*Noah Fischer*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":white_check_mark:  *Twelve Perfect Weeks*\n*Asha Rao*"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": ":calendar:  Who showed up, day by day",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_orange_square::large_red_square::large_orange_square:   16 Oct  ·  10 people\n:large_yellow_square::large_yellow_square::large_yellow_square::large_red_square::large_red_square::large_red_square::large_orange_square:   23 Oct  ·  10 people\n:large_yellow_square::large_yellow_square::large_red_square::large_red_square::large_orange_square::large_red_square::large_orange_square:   30 Oct  ·  9 people\n:large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_orange_square::large_orange_square::large_orange_square:   6 Nov  ·  10 people\n:large_yellow_square::large_yellow_square::large_orange_square::large_red_square::large_red_square::large_red_square::large_red_square:   *13 Nov  ·  13 people*"
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Tuesdays are our busiest day, Sundays our quietest. Streaks hold over the weekend, so rest is free.\nEach row is the 7 days to that date, Sat → Fri  ·  :white_large_square::large_yellow_square::large_orange_square::large_red_square:  quiet → very active"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": ":athletic_shoe:  *Steps*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Ben Carter  —  *69,729 steps*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":plank-3:  *Pushups*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Noah Fischer  —  *163 pushups*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":plank-4:  *Plank*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Kavya Nair  —  *7m 37s*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":person_in_lotus_position:  *Yoga*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Asha Rao  —  *2h 1m*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":books:  *Reading*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Dev Patel  —  *51 pages read*"
+        }
+      ],
+      "text": {
+        "type": "mrkdwn",
+        "text": ":first_place_medal:  *This week's top contributors*"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": ":swimmer:  *Swimming*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Elena Rossi  —  *1h 11m*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": ":brain:  *Meditation*"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "Chitra Iyer  —  *32m*"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":person_in_lotus_position:  *Spotlight: Yoga*\n*4* people in the last four weeks  ·  62h 13m on the mat all time\n_Pick whichever one suits you — it all counts here._"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":world_map:  *The Great Walk*  ·  leg 5 of 20\n:flag-us: Chicago  →  :flag-us: New York\n:large_blue_square::large_blue_square::large_blue_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square:  *34%*  ·  *755 km* to go\nAt this pace we reach *New York* around *Wed 2 Dec*."
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Together we've walked *3,515 km*  ·  *8.7%* of the way round the world  ·  *+281 km* this week"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":dart:  *Next stop: Steps → 5,000,000*\n:large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::white_large_square::white_large_square::white_large_square:  *67%*\n*83,461* to go — about *6,421* each from the 13 of us who logged this week. At this pace, around *Sun 15 Nov*. Who's closing it out? React :athletic_shoe: if you're in.\n_Also climbing: Pushups 64% · Yoga 49% · Plank 13%_"
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "All time  ·  *13* people  ·  *1,213* sessions since 3 August  ·  *3,515 km* walked (83 marathons)  ·  *7,636* pushups  ·  *6h 7m* of plank"
+        }
+      ]
+    }
+  ]
+}

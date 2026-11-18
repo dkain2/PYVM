@@ -1,0 +1,82 @@
+{
+ "genies": [
+  {
+   "record_key": "SNAP:C1",
+   "genie_name": "snap",
+   "invoke_keyword": "SNAP",
+   "persona": "support",
+   "id": "gin-1",
+   "skills": "[{\"name\": \"A\"}, {\"name\": \"B\"}]",
+   "creator_name": "Dev K",
+   "created_at": "2026-11-17T10:00:00Z",
+   "forge_state": "{\"kb\": {\"id\": \"7\", \"name\": \"Docs KB\"}}",
+   "channel": "C1",
+   "status": "active"
+  },
+  {
+   "record_key": "OPS:C1",
+   "genie_name": "ops helper",
+   "invoke_keyword": "OPS",
+   "persona": "analyst",
+   "id": "gin-2",
+   "skills": "[]",
+   "creator_name": "",
+   "created_at": "",
+   "forge_state": "{}",
+   "channel": "C1",
+   "status": "active"
+  }
+ ],
+ "blocks": [
+  {
+   "type": "section",
+   "text": {
+    "type": "mrkdwn",
+    "text": "*This channel already has 2 genies: *snap* (`SNAP`), *ops helper* (`OPS`)*\nManage one, or create a new one."
+   }
+  },
+  {
+   "type": "actions",
+   "elements": [
+    {
+     "type": "button",
+     "action_id": "gc_console_manage",
+     "value": "SNAP:C1",
+     "text": {
+      "type": "plain_text",
+      "text": "Manage snap"
+     }
+    }
+   ]
+  },
+  {
+   "type": "actions",
+   "elements": [
+    {
+     "type": "button",
+     "action_id": "gc_console_manage",
+     "value": "OPS:C1",
+     "text": {
+      "type": "plain_text",
+      "text": "Manage ops helper"
+     }
+    }
+   ]
+  },
+  {
+   "type": "actions",
+   "elements": [
+    {
+     "type": "button",
+     "action_id": "gc_console_new",
+     "value": "draft:1.2",
+     "style": "primary",
+     "text": {
+      "type": "plain_text",
+      "text": "Create a new genie"
+     }
+    }
+   ]
+  }
+ ]
+}

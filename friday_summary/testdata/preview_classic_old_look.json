@@ -1,0 +1,95 @@
+{
+  "blocks": [
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "​\n:teamwork-2:  *How far we've come*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*13* people  ·  *1,213* sessions  ·  since 3 August"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*Already banked*\n:athletic_shoe:  *4 × 1,000,000 steps, done*\n:plank-3:  *1 × 5,000 pushups, done*\n:plank-4:  *1 × 5 hours of plank, done*"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":dart:  *Up next*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":athletic_shoe:  *Steps*  ·  4,916,539  ·  3,515 km  ·  *67%*\n:large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::large_blue_square::white_large_square::white_large_square::white_large_square:  *83,461* to go → *1,000,000*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":plank-3:  *Pushups*  ·  7,636  ·  *64%*\n:large_yellow_square::large_yellow_square::large_yellow_square::large_yellow_square::large_yellow_square::large_yellow_square::white_large_square::white_large_square::white_large_square::white_large_square:  *364* to go → *3,000*"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":plank-4:  *Plank*  ·  6h 7m  ·  *13%*\n:large_green_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square::white_large_square:  *52m 3s* to go → *2h*"
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ":seedling:  *Also happening here*\n:person_in_lotus_position:  *Yoga*  ·  62h 13m on the mat  ·  92 sessions\n:books:  *Reading*  ·  1,837 pages read  ·  73 sessions\n:brain:  *Meditation*  ·  12h 28m sitting  ·  52 sessions\n:swimmer:  *Swimming*  ·  19h 41m in the pool  ·  35 sessions"
+      }
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Pick whichever one suits you — it all counts here."
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": ">That's the week. *Your streak holds over the weekend* — Monday picks up where Friday left off, so rest properly if you need it.\n>_Anything you log Saturday or Sunday is a bonus._ :wave:"
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "Nearest one up is *steps* — *83,461* to go. Every log counts toward it. :dart:"
+      }
+    }
+  ]
+}

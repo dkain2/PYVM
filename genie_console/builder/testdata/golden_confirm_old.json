@@ -1,0 +1,155 @@
+{
+ "row": {
+  "genie_name": "Support genie",
+  "creator_id": "U1",
+  "invoke_keyword": "SUPP",
+  "channel": "C1",
+  "persona": "support",
+  "id": "gin-9",
+  "forge_state": "{\"job\": \"done\", \"kb\": {\"id\": \"kb-1\", \"name\": \"Docs KB\", \"attach\": \"done\", \"files\": 2}, \"plan\": [{\"name\": \"Look up orders\", \"state\": \"built\", \"handle\": \"skl-1\", \"recipe_id\": 11, \"save_status\": \"LIVE\"}, {\"name\": \"Refund order\", \"state\": \"failed\", \"reason\": \"no access\"}]}",
+  "skills": "[{\"handle\": \"skl-1\", \"name\": \"Look up orders\", \"recipe_id\": 11}]",
+  "workato_projects": "[{\"id\": 1, \"name\": \"Orders\"}]",
+  "recipes": "[{\"id\": 100, \"name\": \"Recipe 0\"}, {\"id\": 101, \"name\": \"Recipe 1\"}, {\"id\": 102, \"name\": \"Recipe 2\"}, {\"id\": 103, \"name\": \"Recipe 3\"}, {\"id\": 104, \"name\": \"Recipe 4\"}, {\"id\": 105, \"name\": \"Recipe 5\"}, {\"id\": 106, \"name\": \"Recipe 6\"}, {\"id\": 107, \"name\": \"Recipe 7\"}, {\"id\": 108, \"name\": \"Recipe 8\"}, {\"id\": 109, \"name\": \"Recipe 9\"}, {\"id\": 110, \"name\": \"Recipe 10\"}, {\"id\": 111, \"name\": \"Recipe 11\"}, {\"id\": 112, \"name\": \"Recipe 12\"}]",
+  "lookup_tables": "[{\"id\": 5, \"name\": \"Codes\"}]",
+  "data_tables": "[]"
+ },
+ "blocks_attachments": [
+  [
+   {
+    "type": "section",
+    "text": {
+     "type": "mrkdwn",
+     "text": "<@U1> *Support genie is ready.* Have a look, then switch it on."
+    }
+   },
+   {
+    "type": "context",
+    "elements": [
+     {
+      "type": "mrkdwn",
+      "text": "Step 6 of 6  \u00b7  0 left after this"
+     }
+    ]
+   },
+   {
+    "type": "actions",
+    "elements": [
+     {
+      "type": "button",
+      "action_id": "gc_console_confirm",
+      "value": "draft:1.2",
+      "style": "primary",
+      "text": {
+       "type": "plain_text",
+       "text": "Confirm"
+      }
+     },
+     {
+      "type": "button",
+      "action_id": "gc_console_cancel",
+      "value": "draft:1.2",
+      "style": "danger",
+      "text": {
+       "type": "plain_text",
+       "text": "Cancel"
+      }
+     }
+    ]
+   }
+  ],
+  [
+   {
+    "color": "#2eb886",
+    "fallback": "Genie summary",
+    "blocks": [
+     {
+      "type": "section",
+      "fields": [
+       {
+        "type": "mrkdwn",
+        "text": "*Genie*\n<https://app.workato.com/genies/gin-9/overview|Support genie>"
+       },
+       {
+        "type": "mrkdwn",
+        "text": "*Keyword*\n`SUPP`"
+       },
+       {
+        "type": "mrkdwn",
+        "text": "*Channel*\n<#C1>"
+       },
+       {
+        "type": "mrkdwn",
+        "text": "*Persona*\nSupport"
+       }
+      ]
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Skills built by Forge (1)*\n```11  Look up orders```"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Not built (1)*\n:x: Refund order (no access)"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Knowledge base (1)*\n```kb-1  Docs KB \u00b7 2 documents```"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Projects (1)*\n```1  Orders```"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Recipes (13)*\n```100  Recipe 0\n101  Recipe 1\n102  Recipe 2\n103  Recipe 3\n104  Recipe 4\n105  Recipe 5\n106  Recipe 6\n107  Recipe 7\n108  Recipe 8\n109  Recipe 9\n     \u2026 and 3 more```"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Lookup tables (1)*\n```5  Codes```"
+      }
+     },
+     {
+      "type": "section",
+      "expand": true,
+      "text": {
+       "type": "mrkdwn",
+       "text": "*Data tables (0)*\n_none_"
+      }
+     },
+     {
+      "type": "context",
+      "elements": [
+       {
+        "type": "mrkdwn",
+        "text": "Confirm attaches the knowledge base, starts the genie and its skill recipes, adds this app to the channel and switches it on there."
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ ]
+}
