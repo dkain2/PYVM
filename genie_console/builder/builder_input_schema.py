@@ -165,7 +165,7 @@
     "details": {
       "real_name": "kb_doc_detail"
     },
-    "hint": "Optional. The documents people can pick for the knowledge base, as JSON: {\"file_name\": \"Doc A,Doc B\", \"file_id\": \"id1,id2\"}. The names and the IDs are each comma-separated, in the same order, so a name that contains a comma cannot be used (the lists then no longer line up and no documents are offered). Up to 100 are listed. Map an object with .to_json, like payload_json. Needed by the Python step that handles the clicks. Blank = no document picker."
+    "hint": "Optional. The documents people can pick for the knowledge base, as JSON: {\"file_name\": \"Doc A,Doc B\", \"file_id\": \"id1,id2\"}. The names and the IDs are each comma-separated, in the same order, so a name that contains a comma cannot be used (the lists then no longer line up and no documents are offered). Up to 100 are listed. Map an object with .to_json, like payload_json. Needed by the Python step that handles the clicks. Fetch it for the gc_console_docs and gc_console_kb_add clicks as well (Manage > Add documents / Add knowledge base). Blank = no document picker."
   },
   {
     "control_type": "text",
@@ -177,7 +177,7 @@
     "details": {
       "real_name": "forge_folder_id"
     },
-    "hint": "Optional. Folder Integra builds in. Blank = a 'Genie - <name>' folder is created inside the first chosen project."
+    "hint": "Optional. ID of the folder every genie and its skills are built in, e.g. the genie console folder (35842663 while testing; pass the production folder ID when this moves to production). Nothing is created: the same folder is used for every genie, and the folder's running recipes are not stopped. Blank = a 'Genie - <name>' folder is created inside the first chosen project, as before."
   },
   {
     "control_type": "text",
@@ -322,5 +322,89 @@
       "real_name": "look"
     },
     "hint": "Optional. How the confirm summary looks: new (a table for each kind of thing, the default), single (one combined table) or old (text lists). If Slack refuses a look, the next plainer one is posted."
+  },
+  {
+    "control_type": "text",
+    "label": "lifecycle",
+    "type": "string",
+    "name": "lifecycle",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "lifecycle"
+    },
+    "hint": "Optional. on (the default) or off. on: the person who CREATED a genie sees Pause genie (Resume genie when paused) and Delete genie on its Manage card, and nobody else does. off: the card is as it was before, with neither button."
+  },
+  {
+    "control_type": "text",
+    "label": "skill_naming",
+    "type": "string",
+    "name": "skill_naming",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "skill_naming"
+    },
+    "hint": "Optional. simple (the default) or old. simple: Integra is told to plan small lookup skills named like 'Get account from Salesforce', not 'Diagnose why an Account did not sync...'. old: Integra gets no naming note, as before."
+  },
+  {
+    "control_type": "text",
+    "label": "skill_fields",
+    "type": "string",
+    "name": "skill_fields",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "skill_fields"
+    },
+    "hint": "Optional. all (the default) or old. all: Integra is told to return every field the project's recipes use for a record, with a reference's readable name next to its id (the customer's name, not only its id), and to map each of those fields in the skill's return step. old: Integra gets no such note and returns only the fields it judges a person would ask about, as before."
+  },
+  {
+    "control_type": "text",
+    "label": "fail_detail",
+    "type": "string",
+    "name": "fail_detail",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "fail_detail"
+    },
+    "hint": "Optional. on (the default) or off. on: a skill Integra could not build shows the actual error on a grey line right under it on the building card (up to 280 characters; when Integra sent no skill, what it did say: its status, summary and skills_json). off: the card as before, the reason cut to 80 characters in brackets. Needed on the forge_result call. Also map forge_summary there."
+  },
+  {
+    "control_type": "text",
+    "label": "connections",
+    "type": "string",
+    "name": "connections",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "connections"
+    },
+    "hint": "Optional. auto (the default) or off. auto: the console reads which connections the project's recipes use and tells Integra to build every skill with the most-used connection of each app (one per app). If the recipes use several connections for one app, a 'Which connections?' card asks first. off: nothing is read or sent and Integra picks its own, as before. Needs the API client to be allowed to list connections and recipes."
+  },
+  {
+    "control_type": "text",
+    "label": "manage_kb",
+    "type": "string",
+    "name": "manage_kb",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "manage_kb"
+    },
+    "hint": "Optional. on (the default) or off. on: the Manage card of a genie with no knowledge base has an Add knowledge base button. off: the card is as it was before, with no such button."
+  },
+  {
+    "control_type": "text",
+    "label": "kb_instructions",
+    "type": "string",
+    "name": "kb_instructions",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "kb_instructions"
+    },
+    "hint": "Optional. on (the default) or off. on: when a knowledge base is added from Manage, a 'check your knowledge base first' section is added to the genie's instructions in Workato (replaced, not repeated, if it is added again). Needs the API client to be allowed to edit genies. off: the instructions are left alone."
   }
 ]

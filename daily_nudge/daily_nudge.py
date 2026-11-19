@@ -287,7 +287,29 @@ DEFAULT_ACTIVITIES = list(CORE_ACTIVITIES) + list(GAMES) + [
     k for k in ENABLED_EXTRAS if k in ACTIVITIES and k not in CORE_ACTIVITIES]
 
 
-def game_buttons(details):
+# The click recipe for the memory games lets through only the action ids the memory step
+# itself posts (imemory_start, imemory_try, imemory_match_start, ...), unlike imath's, which
+# listens for anything starting `imath_`. `imemory_play` and `imemory_play_img` are ids the
+# step never posts, so a click on them never reached it. The step reads the VALUE, never the
+# id, so the nudge sends the same values under ids the recipe already accepts.
+# The `button_ids` input picks: "known" (default) uses those ids, "old" the previous ones.
+BUTTON_IDS_MODES = ("known", "old")
+BUTTON_IDS_DEFAULT = "known"
+KNOWN_ID_FOR = {"imemory_play": "imemory_start", "imemory_play_img": "imemory_try"}
+
+
+def button_ids_mode(value):
+    """"known" or "old": the `button_ids` input, blank = BUTTON_IDS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in BUTTON_IDS_MODES else BUTTON_IDS_DEFAULT
+
+
+def click_id(action_id, ids=BUTTON_IDS_DEFAULT):
+    """The action id to put on a button: one the click recipe lets through (see above)."""
+    return KNOWN_ID_FOR.get(action_id, action_id) if ids == "known" else action_id
+
+
+def game_buttons(details, ids=BUTTON_IDS_DEFAULT):
     """The two buttons on a game nudge.
 
     Same action ids and values the game steps already understand, so no recipe changes:
@@ -301,9 +323,9 @@ def game_buttons(details):
         return "{}anyone|0|{}".format(head, kind)
 
     return {"type": "actions", "block_id": prefix + "_nudge", "elements": [
-        {"type": "button", "action_id": prefix + "_try", "style": "primary",
+        {"type": "button", "action_id": click_id(prefix + "_try", ids), "style": "primary",
          "text": {"type": "plain_text", "text": "Play today's daily"}, "value": value("try")},
-        {"type": "button", "action_id": prefix + "_play",
+        {"type": "button", "action_id": click_id(prefix + "_play", ids),
          "text": {"type": "plain_text", "text": "Play a game"}, "value": value("play")},
     ]}
 
@@ -394,7 +416,7 @@ def suggest_break(activity, rng=random):
     return key, rng.choice(BREAKS[key]["ideas"])
 
 
-def break_blocks(activity, rng=random):
+def break_blocks(activity, rng=random, ids=BUTTON_IDS_DEFAULT):
     """The "Take a break" section: a one-line suggestion, then a button for every game.
 
     The suggested game's button is the primary (green) one. Anyone may press any of them,
@@ -412,7 +434,7 @@ def break_blocks(activity, rng=random):
         for key, game in BREAKS.items():
             if game["row"] != row:
                 continue
-            button = {"type": "button", "action_id": game["action_id"],
+            button = {"type": "button", "action_id": click_id(game["action_id"], ids),
                       "text": {"type": "plain_text", "text": game["label"], "emoji": True},
                       "value": game["value"]}
             if key == suggested:
@@ -637,7 +659,7 @@ def generate_nudge(llm, activity, details, weekday, channel_name=""):
     return (title, body), True
 
 
-def build_blocks(details, title, body, extra=()):
+def build_blocks(details, title, body, extra=(), ids=BUTTON_IDS_DEFAULT):
     """The nudge: heading, the AI-written body, how to act on it, then "Take a break".
 
     An activity ends with the command that logs it. A game ends with its two buttons, which
@@ -652,7 +674,7 @@ def build_blocks(details, title, body, extra=()):
         {"type": "section", "text": {"type": "mrkdwn", "text": body}},
     ]
     if details["kind"] == "game":
-        blocks.append(game_buttons(details))
+        blocks.append(game_buttons(details, ids))
     elif details.get("example"):
         blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text":
             "*Log it:* `{}`".format(details["example"])}]})
@@ -710,8 +732,9 @@ def main(input):
 
     llm = Azure(input.get("azure_api_key") or "", input.get("azure_url"))
     (title, body), llm_used = generate_nudge(llm, activity, details, weekday, channel_name)
-    break_section, suggested = break_blocks(activity)
-    blocks = build_blocks(details, title, body, break_section)
+    ids = button_ids_mode(input.get("button_ids"))
+    break_section, suggested = break_blocks(activity, ids=ids)
+    blocks = build_blocks(details, title, body, break_section, ids)
     fallback_text = "{} - {}".format(details["name"], title)
 
     result.update({

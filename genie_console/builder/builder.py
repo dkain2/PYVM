@@ -73,6 +73,23 @@ MANAGING SKILLS LATER (the manage card)
                     finish_add puts the new skills on the genie's own row and starts them.
     Remove skills   a dropdown of the genie's skills; the ticked ones are detached with
                     Workato's remove_skills API and their recipes stopped.
+    Add knowledge base   (only on a genie with none; input manage_kb = on | off, blank = on, off
+                    hides the button). The same form as the setup's kb step, all fields required:
+                    name, what it holds, when to use it, and documents when kb_doc_detail came with
+                    the click. Create makes it in the genie's folder, puts it on the live genie
+                    (assign_knowledge_bases) and keeps {id, name, about, use_when} in forge_state.kb.
+                    Picked documents are registered and handed to the recipe as Add documents
+                    does (call_kb_attach, then kb_attach_result shows the manage card). The
+                    genie's instructions get a "Your knowledge base: check it first" section
+                    (between <!-- genie-console:knowledge-base --> markers, so a second run replaces
+                    it instead of adding another): the genie's own instructions say little about its
+                    knowledge base, and without it the genie looks in one only when asked. Input
+                    kb_instructions = on | off, blank = on; off leaves the instructions alone.
+                    Nothing is written unless the current instructions were read first. The
+                    responder also sends the knowledge base with every question (its kb_note
+                    input), which covers a genie whose instructions could not be updated. If Workato
+                    refuses to attach it, the knowledge base is still kept (so no duplicate is
+                    made), the instructions are left alone, and the card says how to attach it.
 On Submit the step's message is edited into a one-line "done" and the next
 step is posted beneath it. A bad answer re-renders the same step with the
 reason, so the loop only moves forward on valid input.
@@ -158,6 +175,7 @@ KB_ASSIGN_URL = GENIE_API_URL + "/assign_knowledge_bases"   # POST {"knowledge_b
 KB_SOURCE_TYPE = "recipe"
 KB_DATA_SOURCES = ""
 FOLDER_RECIPES_URL = WORKATO_API + "/recipes?folder_id={}&page={}&per_page=100"
+CONNECTIONS_URL = WORKATO_API + "/connections?page={}&per_page=100"
 FOLDERS_URL = WORKATO_API + "/folders"                 # ...nor a create-folder tool
 RECIPE_URL = WORKATO_API + "/recipes/{}?exclude_code=yes"   # + &version_no=N for an older version
 GENIE_FOLDER_NAME = "Genie - {}"                       # where Integra puts a genie + its skills
@@ -244,6 +262,8 @@ STATUS_BUILT = "built"                     # Integra finished; waiting for Confi
 STATUS_BUILD_FAILED = "build_failed"       # Integra failed; Try again is offered
 STATUS_ACTIVE = "active"                   # confirmed: live in its channel
 STATUS_CANCELLED = "cancelled"
+STATUS_PAUSED = "paused"                   # a live genie switched off by its creator: it stays on the
+                                           # manage card (Resume) but the responder never answers for it
 
 # --------------------------------------------------------------------------
 # Personas
@@ -315,6 +335,9 @@ ACTION_MANAGE_DONE = "gc_console_manage_done"   # back to the manage card
 ACTION_DOCS = "gc_console_docs"                 # open the add-documents picker (the Click recipe
                                                 # fetches the Drive file list for this click too)
 ACTION_DOCS_SAVE = "gc_console_docs_save"       # register the picked documents and sync
+ACTION_KB_ADD = "gc_console_kb_add"             # open the add-knowledge-base form (a genie with none; the
+                                                # Click recipe fetches the Drive file list for this click too)
+ACTION_KB_ADD_SAVE = "gc_console_kb_add_save"   # make the knowledge base, put it on the genie, sync documents
 ACTION_SKILLS_ADD = "gc_console_skills_add"     # plan new skills for a live genie (Integra reads the project)
 ACTION_SKILLS_REMOVE = "gc_console_skills_remove"   # open the remove-skills picker
 ACTION_SKILLS_REMOVE_APPLY = "gc_console_skills_remove_apply"   # detach the picked skills
@@ -322,9 +345,33 @@ ACTION_SKILLS_REMOVE_APPLY = "gc_console_skills_remove_apply"   # detach the pic
 # works in), because it carries on a Integra loop. Picks which of the planned skills to build.
 ACTION_SKILLS_PICK = "gc_console_skills_pick"
 ACTION_SKILLS_NONE = "gc_console_skills_none"     # "No skills": build the genie with none
-MANAGE_ACTIONS = (ACTION_MANAGE, ACTION_RESYNC, ACTION_DESC, ACTION_DESC_SAVE,
+ACTION_PAUSE = "gc_console_pause"               # stop the genie answering (reversible); creator only
+ACTION_RESUME = "gc_console_resume"             # let a paused genie answer again; creator only
+ACTION_DELETE = "gc_console_delete"             # ask "delete this genie?"; creator only
+ACTION_DELETE_APPLY = "gc_console_delete_apply" # confirmed: delete it; creator only
+# Not a manage action: its value is a draft key. Sent by the "Which connections?" card (see
+# resolve_connections), which is only posted when a project's recipes use more than one connection for
+# the same app.
+ACTION_CONNECTIONS_PICK = "gc_console_connections_pick"
+MANAGE_ACTIONS = (ACTION_PAUSE, ACTION_RESUME, ACTION_DELETE, ACTION_DELETE_APPLY, ACTION_MANAGE, ACTION_RESYNC, ACTION_DESC, ACTION_DESC_SAVE,
                   ACTION_DESC_APPLY, ACTION_MANAGE_DONE, ACTION_DOCS, ACTION_DOCS_SAVE,
-                  ACTION_SKILLS_ADD, ACTION_SKILLS_REMOVE, ACTION_SKILLS_REMOVE_APPLY)
+                  ACTION_SKILLS_ADD, ACTION_SKILLS_REMOVE, ACTION_SKILLS_REMOVE_APPLY,
+                  ACTION_KB_ADD, ACTION_KB_ADD_SAVE)
+# The `manage_kb` input (on | off, blank = MANAGE_KB_DEFAULT) turns the manage card's "Add knowledge
+# base" button on or off. Off is the card as it was: no button, and a click on an old one is refused.
+# main() sets MANAGE_KB_ADD from it at the start of every call.
+MANAGE_KB_MODES = ("on", "off")
+MANAGE_KB_DEFAULT = "on"
+MANAGE_KB_ADD = MANAGE_KB_DEFAULT == "on"
+# The `lifecycle` input (on | off, blank = LIFECYCLE_DEFAULT): on puts Pause (or Resume) and Delete on
+# the manage card for the person who CREATED the genie, and only for them (a project owner can still
+# manage skills, documents and the description, but not pause or delete). Off is the card as it was.
+# main() sets MANAGE_LIFECYCLE from it, and MANAGE_VIEWER to the person who clicked, at the start of
+# every call, so the card is built for whoever is looking at it.
+LIFECYCLE_MODES = ("on", "off")
+LIFECYCLE_DEFAULT = "on"
+MANAGE_LIFECYCLE = LIFECYCLE_DEFAULT == "on"
+MANAGE_VIEWER = ""
 # Not buttons: the daily sync recipe asks for the genies to visit, then once per genie.
 ACTION_KB_SYNC_LIST = "kb_sync_list"    # -> sync_keys: [{record_key}], the genies that have a knowledge base
 ACTION_KB_RESYNC = "kb_resync"          # action_value = a genie's row key
@@ -378,6 +425,13 @@ LOADING_TEXT = {
     ACTION_MANAGE_DONE: "Opening…",
     ACTION_DOCS: "Loading the documents…",
     ACTION_DOCS_SAVE: "Adding the documents…",
+    ACTION_KB_ADD: "Opening…",
+    ACTION_KB_ADD_SAVE: "Creating the knowledge base…",
+    ACTION_CONNECTIONS_PICK: "Saving the connections…",
+    ACTION_PAUSE: "Pausing the genie…",
+    ACTION_RESUME: "Resuming the genie…",
+    ACTION_DELETE: "Opening…",
+    ACTION_DELETE_APPLY: "Deleting the genie…",
     ACTION_SKILLS_ADD: "Asking Integra to look for skills to add…",
     ACTION_SKILLS_REMOVE: "Opening…",
     ACTION_SKILLS_REMOVE_APPLY: "Removing the skills…",
@@ -517,6 +571,21 @@ class Table(object):
                                     {"document": self._document(fields)}, "POST")
         if error:
             self.errors.append("table.save " + error)
+            return False
+        return True
+
+    def delete(self, row):
+        """Delete one row from the table (a hard delete). True when it is gone."""
+        self.written.append({"action": "delete", "fields": []})
+        if self.dry_run:
+            return True
+        record_id = (row or {}).get("$record_id")
+        if not record_id:
+            self.errors.append("row has no $record_id")
+            return False
+        _body, error = _request(TABLE_RECORD_URL.format(record_id), self.headers, None, "DELETE")
+        if error:
+            self.errors.append("table.delete " + error)
             return False
         return True
 
@@ -684,7 +753,7 @@ class Slack(object):
         self.last_blocks = blocks
         if self.dry_run:
             return "dry-run"
-        payload = {"channel": channel, "text": text, "blocks": blocks, **NO_UNFURL}
+        payload = {"channel": channel, "text": text, "blocks": expanded(blocks), **NO_UNFURL}
         if thread_ts:
             payload["thread_ts"] = thread_ts
         if attachments is not None:
@@ -701,7 +770,7 @@ class Slack(object):
         self.last_blocks = blocks
         if self.dry_run or not ts:
             return bool(ts)
-        payload = {"channel": channel, "ts": ts, "text": text, "blocks": blocks, **NO_UNFURL}
+        payload = {"channel": channel, "ts": ts, "text": text, "blocks": expanded(blocks), **NO_UNFURL}
         if attachments is not None:
             payload["attachments"] = attachments
         return bool(self.call("chat.update", payload))
@@ -788,6 +857,13 @@ class Slack(object):
 # --------------------------------------------------------------------------
 # Blocks
 # --------------------------------------------------------------------------
+
+def expanded(blocks):
+    """The blocks with every section set to `expand`: Slack folds a long section into "Show more"
+    unless it is told to show it all. Applied to every message that is posted or edited."""
+    return [dict(b, expand=True) if isinstance(b, dict) and b.get("type") == "section"
+            and "expand" not in b else b for b in blocks or []]
+
 
 def _text(value, limit=SLACK_OPTION_TEXT):
     value = str(value)
@@ -1095,15 +1171,239 @@ def integra_progress(state):
     return "\n".join(lines)
 
 
-def building_blocks(row, state=None):
+# A skill that could not be built shows what went wrong on a grey line right under it. The `fail_detail`
+# input = on | off, blank = on; off keeps the old card (the reason cut to 80 characters, in brackets).
+FAIL_DETAIL_MODES = ("on", "off")
+FAIL_DETAIL_DEFAULT = "on"
+FAIL_DETAIL_CHARS = 280
+
+
+def fail_detail_mode(value):
+    """"on" or "off": the `fail_detail` input, blank = FAIL_DETAIL_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in FAIL_DETAIL_MODES else FAIL_DETAIL_DEFAULT
+
+
+def integra_progress_blocks(state):
+    """integra_progress as blocks: the same lines, but a skill that failed is a red cross and its name,
+    with the actual error on a context line beneath it."""
+    blocks, lines = [], []
+
+    def flush():
+        if lines:
+            blocks.append({"type": "section", "expand": True,      # expand: Slack never folds it into "Show more"
+                           "text": {"type": "mrkdwn", "text": "\n".join(lines)}})
+            del lines[:]
+
+    failed = {}
+    plan = state.get("plan") or []
+    for index, skill in enumerate(plan):
+        if skill.get("state") == "failed":
+            failed[_text(skill.get("name") or "skill {}".format(index + 1), 60)] = skill.get("reason")
+    for line in integra_progress(state).split("\n"):
+        name = next((n for n in failed if line.startswith(":x: {} (not built:".format(n))), None)
+        if name is None:
+            lines.append(line)
+            continue
+        lines.append(":x: " + name)
+        flush()
+        blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text":
+                       _text(" ".join(str(failed[name] or "no reason given").split()),
+                             FAIL_DETAIL_CHARS)}]})
+    flush()
+    return blocks
+
+
+# --- connections -----------------------------------------------------------
+# The skills Integra builds each need a connection to the app they read (Salesforce, NetSuite...).
+# Left alone Integra picks one itself. With the `connections` input = auto | off (blank = auto) the
+# console reads which connections the project's own recipes use, and tells Integra to use the same ones:
+# the most-used connection of each app, one per app for every skill. Only when the recipes use SEVERAL
+# connections for one app (a sandbox and production, say) is the person asked, once, before any skill is
+# built. off = nothing is read or sent, as before.
+CONNECTIONS_MODES = ("auto", "off")
+CONNECTIONS_DEFAULT = "auto"
+CONNECTIONS_ASK_MAX = 100          # options in one Slack select
+CONFIG_RECIPES_MAX = 15            # recipes read one by one when the recipe list carries no connections
+NOT_APP_PROVIDERS = ("logger", "clock", "scheduler", "callable", "utilities", "email", "rest")
+
+
+def connections_mode(value):
+    """"auto" or "off": the `connections` input, blank = CONNECTIONS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in CONNECTIONS_MODES else CONNECTIONS_DEFAULT
+
+
+def provider_label(provider):
+    return str(provider or "").replace("_", " ").title()
+
+
+def connections_line(state):
+    """The connections chosen, as a context line for the building card ([] when none)."""
+    chosen = (state or {}).get("connections") or {}
+    if not chosen:
+        return []
+    text = "  ·  ".join("{} → {}".format(provider_label(p), _text(c.get("name") or c.get("id") or "?", 40))
+                        for p, c in sorted(chosen.items()))
+    return [{"type": "context", "elements": [{"type": "mrkdwn", "text":
+             ":electric_plug: *Connections:* " + _text(text, 900)}]}]
+
+
+def connections_blocks(key, ask):
+    """The "which connection?" card: one dropdown per app the recipes use several connections of,
+    the most-used one ticked, then Continue. Each dropdown is an input block of its own."""
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text":
+         "*Which connections should the skills use?*\nThe project's recipes use more than one "
+         "connection for these apps. Every skill for an app uses the one you pick."}},
+    ]
+    for item in ask:
+        options = [{"text": {"type": "plain_text", "text": _text(c["name"] or str(c["id"]))},
+                    "value": str(c["id"])} for c in item["options"][:CONNECTIONS_ASK_MAX]]
+        initial = next((o for o, c in zip(options, item["options"]) if str(c["id"]) == str(item["default"])),
+                       options[0])
+        blocks.append({"type": "input", "block_id": "gc_conn_" + item["provider"],
+                       "label": {"type": "plain_text", "text": _text(provider_label(item["provider"]), 150)},
+                       "element": {"type": "static_select", "action_id": "gc_conn_select",
+                                   "options": options, "initial_option": initial}})
+    blocks.append({"type": "actions", "elements": [_submit(ACTION_CONNECTIONS_PICK, key, "Continue")]})
+    return blocks
+
+
+def _config_connections(recipe):
+    """[(provider, id or "", name)] for the app connections a recipe's config lists. A recipe's
+    config entry names its provider and its connection (account_id): a number, or an object with
+    the connection's name."""
+    found = []
+    for entry in (recipe or {}).get("config") or []:
+        if not isinstance(entry, dict):
+            continue
+        provider = str(entry.get("provider") or entry.get("name") or "").strip().lower()
+        if not provider or provider.startswith("workato") or provider in NOT_APP_PROVIDERS:
+            continue
+        account = entry.get("account_id")
+        if isinstance(account, dict):
+            cid, name = account.get("id"), account.get("name") or account.get("zip_name")
+        else:
+            cid, name = account, ""
+        if cid in (None, "") and not name:
+            continue
+        found.append((provider, str(cid) if cid not in (None, "") else "", str(name or "")))
+    return found
+
+
+def recipe_connections(token, folder_ids, warnings):
+    """{provider: {(id, name): number of recipes using it}} for the recipes in these folders. The
+    recipe list is read first; if it carries no connections the recipes are read one by one (at
+    most CONFIG_RECIPES_MAX). Never raises: a failure is a warning."""
+    headers = _workato_headers(token)
+    recipes, any_config = [], False
+    for folder in folder_ids:
+        for page in range(1, PROJECT_PAGES + 1):
+            body, error = _request(FOLDER_RECIPES_URL.format(folder, page), headers)
+            if error:
+                warnings.append("connections: list recipes of folder {}: {}".format(folder, _text(error, 160)))
+                break
+            batch = [r for r in _items(body, "items", "result", "data") if isinstance(r, dict)]
+            recipes.extend(batch)
+            if len(batch) < 100:
+                break
+    any_config = any(r.get("config") for r in recipes)
+    if recipes and not any_config:
+        recipes = [dict(r, **(recipe_version(token, r.get("id"))[0] or {}))
+                   for r in recipes[:CONFIG_RECIPES_MAX] if r.get("id")]
+    used = {}
+    for recipe in recipes:
+        for provider, cid, name in _config_connections(recipe):
+            counts = used.setdefault(provider, {})
+            counts[(cid, name)] = counts.get((cid, name), 0) + 1
+    return used
+
+
+def list_connections(token, warnings):
+    """{provider: [{id, name, ok}]}: the workspace's connections, by app. ok is False for one whose
+    authorization has failed. Empty (with a warning) when Workato won't list them."""
+    headers, seen, by_provider = _workato_headers(token), set(), {}
+    for page in range(1, PROJECT_PAGES + 1):
+        body, error = _request(CONNECTIONS_URL.format(page), headers)
+        if error:
+            warnings.append("connections: " + _text(error, 160))
+            break
+        batch = [c for c in _items(body, "items", "result", "data") if isinstance(c, dict)]
+        fresh = [c for c in batch if c.get("id") not in seen]
+        seen.update(c.get("id") for c in fresh)
+        for conn in fresh:
+            provider = str(conn.get("provider") or conn.get("application") or "").strip().lower()
+            status = str(conn.get("authorization_status") or "success").strip().lower()
+            if provider and conn.get("id") is not None:
+                by_provider.setdefault(provider, []).append(
+                    {"id": str(conn["id"]), "name": str(conn.get("name") or ""),
+                     "ok": status in ("success", "")})
+        if len(batch) < 100 or not fresh:
+            break
+    return by_provider
+
+
+def choose_connections(used, listed):
+    """(chosen, ask). chosen = {provider: {id, name}}: the most-used healthy connection of each app.
+    ask = [{provider, options, default}] for the apps whose recipes use more than one healthy
+    connection: the person decides those."""
+    chosen, ask = {}, []
+    for provider, counts in sorted(used.items()):
+        known = listed.get(provider, [])
+        by_id = {c["id"]: c for c in known}
+        by_name = {c["name"].strip().lower(): c for c in known if c["name"]}
+        candidates = {}                                    # connection id (or name) -> {id, name, n}
+        for (cid, name), n in counts.items():
+            match = by_id.get(cid) or by_name.get(name.strip().lower())
+            if match and not match["ok"]:
+                continue                                   # authorization failed: never offered
+            ident = (match or {}).get("id") or cid
+            entry = candidates.setdefault(ident or name, {"id": ident, "name": (match or {}).get("name") or name, "n": 0})
+            entry["n"] += n
+        if not candidates:
+            continue
+        ranked = sorted(candidates.values(), key=lambda c: -c["n"])
+        top = ranked[0]
+        chosen[provider] = {k: v for k, v in (("id", top["id"]), ("name", top["name"])) if v}
+        if len(ranked) > 1 and all(c["id"] for c in ranked):
+            options = [{"id": c["id"], "name": c["name"]} for c in ranked]
+            options += [{"id": c["id"], "name": c["name"]} for c in known
+                        if c["ok"] and c["id"] not in {o["id"] for o in options}]
+            ask.append({"provider": provider, "options": options, "default": top["id"]})
+    return chosen, ask
+
+
+def no_skill_reason(input):
+    """Why Integra's answer held no skill, with what it did say: its status, its summary, and a
+    piece of skills_json when it sent something that couldn't be read as a skill."""
+    status = " ".join(str(input.get("forge_status") or "").split())
+    summary = " ".join(str(input.get("forge_summary") or "").split())
+    raw = " ".join(str(input.get("forge_skills_json") or "").split())
+    parts = ["Integra answered{} but returned no skill".format(" ({})".format(status) if status else "")]
+    if summary:
+        parts.append("it said: " + _text(summary, 150))
+    if raw and raw not in ("[]", "{}", "null"):
+        parts.append("skills_json had no skill with a handle: " + _text(raw, 100))
+    elif not raw:
+        parts.append("skills_json was empty")
+    return "; ".join(parts)
+
+
+def building_blocks(row, state=None, detail=False):
     """Posted when Integra starts and edited after every job, so the progress
-    shows. Edited into a one-line result when the build finishes."""
+    shows. Edited into a one-line result when the build finishes. detail=True puts the error of
+    each skill that failed on a line of its own under it (see integra_progress_blocks)."""
+    state = state or {"job": JOB_PLAN}
+    progress = (integra_progress_blocks(state) if detail else
+                [{"type": "section", "expand": True, "text": {"type": "mrkdwn",
+                                                              "text": integra_progress(state)}}])
     return [
         {"type": "section", "text": {"type": "mrkdwn", "text":
          "*Integra is building {}*".format(row.get("genie_name"))}},
         _progress("build"),
-        {"type": "section", "expand": True, "text": {"type": "mrkdwn",
-         "text": integra_progress(state or {"job": JOB_PLAN})}},
+        *progress,
+        *connections_line(state),
         {"type": "context", "elements": [{"type": "mrkdwn", "text":
          ":coffee: This takes a few minutes. Please carry on with your work: "
          "I'll mention you here as soon as it's done."}]},
@@ -1426,6 +1726,28 @@ def manager_ids(row):
     return [i for n, i in enumerate(ids) if i and i not in ids[:n]]
 
 
+def is_creator(row, user_id):
+    """True for the person who created the genie, and nobody else (not even a project owner)."""
+    creator = str(row.get("creator_id") or "").strip()
+    return bool(creator) and creator == str(user_id or "").strip()
+
+
+def delete_confirm_blocks(key, row):
+    """Are you sure? Deleting removes the genie's row from the console table."""
+    return [
+        {"type": "section", "text": {"type": "mrkdwn", "text":
+         ":warning: *Delete {}?*\nIts row is removed from the console table, so it stops answering in "
+         "<#{}> and is taken off this list for good. The genie and its skills in Workato are not "
+         "touched. If you only want it quiet for a while, use *Pause genie* instead.".format(
+             genie_link(row), row.get("channel"))}},
+        {"type": "actions", "elements": [
+            {"type": "button", "action_id": ACTION_DELETE_APPLY, "value": key, "style": "danger",
+             "text": {"type": "plain_text", "text": "Yes, delete it"}},
+            {"type": "button", "action_id": ACTION_MANAGE_DONE, "value": key,
+             "text": {"type": "plain_text", "text": "Back"}}]},
+    ]
+
+
 def chooser_blocks(key, genies):
     """GENIECONFIG typed where a genie already lives: manage one of them, or make another.
     Every Manage button is in an actions block of its own: Slack rejects a block (invalid_blocks)
@@ -1455,7 +1777,8 @@ def genie_facts(genie):
     kb = integra_state(genie).get("kb") or {}
     persona = PERSONA_BY_KEY.get(genie.get("persona"), {}).get("label") or genie.get("persona")
     made = str(genie.get("created_at") or "")[:10]
-    facts = [persona,
+    facts = [":double_vertical_bar: paused" if genie.get("status") == STATUS_PAUSED else "",
+             persona,
              "{} skill{}".format(len(skills), "" if len(skills) == 1 else "s") if skills else "no skills",
              ("knowledge base: " + _text(kb.get("name") or kb["id"], 40)) if kb.get("id") else "",
              "made by {}{}".format(_text(genie["creator_name"], 40), " on " + made if made else "")
@@ -1541,6 +1864,9 @@ def manage_blocks(key, row, docs, note=""):
     if kb.get("id"):
         buttons.append({"type": "button", "action_id": ACTION_DOCS, "value": key,
                         "text": {"type": "plain_text", "text": "Add documents"}})
+    elif MANAGE_KB_ADD:
+        buttons.append({"type": "button", "action_id": ACTION_KB_ADD, "value": key,
+                        "text": {"type": "plain_text", "text": "Add knowledge base"}})
     buttons.append({"type": "button", "action_id": ACTION_DESC, "value": key,
                     "text": {"type": "plain_text", "text": "Edit description"}})
     skills = _load_list(row.get("skills"))
@@ -1549,10 +1875,19 @@ def manage_blocks(key, row, docs, note=""):
     if skills:
         buttons.append({"type": "button", "action_id": ACTION_SKILLS_REMOVE, "value": key,
                         "text": {"type": "plain_text", "text": "Remove skills"}})
+    paused = row.get("status") == STATUS_PAUSED
+    if MANAGE_LIFECYCLE and is_creator(row, MANAGE_VIEWER):
+        # Only for the person who made the genie: pause it (or bring it back) and delete it.
+        buttons.append({"type": "button", "action_id": ACTION_RESUME if paused else ACTION_PAUSE,
+                        "value": key, "text": {"type": "plain_text",
+                                               "text": "Resume genie" if paused else "Pause genie"}})
+        buttons.append({"type": "button", "action_id": ACTION_DELETE, "value": key, "style": "danger",
+                        "text": {"type": "plain_text", "text": "Delete genie"}})
     blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text":
-         "*Manage {}*  ·  keyword `{}`  ·  <#{}>".format(
-             genie_link(row), row.get("invoke_keyword"), row.get("channel"))}},
+         "*Manage {}*  ·  keyword `{}`  ·  <#{}>{}".format(
+             genie_link(row), row.get("invoke_keyword"), row.get("channel"),
+             "  ·  :double_vertical_bar: *paused*" if paused else "")}},
         {"type": "section", "text": {"type": "mrkdwn", "text":
          "*Description*\n{}\n*Skills ({})*\n{}\n*Knowledge base*\n{}".format(
              purpose or "_none_", len(skills), _names(skills, 8), kb_line)}},
@@ -1578,6 +1913,38 @@ def docs_form_blocks(key, offered, registered, error=""):
         {"type": "button", "action_id": ACTION_MANAGE_DONE, "value": key,
          "text": {"type": "plain_text", "text": "Back"}}]
     return [head, *_error(error), *_doc_blocks(new, ()), {"type": "actions", "elements": buttons}]
+
+
+def kb_add_form_blocks(key, values, error="", docs=()):
+    """Add a knowledge base to a genie that has none. The same three questions and documents
+    dropdown as the setup step (the same block and action ids, so they are read the same way),
+    but every field is required here and Back returns to the manage card."""
+    return [
+        {"type": "section", "text": {"type": "mrkdwn", "text":
+         "*Add a knowledge base*\n"
+         "Reference material the genie can look things up in: FAQs, runbooks, how-to guides. "
+         "Name it and say what it holds, then click *Create knowledge base*. It is made in "
+         "the genie's folder and put on the genie straight away."}},
+        *_error(error),
+        _text_input("gc_kb_name", "Knowledge base name", "e.g. SFNS Support FAQs",
+                    values.get("kb_name")),
+        _text_input("gc_kb_description", "Knowledge base description",
+                    "What is in it and what it is for, e.g. How to resubmit a failed "
+                    "quote and what each error code means",
+                    values.get("kb_description"), multiline=True, max_length=KB_DESCRIPTION_MAX),
+        _text_input("gc_kb_when", "When should the genie use it?",
+                    "e.g. When someone asks how to resubmit a failed quote, or about a person "
+                    "or rule this knowledge base covers",
+                    values.get("kb_when"), multiline=True, max_length=KB_WHEN_MAX),
+        *_doc_blocks(docs, values.get("kb_files") or []),
+        {"type": "context", "elements": [{"type": "mrkdwn", "text": (
+            "_The documents you pick are added to it and synced._" if docs else
+            "_It starts empty: add documents afterwards with *Add documents*, or in Workato._")}]},
+        {"type": "actions", "elements": [
+            _submit(ACTION_KB_ADD_SAVE, key, "Create knowledge base"),
+            {"type": "button", "action_id": ACTION_MANAGE_DONE, "value": key,
+             "text": {"type": "plain_text", "text": "Back"}}]},
+    ]
 
 
 def description_form_blocks(key, purpose, error=""):
@@ -1812,6 +2179,51 @@ def kb_description(about, when):
     return "{}\n\nUse this knowledge base when: {}".format(about, when)
 
 
+KB_SECTION_START = "<!-- genie-console:knowledge-base -->"
+KB_SECTION_END = "<!-- /genie-console:knowledge-base -->"
+KB_INSTRUCTIONS_MODES = ("on", "off")
+KB_INSTRUCTIONS_DEFAULT = "on"
+
+
+def kb_instructions_mode(value):
+    """"on" or "off": the `kb_instructions` input, blank = KB_INSTRUCTIONS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in KB_INSTRUCTIONS_MODES else KB_INSTRUCTIONS_DEFAULT
+
+
+def kb_instructions_section(kb):
+    """The part of a genie's instructions that tells it to use its knowledge base. Without it a
+    genie looks in a knowledge base only when asked: its instructions are all about its skills."""
+    one_line = lambda value: " ".join(str(value or "").replace("<", " ").replace(">", " ").split())
+    held = one_line(kb.get("about")) or "reference material for this genie"
+    return "\n".join([
+        KB_SECTION_START,
+        "# Your knowledge base: check it first",
+        "",
+        "You have a knowledge base, *{}*. It holds: {}. Use it when: {}.".format(
+            one_line(kb.get("name")) or "your knowledge base", held.rstrip("."),
+            one_line(kb.get("use_when")).rstrip(".") or "a question could be covered by what it holds"),
+        "",
+        "- Look in it before you answer, on every question it could cover, and whenever you are "
+        "unsure. Never wait to be asked.",
+        "- Do this alongside your skills, not instead of them: look records up with your skills, "
+        "and check the knowledge base for rules, procedures and background.",
+        "- Say when something you tell them comes from your knowledge base. If it has nothing on "
+        "the question, carry on as usual.",
+        "- Its rules about who to answer and how are yours to follow.",
+        KB_SECTION_END])
+
+
+def with_kb_section(instructions, kb):
+    """The instructions with the knowledge-base section in them: put in place of the one already
+    there (found by its markers), or added at the end. Running it twice changes nothing more."""
+    section, text = kb_instructions_section(kb), str(instructions or "")
+    start, end = text.find(KB_SECTION_START), text.find(KB_SECTION_END)
+    if start != -1 and end > start:
+        return text[:start] + section + text[end + len(KB_SECTION_END):]
+    return (text.rstrip() + "\n\n" if text.strip() else "") + section
+
+
 def _split(value):
     """A comma-separated string, or a list, as a list of stripped strings."""
     items = value if isinstance(value, list) else str(value if value is not None else "").split(",")
@@ -1854,12 +2266,91 @@ def parse_kb_docs(raw, warnings):
 # Integra: the genie that builds genies
 # --------------------------------------------------------------------------
 
-def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes=""):
+# How skills are named. Integra used to name them after the question a person might ask ("Diagnose
+# why a Salesforce Quote did not sync to a NetSuite Sales Order"), which made long lists of
+# overlapping skills. A skill is one simple lookup; the genie itself puts several lookups together to
+# diagnose something. The `skill_naming` input = simple | old, blank = simple; old sends the task
+# without the note (the names are then Integra's own, as before).
+SKILL_NAMING_MODES = ("simple", "old")
+SKILL_NAMING_DEFAULT = "simple"
+SKILL_NAMING_NOTE = (
+    "Keep every skill small and simple: ONE lookup of ONE kind of record in ONE system. Name it "
+    "'<Verb> <record> from <System>' in 2 to 6 words, for example 'Get account from Salesforce', "
+    "'Get quote from Salesforce', 'Get contact from NetSuite', 'Get invoice from NetSuite', "
+    "'Get recent jobs of a recipe'. Use Get / Find / List / Search / Check as the verb. Never name a "
+    "skill after a question or an investigation: no 'Diagnose why...', 'Find out why...', "
+    "'Investigate...', 'Troubleshoot...' and no '...did not sync to...'. Two systems in one name is "
+    "a sign it should be two skills. Do not plan a skill for a combination of lookups or for "
+    "diagnosing a sync: the genie works that out by calling the simple lookups one after the other. "
+    "The description is one plain sentence saying what it fetches and what it needs as input.")
+
+
+CONNECTIONS_NOTE = ("Use exactly these connections: for every app listed in connections, select the "
+                    "connection with that id for the skill's steps (recipe_builder_select_connections). "
+                    "Do not pick another one for that app, even if you find others. For an app that is "
+                    "not listed, choose a connection the project's recipes already use, as before. Never "
+                    "create a connection.")
+
+
+def skill_naming_mode(value):
+    """"simple" or "old": the `skill_naming` input, blank = SKILL_NAMING_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in SKILL_NAMING_MODES else SKILL_NAMING_DEFAULT
+
+
+# Which fields a skill returns. Integra used to be told to return "the fields a person would ask
+# about" and nothing more, so it guessed a short list and left out things the recipes do carry (a
+# customer's name next to its id). A field that is not in the skill's result can never reach the
+# genie, however much the lookup step returns. The `skill_fields` input = all | old, blank = all;
+# old sends the task without the notes (Integra then follows its own instructions, as before).
+SKILL_FIELDS_MODES = ("all", "old")
+SKILL_FIELDS_DEFAULT = "all"
+SKILL_FIELDS_PLAN_NOTE = (
+    "This replaces the rule that `returns` holds only the fields a person would ask about. For each "
+    "skill, `returns` lists EVERY field of that record that any recipe of the projects reads, maps, "
+    "filters on or writes, in either direction (the system the recipe reads from and the one it writes "
+    "to), plus the record's own identifiers and its status. When a field holds a reference to another "
+    "record (a customer, account, owner, item, subsidiary), list its readable counterpart as well as "
+    "its id: the customer's name next to the customer id, never the id alone. Take the names from the "
+    "recipes' field mappings and from the lookup action's own output, never from memory. To keep an "
+    "entry short, give each returned field as its name only, and add a description only where the "
+    "name is not obvious. Up to 40 fields per skill. Leave a field out only when you cannot read it, "
+    "and say so in `notes`.")
+SKILL_FIELDS_BUILD_NOTE = (
+    "This replaces the rule that the result holds only the fields in `returns` and nothing more. "
+    "The skill returns EVERY field in `returns` (the plan lists every field the project's recipes "
+    "use for this record), one result field each, in result_schema_json and in "
+    "workflow_return_result. Do not build one JSON string of the whole record and do not use the "
+    "lookup step itself as a datapill: map each field separately. Call "
+    "recipe_builder_get_datapills for the lookup step and map each returned field to the datapill "
+    "it lists for it, never a path typed by hand. Return a reference as two fields, its id and its "
+    "readable name (the customer's name next to the customer id). A list the lookup returns (such "
+    "as line items or applied invoices) may be returned as one field by mapping its own list datapill "
+    "through to_json. If a field in `returns` has no datapill in the lookup's output, leave it "
+    "out and say so in `summary`. A field that is empty for a record is still returned (empty). "
+    "Never return a credential, password, token or key field. Before recipe_builder_push, check "
+    "that the recipe reports no invalid datapill; a skill that cannot be saved is worse than one "
+    "missing a field, so remove the field that is invalid and push again.")
+
+
+def skill_fields_mode(value):
+    """"all" or "old": the `skill_fields` input, blank = SKILL_FIELDS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in SKILL_FIELDS_MODES else SKILL_FIELDS_DEFAULT
+
+
+def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes="", naming=False,
+                 connections=None, fields=False):
     """The task for Integra's current job, in the shape its job description
     expects (forge_genie_job_description.md). Change one, change the other.
 
     spec (the skill to build), attach (the built skills) and notes (the project
     notes) come from Integra's part rows; the outline in `state` has only names.
+
+    naming=True adds SKILL_NAMING_NOTE to the plan and build_skill jobs (simple skill names).
+    connections ({provider: {id, name}}) adds the connections to use to the build_skill job.
+    fields=True adds SKILL_FIELDS_PLAN_NOTE to the plan job and SKILL_FIELDS_BUILD_NOTE to the
+    build_skill job (a skill returns every field the recipes use, mapped one by one, not a short guess).
 
     shared_skills are attached to every genie as they are -- today the one
     analyst skill that hands recipe / job / table questions to the master
@@ -1872,6 +2363,10 @@ def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes=
         job_lines = ["job: plan", "max_skills: {}".format(MAX_SKILLS),
                      "plan_scope: every object and system the recipes read or write, not only "
                      "the ones the purpose names"]
+        if naming:
+            job_lines.append("skill_naming: " + SKILL_NAMING_NOTE)
+        if fields:
+            job_lines.append("skill_fields: " + SKILL_FIELDS_PLAN_NOTE)
         if state.get("add_to"):
             job_lines += ["mode: add_skills",
                           "existing_skills: " + json.dumps(state.get("existing") or [],
@@ -1883,6 +2378,13 @@ def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes=
                          len([e for e in planned[:state.get("next", 0) + 1]
                               if e.get("state") != "skipped"]), len(wanted(state))),
                      "skill_spec: " + json.dumps(spec, ensure_ascii=False)]
+        if naming:
+            job_lines.append("skill_naming: " + SKILL_NAMING_NOTE)
+        if fields:
+            job_lines.append("skill_fields: " + SKILL_FIELDS_BUILD_NOTE)
+        if connections:
+            job_lines += ["connections: " + json.dumps(connections, ensure_ascii=False, separators=(",", ":")),
+                          "connections_note: " + CONNECTIONS_NOTE]
     elif state.get("add_to"):
         # Skills added to a genie that is already live: attach them and nothing else.
         job_lines = ["job: create_genie", "mode: add_skills",
@@ -1997,6 +2499,17 @@ def _integra_plan(raw):
         if isinstance(raw, list) else []
 
 
+def plan_unreadable(raw):
+    """True when Integra sent a plan_json that held something, but no skill could be read from it
+    (broken or cut-off JSON, entries with no name). An empty plan ([], {}, {"skills": []}, null or
+    nothing at all) is a real "nothing to plan", not this."""
+    if isinstance(raw, (list, dict)):
+        text = json.dumps(raw, separators=(",", ":"))
+    else:
+        text = re.sub(r"\s+", "", str(raw or ""))
+    return text not in ("", "[]", "{}", "null", '{"skills":[]}') and not _integra_plan(raw)
+
+
 def _minutes_since(iso):
     try:
         then = datetime.strptime(str(iso)[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
@@ -2031,9 +2544,16 @@ def handle_start(ctx):
         "created_at": (row or {}).get("created_at") or now_iso(),
     })
     ctx.key = key
-    genies, error = ctx.table.search({"$and": [{"record_type": {"$eq": RECORD_TYPE}},
-                                               {"status": {"$eq": STATUS_ACTIVE}},
-                                               {"channel": {"$eq": ctx.click["channel"]}}]}, 20)
+    # A paused genie is listed too: it still owns its keyword here, and Resume is on its card.
+    # (Two plain queries rather than an $or: the same filters the rest of this file already uses.)
+    genies = []
+    for status in ((STATUS_ACTIVE, STATUS_PAUSED) if MANAGE_LIFECYCLE else (STATUS_ACTIVE,)):
+        found, error = ctx.table.search({"$and": [{"record_type": {"$eq": RECORD_TYPE}},
+                                                  {"status": {"$eq": status}},
+                                                  {"channel": {"$eq": ctx.click["channel"]}}]}, 20)
+        genies += found
+        if error:
+            break
     if error:
         ctx.warnings.append(error)
     if genies:
@@ -2524,10 +3044,129 @@ def handle_docs_save(ctx):
     return "manage"
 
 
+def manage_kb_mode(value):
+    """"on" or "off": the `manage_kb` input, blank = MANAGE_KB_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in MANAGE_KB_MODES else MANAGE_KB_DEFAULT
+
+
+def lifecycle_mode(value):
+    """"on" or "off": the `lifecycle` input, blank = LIFECYCLE_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in LIFECYCLE_MODES else LIFECYCLE_DEFAULT
+
+
+def kb_add_refusal(ctx, row):
+    """Why a knowledge base can't be added to this genie now, "" when it can."""
+    if not MANAGE_KB_ADD:
+        return "Adding a knowledge base from here is switched off."
+    if (integra_state(row).get("kb") or {}).get("id"):
+        return "This genie already has a knowledge base. Use *Add documents* to put more in it."
+    if row.get("status") != STATUS_ACTIVE or not str(row.get("id") or "").startswith("gin-"):
+        return "A knowledge base can only be added to a genie that is live."
+    return ""
+
+
+def handle_kb_add(ctx):
+    """Add knowledge base: the form, for a genie that has none. The Drive file list comes with
+    this click (kb_doc_detail), like Add documents; without it the knowledge base starts empty."""
+    row = ctx.load(ctx.click["key"])
+    ctx.require_manager(row)
+    refusal = kb_add_refusal(ctx, row)
+    if refusal:
+        ctx.show("Manage " + str(row.get("genie_name")),
+                 manage_blocks(ctx.key, row, ctx.kb_doc_rows(row), ":warning: " + refusal))
+        return "manage"
+    docs = ctx.kb_docs()
+    if not docs:
+        ctx.warnings.append("no kb_doc_detail on this click: the Click recipe should fetch the "
+                            "Drive file list for gc_console_kb_add to offer documents")
+    ctx.show("Add a knowledge base", kb_add_form_blocks(ctx.key, {}, docs=docs))
+    return "manage"
+
+
+def handle_kb_add_save(ctx):
+    """Create the knowledge base in the genie's folder, put it on the genie and remember it in
+    the row (the same {id, name, about, use_when} the setup step keeps), so the manage card, the
+    daily sync and Add documents see it. Documents that were picked are registered and handed to
+    the recipe (call_kb_attach) exactly as Add documents does; kb_attach_result then shows the
+    manage card. A bad answer, or a refusal by Workato, re-renders the form with the reason."""
+    row = ctx.load(ctx.click["key"])
+    ctx.require_manager(row)
+    refusal = kb_add_refusal(ctx, row)
+    if refusal:
+        ctx.show("Manage " + str(row.get("genie_name")),
+                 manage_blocks(ctx.key, row, ctx.kb_doc_rows(row), ":warning: " + refusal))
+        return "manage"
+    state = ctx.click["state"]
+    raw_name = _state(state, "gc_kb_name", "gc_kb_name_input").get("value")
+    raw_description = _state(state, "gc_kb_description", "gc_kb_description_input").get("value")
+    raw_when = _state(state, "gc_kb_when", "gc_kb_when_input").get("value")
+    docs = ctx.kb_docs()
+    picked = ctx.picked_docs(docs)
+    entered = {"kb_name": raw_name, "kb_description": raw_description, "kb_when": raw_when,
+               "kb_files": [d["file_id"] for d in picked]}
+
+    name, name_error = check_kb_name(raw_name)
+    description, description_error = check_kb_description(raw_description)
+    when, when_error = check_kb_when(raw_when)
+    errors = [e for e in (name_error, description_error, when_error) if e]
+    if errors:
+        message = " ".join(errors)
+        ctx.rerender(message, kb_add_form_blocks(ctx.key, entered, message, docs))
+        return "manage"
+
+    try:
+        kb = ctx.create_kb(row, name, kb_description(description, when))
+    except StepError as exc:
+        message = str(exc)
+        ctx.rerender(message, kb_add_form_blocks(ctx.key, entered, message, docs))
+        return "manage"
+    kb = dict(kb, about=description, use_when=when)
+    attach_error = ctx.attach_kb(row.get("id"), kb)
+    outline = integra_state(row)
+    ctx.save(row, {"forge_state": dict(outline, kb=kb)})     # saved first: the sync below reads it
+    ctx.result.update({"kb_id": kb["id"], "kb_name": kb["name"]})
+    # The genie only looks in a knowledge base on its own if its instructions say so. Only when it
+    # is on the genie (telling it to use one it doesn't have would just confuse it).
+    wrote, instructions_error = False, ""
+    if not attach_error and kb_instructions_mode(ctx.input.get("kb_instructions")) == "on":
+        instructions_error = ctx.update_genie_instructions(row.get("id"), kb)
+        wrote = not instructions_error
+    ctx.audit(row, "knowledge base added: {} ({}){}{}".format(
+        _text(kb["name"], 60), kb["id"],
+        "; Workato didn't put it on the genie: " + attach_error if attach_error else "",
+        "; genie instructions updated" if wrote else
+        "; genie instructions not updated: " + instructions_error if instructions_error else ""))
+    note = ":white_check_mark: Knowledge base {} created and attached.".format(kb_link(kb))
+    if wrote:
+        note += " The genie's instructions now tell it to check it."
+    if instructions_error:
+        note += (" :warning: Couldn't update the genie's instructions: {}. Questions asked in Slack "
+                 "still tell it to check the knowledge base; to put it in the instructions too, "
+                 "edit them in <{}|Workato>.".format(instructions_error,
+                                                     GENIE_URL.format(row.get("id"))))
+    if attach_error:
+        note = (":warning: Knowledge base {} was created but couldn't be attached to the genie: "
+                "{}. Open <{}|the genie> and add it there.".format(
+                    kb_link(kb), attach_error, GENIE_URL.format(row.get("id"))))
+    if picked:
+        ctx.save_docs(row, picked)
+        shown = begin_resync(ctx, row, ctx.kb_doc_rows(row))
+        ctx.done("{} *Knowledge base:* {} · {} · syncing {} document{}: {}".format(
+            LOADING_EMOJI, kb_link(kb), "attached" if not attach_error else "not attached yet",
+            len(shown), "" if len(shown) == 1 else "s",
+            _names([{"id": d["file_id"], "name": d["file_name"]} for d in shown], 5)))
+        return "manage"
+    ctx.show("Manage " + str(row.get("genie_name")),
+             manage_blocks(ctx.key, row, [], note + " It is empty: use *Add documents* to fill it."))
+    return "manage"
+
+
 def handle_desc(ctx):
     row = ctx.load(ctx.click["key"])
     ctx.require_manager(row)
-    ctx.show("Edit the description", description_form_blocks(ctx.key, row.get("genie_purpose")))
+    ctx.show("Edit the description",description_form_blocks(ctx.key, row.get("genie_purpose")))
     return "manage"
 
 
@@ -2571,6 +3210,42 @@ def handle_desc_apply(ctx):
     ctx.show("Manage " + str(row.get("genie_name")),
              manage_blocks(ctx.key, row, ctx.kb_doc_rows(row), note))
     return "manage"
+
+
+def handle_connections_pick(ctx):
+    """Continue on the "Which connections?" card: the chosen connection of each app is kept and
+    sent to Integra with every skill, then the build goes on where the plan left it (the skills
+    picker, or straight to building)."""
+    row = ctx.load(ctx.click["key"])
+    state = integra_state(row)
+    if not state.get("connecting"):
+        ctx.warnings.append("no connections waiting to be picked: duplicate click ignored")
+        return "build"
+    chosen = dict(state.get("connections") or {})
+    for block in ctx.click["blocks"]:
+        block_id = str(block.get("block_id") or "")
+        if not block_id.startswith("gc_conn_"):
+            continue
+        picked = (_state(ctx.click["state"], block_id, "gc_conn_select").get("selected_option")
+                  or (block.get("element") or {}).get("initial_option") or {})
+        if picked.get("value"):
+            chosen[block_id[len("gc_conn_"):]] = {"id": picked["value"],
+                                                  "name": (picked.get("text") or {}).get("text") or ""}
+    state.pop("connecting", None)
+    state["connections"] = chosen
+    ctx.save(row, {"forge_state": state})
+    ctx.done(":electric_plug: *Connections:* " + "; ".join(
+        "{} → {}".format(provider_label(p), _text(c.get("name") or c.get("id"), 50))
+        for p, c in sorted(chosen.items())))
+    if state.get("add_to") or skill_mode(state) == SKILLS_PICK:
+        state["choosing"] = True
+        ctx.save(row, {"forge_state": state})
+        ctx.post("Pick the skills to build", skills_pick_blocks(
+            ctx.key, plan_entries(state), "Which skills should Integra build?",
+            ACTION_SKILLS_PICK, "Build selected skills", cancel=True, skip=not state.get("add_to")))
+    else:
+        ctx.post_building_card(row, state)
+    return "build"
 
 
 def handle_skills_pick(ctx):
@@ -2744,6 +3419,69 @@ def handle_skills_remove_apply(ctx):
     return "manage"
 
 
+def show_manage(ctx, row, note=""):
+    ctx.show("Manage " + str(row.get("genie_name")),
+             manage_blocks(ctx.key, row, ctx.kb_doc_rows(row), note))
+    return "manage"
+
+
+def handle_pause(ctx):
+    """Pause genie: it stays here, with its skills and knowledge base, but stops answering
+    (the responder only answers a row whose status is active). Resume undoes it."""
+    row = ctx.load(ctx.click["key"])
+    ctx.require_creator(row)
+    if row.get("status") == STATUS_PAUSED:
+        return show_manage(ctx, row, "It is already paused.")
+    if row.get("status") != STATUS_ACTIVE:
+        return show_manage(ctx, row, ":warning: Only a live genie can be paused.")
+    ctx.save(row, {"status": STATUS_PAUSED})
+    ctx.audit(row, "genie paused")
+    return show_manage(ctx, row, ":double_vertical_bar: Paused. {} won't answer in <#{}> until you "
+                                 "click *Resume genie*.".format(row.get("genie_name"), row.get("channel")))
+
+
+def handle_resume(ctx):
+    row = ctx.load(ctx.click["key"])
+    ctx.require_creator(row)
+    if row.get("status") == STATUS_ACTIVE:
+        return show_manage(ctx, row, "It is already answering.")
+    if row.get("status") != STATUS_PAUSED:
+        return show_manage(ctx, row, ":warning: Only a paused genie can be resumed.")
+    ctx.save(row, {"status": STATUS_ACTIVE})
+    ctx.audit(row, "genie resumed")
+    return show_manage(ctx, row, ":white_check_mark: Resumed. Type `{}` in <#{}> to ask it something."
+                       .format(row.get("invoke_keyword"), row.get("channel")))
+
+
+def handle_delete(ctx):
+    """Delete genie, step one: ask. Nothing changes until Yes, delete it."""
+    row = ctx.load(ctx.click["key"])
+    ctx.require_creator(row)
+    if row.get("status") not in (STATUS_ACTIVE, STATUS_PAUSED):
+        return show_manage(ctx, row, ":warning: Only a live or paused genie can be deleted.")
+    ctx.show("Delete " + str(row.get("genie_name")) + "?", delete_confirm_blocks(ctx.key, row))
+    return "manage"
+
+
+def handle_delete_apply(ctx):
+    """Delete genie, step two: delete the genie's row from the data table (a hard delete of
+    the row only). Nothing in Workato is touched: the genie and its skill recipes stay where
+    they are, to be removed later by hand. With its row gone the responder finds no genie for
+    the keyword, so it stops answering, and the keyword is free to be used again. The audit row
+    stays as the record of who deleted it."""
+    row = ctx.load(ctx.click["key"])
+    ctx.require_creator(row)
+    if row.get("status") not in (STATUS_ACTIVE, STATUS_PAUSED):
+        return show_manage(ctx, row, ":warning: Only a live or paused genie can be deleted.")
+    name = str(row.get("genie_name") or "")
+    ctx.audit(row, "genie row deleted from the table (genie {} left in Workato)".format(
+        row.get("id") or "-"))
+    ctx.delete_row(row)
+    ctx.done(":wastebasket: *{}* is deleted. It no longer answers in <#{}>. Its genie and skills "
+             "are still in Workato until you remove them there.".format(name, row.get("channel")))
+    return "cancelled"
+
+
 def handle_kb_skip(ctx):
     row = ctx.load(ctx.click["key"])
     step = already_running(ctx, row)
@@ -2800,6 +3538,7 @@ def handle_integra_result(ctx):
     if str(ctx.input.get("forge_status") or "").strip().lower() == "failed" and not error:
         error = "Integra reported status failed without saying why."
     ctx.result["forge_job"] = job
+    detail = fail_detail_mode(ctx.input.get("fail_detail")) == "on"
 
     answered = any(str(ctx.input.get(name) or "").strip() for name in (
         "forge_status", "forge_error", "forge_genie_id", "forge_skills_json", "forge_plan_json"))
@@ -2816,10 +3555,18 @@ def handle_integra_result(ctx):
         if job == JOB_PLAN:
             plan = _integra_plan(ctx.input.get("forge_plan_json"))
             if state.get("add_to") and not error and not plan:
+                raw_plan = ctx.input.get("forge_plan_json")
+                if detail and plan_unreadable(raw_plan):
+                    # A plan came back but nothing could be read from it: not "nothing to add".
+                    shown = raw_plan if isinstance(raw_plan, str) else json.dumps(raw_plan)
+                    return ctx.integra_failed(row, state, "Integra sent a plan that couldn't be read "
+                                              "(broken or cut off). It starts: " + _text(
+                                                  " ".join(shown.split()), 150))
+                said = " ".join(str(ctx.input.get("forge_summary") or "").split())
                 state["job"] = JOB_DONE
                 ctx.save(row, {"status": STATUS_ADD_DONE, "forge_state": state})
                 ctx.done(":information_source: Integra found no skill that this genie doesn't "
-                         "already have.")
+                         "already have." + (" It said: " + _text(said, 300) if detail and said else ""))
                 return "build"
             if error or not plan:
                 return ctx.integra_failed(row, state, error or "Integra's plan had no skills in it.")
@@ -2833,6 +3580,17 @@ def handle_integra_result(ctx):
                                     "about": _text(spec.get("description") or "", 75)}
                                    for spec in plan],
                           "next": 0, "job": JOB_SKILL})
+            if connections_mode(ctx.input.get("connections")) == "auto":
+                ask = ctx.resolve_connections(row, state)
+                if ask:
+                    # The recipes use several connections for one app: ask once, before anything is
+                    # built. Nothing more is handed to the loop until the answer comes back as a click.
+                    state["connecting"] = True
+                    ctx.save(row, {"forge_state": state})
+                    ctx.done(":white_check_mark: Integra planned {} skill{}".format(
+                        len(plan), "" if len(plan) == 1 else "s"))
+                    ctx.post("Which connections?", connections_blocks(ctx.key, ask))
+                    return "build"
             if state.get("add_to") or skill_mode(state) == SKILLS_PICK:
                 # Stop here and let the person choose: nothing more is handed to the recipe's
                 # loop (call_forge stays false) until the pick comes back as a click.
@@ -2863,13 +3621,13 @@ def handle_integra_result(ctx):
             elif error:
                 failure = error
             elif not skill:
-                failure = "no skill returned"
+                failure = no_skill_reason(ctx.input) if detail else "no skill returned"
             elif draft_skills([skill]):
                 failure = "saved only as a draft"
             else:
                 failure = ""
             if failure:
-                reason = _text(failure, 200)
+                reason = _text(failure, FAIL_DETAIL_CHARS if detail else 200)
                 entry.update({"state": "failed", "reason": reason})
                 outcome, status = {"spec": spec, "error": reason}, "failed"
             else:
@@ -2917,7 +3675,7 @@ def handle_integra_result(ctx):
     # More to do: show where we are, and hand over the next job.
     ctx.slack.update(ctx.click["channel"], ctx.click["message_ts"],
                      "Integra is building {}".format(row.get("genie_name")),
-                     building_blocks(row, state))
+                     building_blocks(row, state, detail=detail))
     ctx.next_integra_job(row, state, ctx.click["message_ts"])
     return "build"
 
@@ -3023,6 +3781,11 @@ HANDLERS = {
     ACTION_CONFIRM: handle_confirm,
     ACTION_CANCEL: handle_cancel,
     ACTION_NEW: handle_new,
+    ACTION_CONNECTIONS_PICK: handle_connections_pick,
+    ACTION_PAUSE: handle_pause,
+    ACTION_RESUME: handle_resume,
+    ACTION_DELETE: handle_delete,
+    ACTION_DELETE_APPLY: handle_delete_apply,
     ACTION_MANAGE: handle_choose_manage,
     ACTION_MANAGE_DONE: handle_choose_manage,
     ACTION_RESYNC: handle_resync,
@@ -3031,6 +3794,8 @@ HANDLERS = {
     ACTION_DESC_APPLY: handle_desc_apply,
     ACTION_DOCS: handle_docs,
     ACTION_DOCS_SAVE: handle_docs_save,
+    ACTION_KB_ADD: handle_kb_add,
+    ACTION_KB_ADD_SAVE: handle_kb_add_save,
     ACTION_SKILLS_PICK: handle_skills_pick,
     ACTION_SKILLS_NONE: handle_skills_none,
     ACTION_SKILLS_ADD: handle_skills_add,
@@ -3196,6 +3961,22 @@ class Context(object):
             ("name", owner["name"]),
             ("mention", "<@{}>".format(slack_id) if slack_id else "")) if value}
 
+    def resolve_connections(self, row, state):
+        """Work out which connection each app's skills should use (see choose_connections) and put
+        the settled ones in state["connections"]. Returns what the person still has to decide: [] when
+        nothing is ambiguous. Never raises: not being able to read the connections is a warning, and
+        Integra then picks its own, as it did before."""
+        folders = [p.get("folder_id") for p in _load_list(row.get("workato_projects")) if p.get("folder_id")]
+        used = recipe_connections(self.workato_token, folders, self.warnings)
+        if not used:
+            self.warnings.append("connections: couldn't read which connections the project's recipes use; "
+                                 "Integra will pick its own")
+            return []
+        chosen, ask = choose_connections(used, list_connections(self.workato_token, self.warnings))
+        asked = {item["provider"] for item in ask}
+        state["connections"] = {p: c for p, c in chosen.items() if p not in asked}
+        return ask
+
     def kb_docs(self):
         """The documents on offer: from kb_doc_detail or, when this call wasn't given it,
         from the dropdown already in the clicked message -- so a step re-rendered after a
@@ -3277,6 +4058,16 @@ class Context(object):
         if self.click["user_id"] not in manager_ids(row):
             raise StepError("Only the person who created this genie, or the owner of its "
                             "projects, can change it.")
+
+    def require_creator(self, row):
+        """Pause, resume and delete: the person who created the genie, and nobody else."""
+        if not is_creator(row, self.click["user_id"]):
+            raise StepError("Only the person who created this genie can pause, resume or delete it.")
+
+    def delete_row(self, row):
+        """Hard-delete the genie's row from the data table."""
+        if not self.table.delete(row):
+            raise StepError("Could not delete the row: " + "; ".join(self.table.errors))
 
     def show(self, text, blocks):
         """Turn the clicked message into `blocks` (a manage card or form)."""
@@ -3360,6 +4151,32 @@ class Context(object):
                                 {"description": _text(" ".join(text.split()), 500)}, "PUT")
         return _text(error, 220) if error else ""
 
+    def update_genie_instructions(self, handle, kb):
+        """Tell a live genie to use its knowledge base: its instructions are read, the
+        knowledge-base section is put in (see with_kb_section) and they are written back. Never
+        writes unless the current instructions could be read. "" when done, otherwise why not."""
+        handle = str(handle or "").strip()
+        if not handle.startswith("gin-"):
+            return "this setup has no genie ID"
+        if self.dry_run:
+            return ""
+        headers = _workato_headers(self.workato_token)
+        body, error = _request(GENIE_API_URL.format(handle), headers)
+        if error:
+            return "couldn't read the genie's instructions: " + _text(error, 200)
+        body = body if isinstance(body, dict) else {}
+        found = next((v for v in (body, body.get("data"), body.get("result"))
+                      if isinstance(v, dict) and "instructions" in v), None)
+        if found is None:
+            return "Workato sent no instructions for the genie, so none were changed"
+        current = found.get("instructions") or ""
+        updated = with_kb_section(current, kb)
+        if updated == current:
+            return ""
+        _body, error = _request(GENIE_API_URL.format(handle), headers,
+                                {"instructions": updated}, "PUT")
+        return _text(error, 220) if error else ""
+
     def start_integra(self, row, fresh):
         """Post the building card and hand the recipe Integra's first job.
         fresh=True starts over at the plan; False resumes where it stopped."""
@@ -3379,7 +4196,11 @@ class Context(object):
             # No skills asked for on the details step: nothing to plan, go to the genie.
             state.update({"job": JOB_GENIE, "plan": [], "next": 0})
         state["folder_id"] = state.get("folder_id") or self.genie_folder(row)
-        if not state.get("add_to"):
+        shared = bool(str(self.input.get("forge_folder_id") or "").strip())
+        if not state.get("add_to") and not shared:
+            # (Not when forge_folder_id names a shared folder, the genie console folder: it also
+            # holds the console's own recipes and other genies' skills, and stopping "every running
+            # recipe" there would switch the console off. A new genie's recipes aren't running anyway.)
             # Integra's edits to a running recipe can only be saved as a draft, which
             # nobody would ever publish. Stop the folder's recipes first so every
             # push lands live; Confirm starts them again. (Skills added to a live genie
@@ -3390,7 +4211,8 @@ class Context(object):
 
     def post_building_card(self, row, state):
         """A fresh building card, then the first job (or the next one) for the recipe's loop."""
-        self.post("Integra is building {}".format(row.get("genie_name")), building_blocks(row, state))
+        self.post("Integra is building {}".format(row.get("genie_name")),
+                  building_blocks(row, state, detail=fail_detail_mode(self.input.get("fail_detail")) == "on"))
         state["card_ts"] = self.result["posted_ts"]     # forge_next / forge_result find it here
         self.save(row, {"forge_state": state})
         self.next_integra_job(row, state, self.result["posted_ts"])
@@ -3419,7 +4241,10 @@ class Context(object):
             "forge_job": state.get("job"),
             "forge_message_ts": card_ts,
             "genie_folder_id": str(state.get("folder_id") or ""),
-            "forge_task_instructions": integra_task(row, self.key, state, shared, spec, attach, notes),
+            "forge_task_instructions": integra_task(row, self.key, state, shared, spec, attach, notes,
+                                                 naming=skill_naming_mode(self.input.get("skill_naming")) == "simple",
+                                                 connections=state.get("connections"),
+                                                 fields=skill_fields_mode(self.input.get("skill_fields")) == "all"),
         })
 
     def integra_failed(self, row, state, error):
@@ -3609,9 +4434,15 @@ def main(input):
     Returns:
         dict: dictionary with keys matching the output schema
     """
+    global MANAGE_KB_ADD
+    MANAGE_KB_ADD = manage_kb_mode(input.get("manage_kb")) == "on"
+    global MANAGE_LIFECYCLE, MANAGE_VIEWER
+    MANAGE_LIFECYCLE = lifecycle_mode(input.get("lifecycle")) == "on"
+    MANAGE_VIEWER = ""                  # set once the click is read, just below
     parse_warnings = []
     click = read_click(input, parse_warnings)
     action = click["action_id"]
+    MANAGE_VIEWER = click["user_id"]
     result = {"ok": False, "error": "", "action": action, "step": "",
               "total_steps": len(STEPS), "remaining": len(STEPS), "record_key": click["key"],
               "field_error": "", "posted_ts": "", "updated_message": False,

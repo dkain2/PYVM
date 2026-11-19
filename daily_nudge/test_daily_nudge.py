@@ -85,7 +85,7 @@ class TestBreakSection(unittest.TestCase):
             out, blocks = nudge(key)
             primary = [e for e in break_buttons(blocks) if e.get("style") == "primary"]
             self.assertEqual([e["action_id"] for e in primary],
-                             [dn.BREAKS[out["suggested_break"]]["action_id"]], key)
+                             [dn.click_id(dn.BREAKS[out["suggested_break"]]["action_id"])], key)
 
     def test_it_comes_after_the_log_command_or_the_game_buttons(self):
         _, blocks = nudge("plank")
@@ -97,7 +97,7 @@ class TestBreakSection(unittest.TestCase):
 
     def test_the_result_lists_the_buttons(self):
         out, _ = nudge("plank")
-        self.assertEqual(out["buttons"], [dn.BREAKS[k]["action_id"] for k in ALL_GAMES])
+        self.assertEqual(out["buttons"], [dn.click_id(dn.BREAKS[k]["action_id"]) for k in ALL_GAMES])
         out, _ = nudge("iadd")
         self.assertEqual(out["buttons"][:2], ["imath_try", "imath_play"])
         self.assertEqual(len(out["buttons"]), 2 + len(ALL_GAMES))
@@ -250,6 +250,63 @@ class TestSpotter(unittest.TestCase):
     def test_every_spotter_trigger_is_in_the_nudge_or_left_out_on_purpose(self):
         shown = {trigger for trigger, _ in dn.LOG_COMMANDS.values()}
         self.assertEqual(self.triggers - shown, NOT_IN_THE_NUDGE)
+
+
+class TestClickIds(unittest.TestCase):
+    """The memory buttons must carry action ids the memory click recipe lets through: the ones
+    the memory step posts itself. Their values are unchanged, so the step reads them as before."""
+
+    POSTED_BY_IMEMORY = {"imemory_start", "imemory_yes", "imemory_no", "imemory_again",
+                         "imemory_daily", "imemory_try", "imemory_match_start"}
+
+    def memory_ids(self, **extra):
+        _, blocks = nudge("plank", **extra)
+        row = next(b for b in blocks if b.get("block_id") == "nudge_break_memory")
+        return {e["value"]: e["action_id"] for e in row["elements"]}
+
+    def test_default_memory_buttons_use_ids_the_step_posts(self):
+        ids = self.memory_ids()
+        self.assertEqual(ids["anyone|0|play"], "imemory_start")
+        self.assertEqual(ids["img|anyone|0|play"], "imemory_try")
+        self.assertEqual(ids["imatch|anyone|0|join"], "imemory_match_start")
+        for key in ("anyone|0|play", "img|anyone|0|play", "imatch|anyone|0|join"):
+            self.assertIn(ids[key], self.POSTED_BY_IMEMORY)
+
+    def test_values_are_unchanged_by_the_new_ids(self):
+        self.assertEqual(set(self.memory_ids()),
+                         set(self.memory_ids(button_ids="old")))
+
+    def test_old_switch_keeps_the_previous_ids(self):
+        ids = self.memory_ids(button_ids="old")
+        self.assertEqual(ids["anyone|0|play"], "imemory_play")
+        self.assertEqual(ids["img|anyone|0|play"], "imemory_play_img")
+
+    def test_blank_or_unknown_switch_means_known(self):
+        for value in ("", None, "nonsense"):
+            self.assertEqual(self.memory_ids(button_ids=value)["anyone|0|play"], "imemory_start")
+
+    def test_ids_in_a_row_stay_unique(self):
+        for extra in ({}, {"button_ids": "old"}):
+            _, blocks = nudge("plank", **extra)
+            for block in blocks:
+                if block["type"] == "actions":
+                    ids = [e["action_id"] for e in block["elements"]]
+                    self.assertEqual(len(ids), len(set(ids)))
+
+    def test_imemory_game_nudge_play_button(self):
+        _, blocks = nudge("imemory")
+        self.assertEqual([e["action_id"] for e in blocks[2]["elements"]],
+                         ["imemory_try", "imemory_start"])
+        _, blocks = nudge("imemory", button_ids="old")
+        self.assertEqual([e["action_id"] for e in blocks[2]["elements"]],
+                         ["imemory_try", "imemory_play"])
+        self.assertEqual(blocks[2]["elements"][1]["value"], "anyone|0|play")
+
+    def test_maths_and_breathing_ids_untouched(self):
+        _, blocks = nudge("isub")
+        self.assertEqual([e["action_id"] for e in blocks[2]["elements"]], ["imath_try", "imath_play"])
+        self.assertEqual(dn.click_id("ibreath_play"), "ibreath_play")
+        self.assertEqual(dn.click_id("imath_play_iadd"), "imath_play_iadd")
 
 
 class TestExisting(unittest.TestCase):
