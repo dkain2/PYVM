@@ -1,0 +1,954 @@
+[
+  {
+    "control_type": "password",
+    "label": "Workato API token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": false,
+    "hint": "Reads the error log data table and the state of the top recipes"
+  },
+  {
+    "control_type": "password",
+    "label": "Azure OpenAI key",
+    "name": "azure_api_key",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional: an AI-written executive summary. Blank = the built-in insights only"
+  },
+  {
+    "control_type": "text",
+    "label": "To email",
+    "name": "to_email",
+    "type": "string",
+    "optional": true,
+    "hint": "Passed through to the to_email output (blank = alert_email)"
+  },
+  {
+    "control_type": "text",
+    "label": "Title",
+    "name": "title",
+    "type": "string",
+    "optional": true,
+    "hint": "Default: Workato Integrations Health"
+  },
+  {
+    "control_type": "text",
+    "label": "Subtitle",
+    "name": "subtitle",
+    "type": "string",
+    "optional": true,
+    "hint": "A line under the title"
+  },
+  {
+    "control_type": "text-area",
+    "label": "Note",
+    "name": "note",
+    "type": "string",
+    "optional": true,
+    "hint": "A message shown in a box under the header (simple HTML allowed), e.g. a maintenance window"
+  },
+  {
+    "control_type": "text",
+    "label": "Environment",
+    "name": "env",
+    "type": "string",
+    "optional": true,
+    "hint": "PROD, DEV, ... shown on the dashboard. Default PROD"
+  },
+  {
+    "control_type": "select",
+    "label": "Detail",
+    "name": "detail",
+    "type": "string",
+    "optional": true,
+    "hint": "brief, standard or full (default). Picks the set of sections",
+    "pick_list": [
+      [
+        "Brief",
+        "brief"
+      ],
+      [
+        "Standard",
+        "standard"
+      ],
+      [
+        "Full",
+        "full"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Detail",
+      "name": "detail",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Sections",
+    "name": "sections",
+    "type": "string",
+    "optional": true,
+    "hint": "The exact sections, in order, comma separated. Blank = the detail set. Names: hero, kpis, insights, trend, weekly, recipes, movers, patterns, categories, systems, heatmap, calendar, records, recovery, backlog, noise, forecast, actions"
+  },
+  {
+    "control_type": "text",
+    "label": "Show sections",
+    "name": "show_sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Sections to add to the detail set"
+  },
+  {
+    "control_type": "text",
+    "label": "Hide sections",
+    "name": "hide_sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Sections to leave out"
+  },
+  {
+    "control_type": "text",
+    "label": "Timezone",
+    "name": "timezone",
+    "type": "string",
+    "optional": true,
+    "hint": "Decides what 'yesterday' and the hour of day are. Default America/Los_Angeles"
+  },
+  {
+    "control_type": "select",
+    "label": "Period",
+    "name": "period",
+    "type": "string",
+    "optional": true,
+    "hint": "rolling (default): the last period_days full days. calendar: the last complete week from week_start",
+    "pick_list": [
+      [
+        "Rolling",
+        "rolling"
+      ],
+      [
+        "Calendar",
+        "calendar"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Period",
+      "name": "period",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Period length (days)",
+    "name": "period_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 7 (1 to 31)"
+  },
+  {
+    "control_type": "text",
+    "label": "Period end",
+    "name": "period_end",
+    "type": "string",
+    "optional": true,
+    "hint": "YYYY-MM-DD: the last day of the period. Blank = yesterday"
+  },
+  {
+    "control_type": "select",
+    "label": "Include today",
+    "name": "include_today",
+    "type": "string",
+    "optional": true,
+    "hint": "Rolling period ends today instead of yesterday. Default no",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Include today",
+      "name": "include_today",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Week starts on",
+    "name": "week_start",
+    "type": "string",
+    "optional": true,
+    "hint": "For period = calendar. Default monday",
+    "pick_list": [
+      [
+        "Monday",
+        "monday"
+      ],
+      [
+        "Tuesday",
+        "tuesday"
+      ],
+      [
+        "Wednesday",
+        "wednesday"
+      ],
+      [
+        "Thursday",
+        "thursday"
+      ],
+      [
+        "Friday",
+        "friday"
+      ],
+      [
+        "Saturday",
+        "saturday"
+      ],
+      [
+        "Sunday",
+        "sunday"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Week starts on",
+      "name": "week_start",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Trend length (periods)",
+    "name": "trend_periods",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "How many periods the trend and baselines use. Default 13 (91 days) (2 to 52)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Daily chart (days)",
+    "name": "daily_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Days in the daily chart. Default 91 (7 to 120)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Heatmap length (periods)",
+    "name": "heatmap_periods",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Periods in the weekday x hour heatmap. Default 13 (91 days) (1 to 52)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Top recipes",
+    "name": "top_n",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Rows in the top failing recipes table. Default 10 (3 to 30)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Top patterns",
+    "name": "patterns_n",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Rows in the error patterns table. Default 8 (3 to 25)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Movers per list",
+    "name": "movers_n",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 5 (2 to 15)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Systems per list",
+    "name": "systems_n",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 8 (3 to 20)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max insights",
+    "name": "max_insights",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 8. 0 = none (0 to 15)"
+  },
+  {
+    "control_type": "text",
+    "label": "Only these recipes",
+    "name": "include_recipes",
+    "type": "string",
+    "optional": true,
+    "hint": "Recipe ids or parts of names, comma separated. Blank = all"
+  },
+  {
+    "control_type": "text",
+    "label": "Leave out recipes",
+    "name": "exclude_recipes",
+    "type": "string",
+    "optional": true,
+    "hint": "Recipe ids or parts of names, comma separated"
+  },
+  {
+    "control_type": "text",
+    "label": "Only these systems",
+    "name": "include_systems",
+    "type": "string",
+    "optional": true,
+    "hint": "Parts of source or target system names, comma separated"
+  },
+  {
+    "control_type": "text",
+    "label": "Only these recipients",
+    "name": "include_emails",
+    "type": "string",
+    "optional": true,
+    "hint": "Rows whose Email contains one of these, comma separated"
+  },
+  {
+    "control_type": "text",
+    "label": "Leave out statuses",
+    "name": "exclude_statuses",
+    "type": "string",
+    "optional": true,
+    "hint": "e.g. Reprocessed"
+  },
+  {
+    "control_type": "select",
+    "label": "Merge system names",
+    "name": "merge_system_names",
+    "type": "string",
+    "optional": true,
+    "hint": "SFDC_Services, SFDC Services -> Salesforce Services. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Merge system names",
+      "name": "merge_system_names",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Mask emails",
+    "name": "mask_emails",
+    "type": "string",
+    "optional": true,
+    "hint": "Show only team addresses (alert_email, config public_emails). Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Mask emails",
+      "name": "mask_emails",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Show error examples",
+    "name": "show_examples",
+    "type": "string",
+    "optional": true,
+    "hint": "The latest message of each pattern. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show error examples",
+      "name": "show_examples",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Forecast",
+    "name": "forecast",
+    "type": "string",
+    "optional": true,
+    "hint": "Predict the next period (forecast section, tile, chart bars). Default no",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Forecast",
+      "name": "forecast",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Forecast method",
+    "name": "forecast_method",
+    "type": "string",
+    "optional": true,
+    "hint": "holt (default: damped trend), average (last 4 periods) or naive (last period)",
+    "pick_list": [
+      [
+        "Holt",
+        "holt"
+      ],
+      [
+        "Average",
+        "average"
+      ],
+      [
+        "Naive",
+        "naive"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Forecast method",
+      "name": "forecast_method",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "number",
+    "label": "Spike sensitivity",
+    "name": "spike_z",
+    "type": "number",
+    "optional": true,
+    "parse_output": "float_conversion",
+    "render_input": "float_conversion",
+    "hint": "A day is a spike above median + this many robust deviations. Default 3.5 (1.5 to 10.0)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Rising threshold (%)",
+    "name": "rising_pct",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "A recipe is rising when up this much on the period before. Default 50 (10 to 1000)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Minimum change",
+    "name": "min_change",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Ignore changes smaller than this many errors. Default 5 (1 to 1000)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Chronic after (periods)",
+    "name": "chronic_periods",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Failing in this many of the last 8 periods = chronic. Default 6 (2 to 52)"
+  },
+  {
+    "control_type": "select",
+    "label": "Health score",
+    "name": "health_score",
+    "type": "string",
+    "optional": true,
+    "hint": "Show the 0-100 score and grade. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Health score",
+      "name": "health_score",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Recipe status",
+    "name": "recipe_status",
+    "type": "string",
+    "optional": true,
+    "hint": "Ask Workato if the top recipes are running and when they changed. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Recipe status",
+      "name": "recipe_status",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "AI summary",
+    "name": "ai",
+    "type": "string",
+    "optional": true,
+    "hint": "Use Azure when azure_api_key is set. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "AI summary",
+      "name": "ai",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Azure URL",
+    "name": "azure_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Chat completions URL of the deployment"
+  },
+  {
+    "control_type": "number",
+    "label": "AI temperature",
+    "name": "ai_temperature",
+    "type": "number",
+    "optional": true,
+    "parse_output": "float_conversion",
+    "render_input": "float_conversion",
+    "hint": "Default 0.2 (0.0 to 1.0)"
+  },
+  {
+    "control_type": "integer",
+    "label": "AI max tokens",
+    "name": "ai_max_tokens",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 900 (200 to 2000)"
+  },
+  {
+    "control_type": "select",
+    "label": "Redact for AI",
+    "name": "ai_redact",
+    "type": "string",
+    "optional": true,
+    "hint": "Take emails, URLs, ids and long numbers out before Azure sees them. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Redact for AI",
+      "name": "ai_redact",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text-area",
+    "label": "AI instructions",
+    "name": "ai_instructions",
+    "type": "string",
+    "optional": true,
+    "hint": "Extra notes for the AI, e.g. what the team cares about"
+  },
+  {
+    "control_type": "text",
+    "label": "Subject format",
+    "name": "subject_format",
+    "type": "string",
+    "optional": true,
+    "hint": "Placeholders: {emoji} {title} {env} {period} {errors} {previous} {change} {score} {grade} {recipes} {new_patterns} {forecast}"
+  },
+  {
+    "control_type": "select",
+    "label": "Skip if no errors",
+    "name": "skip_if_empty",
+    "type": "string",
+    "optional": true,
+    "hint": "send_email = false when the period has no errors. Default no",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Skip if no errors",
+      "name": "skip_if_empty",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Brand color",
+    "name": "brand_color",
+    "type": "string",
+    "optional": true,
+    "hint": "Default #0056D2"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max width (px)",
+    "name": "max_width",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 920 (600 to 1400)"
+  },
+  {
+    "control_type": "select",
+    "label": "Hover effects",
+    "name": "hover_effects",
+    "type": "string",
+    "optional": true,
+    "hint": "Cards lift, rows tint, pills deepen, bars dim under the mouse. Default yes",
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Hover effects",
+      "name": "hover_effects",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Hover row colour",
+    "name": "hover_row_color",
+    "type": "string",
+    "optional": true,
+    "hint": "The colour a row turns under the mouse. Default #EEF4FF"
+  },
+  {
+    "control_type": "text",
+    "label": "Logo URL",
+    "name": "logo_url",
+    "type": "string",
+    "optional": true,
+    "hint": "The Coursera logo. Blank = the word coursera"
+  },
+  {
+    "control_type": "text",
+    "label": "Workato logo URL",
+    "name": "workato_logo_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Shown next to the Coursera logo. Blank = no Workato logo"
+  },
+  {
+    "control_type": "text",
+    "label": "Team logo URL",
+    "name": "team_logo_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Shown after the Coursera (and Workato) logo, and in the footer"
+  },
+  {
+    "control_type": "text",
+    "label": "Team name",
+    "name": "team_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Alert email",
+    "name": "alert_email",
+    "type": "string",
+    "optional": true,
+    "hint": "Team address: footer Email link, never masked"
+  },
+  {
+    "control_type": "text",
+    "label": "Error log URL",
+    "name": "error_log_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Blank = the data table in Workato"
+  },
+  {
+    "control_type": "text",
+    "label": "Runbook URL",
+    "name": "runbook_url",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Dashboard URL",
+    "name": "dashboard_url",
+    "type": "string",
+    "optional": true,
+    "hint": "A live dashboard to link to"
+  },
+  {
+    "control_type": "text",
+    "label": "ServiceNow URL",
+    "name": "servicenow_url",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Slack URL",
+    "name": "slack_url",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Team charter URL",
+    "name": "charter_url",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Data table id",
+    "name": "data_table_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Default: Error Notification - TBL"
+  },
+  {
+    "control_type": "text",
+    "label": "Workato API base",
+    "name": "workato_api_base",
+    "type": "string",
+    "optional": true,
+    "hint": "Default https://www.workato.com/api"
+  },
+  {
+    "control_type": "integer",
+    "label": "Page size",
+    "name": "page_size",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Rows per data table page. The API documents 200 (default); up to 1000 is tried, and 200 is used again if the API refuses it (10 to 1000)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Parallel queries",
+    "name": "parallel_queries",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Periods fetched at the same time. Default 4 (1 to 8)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max rows",
+    "name": "max_rows",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Stop reading after this many rows. Default 60000 (500 to 300000)"
+  },
+  {
+    "control_type": "integer",
+    "label": "Time budget (s)",
+    "name": "time_budget",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "All lookups share it. Default 80 (10 to 85)"
+  },
+  {
+    "control_type": "integer",
+    "label": "HTTP timeout (s)",
+    "name": "http_timeout",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 20 (3 to 60)"
+  },
+  {
+    "control_type": "integer",
+    "label": "HTML limit (KB)",
+    "name": "html_limit_kb",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Gmail clips mail over ~102 KB: lists get shorter, then sections drop. 0 = no limit (0 to 5000)"
+  },
+  {
+    "control_type": "text-area",
+    "label": "Rows JSON",
+    "name": "rows_json",
+    "type": "string",
+    "optional": true,
+    "hint": "Testing: the table's rows as a JSON list, instead of reading the table"
+  },
+  {
+    "control_type": "text-area",
+    "label": "Config JSON",
+    "name": "config_json",
+    "type": "string",
+    "optional": true,
+    "hint": "Any setting above, plus table_columns, system_aliases, category_rules, titles, buttons, recipe_owners, known_issues, public_emails, score_weights, heat_colors"
+  },
+  {
+    "control_type": "text",
+    "label": "Now (testing)",
+    "name": "now",
+    "type": "string",
+    "optional": true,
+    "hint": "ISO time to build the dashboard as. Leave blank"
+  }
+]

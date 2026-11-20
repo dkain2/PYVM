@@ -1,0 +1,22 @@
+{
+  "payload": {
+    "type": "block_actions",
+    "user": {"id": "U0ADA0001", "name": "ada"},
+    "channel": {"id": "C0123ABCD"},
+    "container": {"message_ts": "1700000000.000100", "channel_id": "C0123ABCD"},
+    "message": {
+      "ts": "1700000000.000100",
+      "text": "High | Failure in Lead Sync",
+      "blocks": [
+        {"type": "header", "text": {"type": "plain_text", "text": "High · Lead Sync - RealTime"}},
+        {"type": "context", "block_id": "error_notification_status", "elements": [{"type": "mrkdwn", "text": "🆕 *Open*  ·  nobody has picked this up yet"}]},
+        {"type": "actions", "block_id": "error_notification_actions|j-TestJob1-abcdef-CD|70000001", "elements": [
+          {"type": "button", "action_id": "error_notification_reprocess", "text": {"type": "plain_text", "text": "Reprocess"}, "value": "{\"v\":1,\"m\":\"j-TestJob1-abcdef-CD\",\"r\":\"70000001\",\"j\":\"j-TestJob1-abcdef-CD\",\"n\":\"Lead Sync - RealTime\",\"e\":\"Production\",\"p\":\"High\",\"s\":\"260e58db\"}"},
+          {"type": "button", "action_id": "error_notification_acknowledge", "text": {"type": "plain_text", "text": "Acknowledge"}, "value": "{}"}
+        ]}
+      ]
+    },
+    "actions": [{"action_id": "error_notification_reprocess", "block_id": "error_notification_actions|j-TestJob1-abcdef-CD|70000001", "type": "button",
+                 "value": "{\"v\":1,\"m\":\"j-TestJob1-abcdef-CD\",\"r\":\"70000001\",\"j\":\"j-TestJob1-abcdef-CD\",\"n\":\"Lead Sync - RealTime\",\"e\":\"Production\",\"p\":\"High\",\"s\":\"260e58db\"}"}]
+  }
+}

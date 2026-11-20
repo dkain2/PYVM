@@ -1,0 +1,484 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Ok",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Error",
+    "name": "error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "warnings",
+    "label": "Warnings",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Version",
+    "name": "version",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "HTML",
+    "name": "html",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "HTML full",
+    "name": "html_full",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Subject",
+    "name": "subject",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Preheader",
+    "name": "preheader",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Text body",
+    "name": "text_body",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Slack text",
+    "name": "slack_text",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Send email",
+    "name": "send_email",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "To email",
+    "name": "to_email",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Period label",
+    "name": "period_label",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Period start",
+    "name": "period_start",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Period end",
+    "name": "period_end",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Previous start",
+    "name": "previous_start",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Previous end",
+    "name": "previous_end",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Errors total",
+    "name": "errors_total",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Errors previous",
+    "name": "errors_previous",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Change pct",
+    "name": "change_pct",
+    "type": "number",
+    "optional": true,
+    "parse_output": "float_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Recipes affected",
+    "name": "recipes_affected",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Recipes affected previous",
+    "name": "recipes_affected_previous",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "New patterns",
+    "name": "new_patterns",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Records failed",
+    "name": "records_failed",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Reprocessed",
+    "name": "reprocessed",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Backlog open",
+    "name": "backlog_open",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Backlog oldest days",
+    "name": "backlog_oldest_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Spikes",
+    "name": "spikes",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Health score",
+    "name": "health_score",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Health grade",
+    "name": "health_grade",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Forecast next",
+    "name": "forecast_next",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Forecast low",
+    "name": "forecast_low",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Forecast high",
+    "name": "forecast_high",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Forecast trend",
+    "name": "forecast_trend",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "top_recipes",
+    "label": "Top recipes",
+    "type": "array",
+    "of": "object",
+    "optional": true,
+    "properties": [
+      {
+        "name": "name",
+        "label": "Name",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "recipe_id",
+        "label": "Recipe id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "url",
+        "label": "Url",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "errors",
+        "label": "Errors",
+        "type": "integer",
+        "optional": true
+      },
+      {
+        "name": "previous",
+        "label": "Previous",
+        "type": "integer",
+        "optional": true
+      },
+      {
+        "name": "change_pct",
+        "label": "Change pct",
+        "type": "number",
+        "optional": true
+      },
+      {
+        "name": "share_pct",
+        "label": "Share pct",
+        "type": "number",
+        "optional": true
+      },
+      {
+        "name": "status",
+        "label": "Status",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "category",
+        "label": "Category",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "source",
+        "label": "Source",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "target",
+        "label": "Target",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "owner",
+        "label": "Owner",
+        "type": "string",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "name": "top_patterns",
+    "label": "Top patterns",
+    "type": "array",
+    "of": "object",
+    "optional": true,
+    "properties": [
+      {
+        "name": "signature",
+        "label": "Signature",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "example",
+        "label": "Example",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "errors",
+        "label": "Errors",
+        "type": "integer",
+        "optional": true
+      },
+      {
+        "name": "previous",
+        "label": "Previous",
+        "type": "integer",
+        "optional": true
+      },
+      {
+        "name": "is_new",
+        "label": "Is new",
+        "type": "boolean",
+        "optional": true
+      },
+      {
+        "name": "category",
+        "label": "Category",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "first_seen",
+        "label": "First seen",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "recipes",
+        "label": "Recipes",
+        "type": "array",
+        "of": "string",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "name": "insights",
+    "label": "Insights",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "AI used",
+    "name": "ai_used",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "AI error",
+    "name": "ai_error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Rows read",
+    "name": "rows_read",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Rows used",
+    "name": "rows_used",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Pages read",
+    "name": "pages_read",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Data complete",
+    "name": "data_complete",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "name": "sections_rendered",
+    "label": "Sections rendered",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "HTML bytes",
+    "name": "html_bytes",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Elapsed ms",
+    "name": "elapsed_ms",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Summary json",
+    "name": "summary_json",
+    "type": "string",
+    "optional": true
+  }
+]

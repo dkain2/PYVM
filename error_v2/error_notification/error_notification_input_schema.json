@@ -1,0 +1,1422 @@
+[
+  {
+    "control_type": "text",
+    "label": "To email address",
+    "name": "to_email_address",
+    "type": "string",
+    "optional": false,
+    "hint": "Email Address"
+  },
+  {
+    "control_type": "text",
+    "label": "Subject",
+    "name": "subject",
+    "type": "string",
+    "optional": false,
+    "hint": "Email's Subject"
+  },
+  {
+    "control_type": "text",
+    "label": "mail message",
+    "name": "mail_msg",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Job URL",
+    "name": "job_url",
+    "type": "string",
+    "optional": false,
+    "hint": "Workato Jobs URL"
+  },
+  {
+    "control_type": "text",
+    "label": "Recipe name",
+    "name": "recipe_name",
+    "type": "string",
+    "optional": false,
+    "hint": "Name of the workato recipe"
+  },
+  {
+    "control_type": "text",
+    "label": "Error message",
+    "name": "error_details",
+    "type": "string",
+    "optional": false,
+    "hint": "Error Details",
+    "of": "object"
+  },
+  {
+    "control_type": "text",
+    "label": "priority",
+    "name": "priority",
+    "type": "string",
+    "optional": true,
+    "hint": "Critical, High or Medium"
+  },
+  {
+    "control_type": "text",
+    "label": "sourceSystem",
+    "name": "sourceSystem",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "targetSystem",
+    "name": "targetSystem",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Source Object Name",
+    "name": "sourceObject",
+    "type": "string",
+    "optional": true,
+    "hint": "The name of the object being synced from source system"
+  },
+  {
+    "control_type": "text",
+    "label": "Target Object Name",
+    "name": "targetObject",
+    "type": "string",
+    "optional": true,
+    "hint": "The name of the object that is being created in the target system"
+  },
+  {
+    "control_type": "text",
+    "label": "ErroredApp",
+    "name": "ErroredApp",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "ErroredAction",
+    "name": "ErroredAction",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error Step Number",
+    "name": "stepNumber",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Retry count",
+    "name": "retry_count",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "File name",
+    "name": "file_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "File content",
+    "name": "file_content",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column1Name",
+    "name": "column1Name",
+    "type": "string",
+    "optional": true,
+    "hint": "Please populate this field to pass the table in the notification"
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 1 Width",
+    "parse_output": "integer_conversion",
+    "name": "column1Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column2Name",
+    "name": "column2Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 2 Width",
+    "parse_output": "integer_conversion",
+    "name": "column2Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column3Name",
+    "name": "column3Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 3 Width",
+    "parse_output": "integer_conversion",
+    "name": "column3Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column4Name",
+    "name": "column4Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 4 Width",
+    "parse_output": "integer_conversion",
+    "name": "column4Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column5Name",
+    "name": "column5Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 5 Width",
+    "parse_output": "integer_conversion",
+    "name": "column5Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "frequency",
+    "parse_output": "integer_conversion",
+    "name": "frequency",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "error_limit",
+    "parse_output": "integer_conversion",
+    "name": "error_limit",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "name": "dataArray",
+    "type": "array",
+    "of": "object",
+    "label": "dataArray",
+    "optional": true,
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "value1",
+        "name": "value1",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value2",
+        "name": "value2",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value3",
+        "name": "value3",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value4",
+        "name": "value4",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value5",
+        "name": "value5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url1",
+        "name": "url1",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url2",
+        "name": "url2",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url3",
+        "name": "url3",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url4",
+        "name": "url4",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url5",
+        "name": "url5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Column1 Bold",
+        "name": "column1_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 Bold",
+        "name": "column2_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 Bold",
+        "name": "column3_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 Bold",
+        "name": "column4_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 Bold",
+        "name": "column5_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column1 color",
+        "name": "column1_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 color",
+        "name": "column2_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 color",
+        "name": "column3_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 color",
+        "name": "column4_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 color",
+        "name": "column5_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      }
+    ]
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Sch run",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "sch_run",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Sch run",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "sch_run",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Reprocess",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "reprocess",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Reprocess",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "reprocess",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Calling Master Job id",
+    "name": "calling_master_job_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Is repeated",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "is_Repeated",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Is repeated",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "is_Repeated",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Calling recipe ID",
+    "name": "calling_recipe_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Callable trigger › Context › Calling recipe ID. Blank = read from Job URL."
+  },
+  {
+    "control_type": "text",
+    "label": "Calling job ID",
+    "name": "calling_job_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Callable trigger › Context › Calling job ID. Blank = read from Job URL."
+  },
+  {
+    "control_type": "text",
+    "label": "Error file path",
+    "name": "error_file_path",
+    "type": "string",
+    "optional": true,
+    "hint": "Create file › Path (file storage). Saved to the error log."
+  },
+  {
+    "control_type": "integer",
+    "label": "Error file link expires in (s)",
+    "name": "error_file_expires_in",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Generate shareable file link › Expires in. Used for 'Sharable Link Expires on'."
+  },
+  {
+    "control_type": "password",
+    "label": "Workato API token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Reads the error log table, the failing job and recipe, and repeats jobs. Blank = no history, no job context, no auto-retry."
+  },
+  {
+    "control_type": "password",
+    "label": "Azure OpenAI API key",
+    "name": "azure_api_key",
+    "type": "string",
+    "optional": true,
+    "hint": "Writes the explanation and decides if the job is reprocessable (replaces Genie). Blank = built-in playbook and rules."
+  },
+  {
+    "control_type": "select",
+    "label": "Look",
+    "name": "look",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "New look (default)",
+        "new"
+      ],
+      [
+        "Old look (current email)",
+        "old"
+      ]
+    ],
+    "hint": "Blank = new look. Old = current_email.html + moustache table."
+  },
+  {
+    "control_type": "select",
+    "label": "Header layout",
+    "name": "hero_layout",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "New (default)",
+        "new"
+      ],
+      [
+        "Classic (previous header)",
+        "classic"
+      ]
+    ],
+    "hint": "Blank = new: Coursera + team logo, then one row of pills (priority, retry verdict, category, repeats, records, time), then the recipe name. Classic = the previous header: plain-text priority line, pills under the headline, one logo. Only used when Look = new."
+  },
+  {
+    "control_type": "select",
+    "label": "Show error alert banner",
+    "name": "error_banner",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes. A red strip with a cross and 'Error alert' at the very top of the email, so it reads as an error at a glance. No = leave it out.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show error alert banner",
+      "name": "error_banner",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Hover effects",
+    "name": "hover_effects",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes. Built into the email (no w3.css needed): cards lift with a soft shadow, table rows tint with a blue bar, pills, buttons, chart bars and job squares react under the mouse. They show wherever the mail client allows hover styles; on phones there is no hover, so nothing changes there. No = leave the effects out.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Hover effects",
+      "name": "hover_effects",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Row hover colour",
+    "name": "hover_row_color",
+    "type": "string",
+    "optional": true,
+    "hint": "Blank = pale blue #EEF4FF. The colour a table row (failed records, recent failures) and the other list rows turn under the mouse. To match the health check mail use the pale green #DDFFDD."
+  },
+  {
+    "control_type": "select",
+    "label": "Detail level",
+    "name": "detail",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Standard (default)",
+        "standard"
+      ],
+      [
+        "Brief",
+        "brief"
+      ],
+      [
+        "Full",
+        "full"
+      ]
+    ],
+    "hint": "Blank = standard. How much the email shows. brief: hero,error,records,actions; standard: hero,error,records,story,signals,history,actions; full: hero,error,records,flow,kpis,story,signals,history,job,details,actions. Map it from priority in the recipe, e.g. Critical = full, Medium = brief. Then add or remove sections with the inputs below."
+  },
+  {
+    "control_type": "text",
+    "label": "Environment",
+    "name": "env",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property env: prod, dev, test… Sets the frame colour and subject."
+  },
+  {
+    "control_type": "text",
+    "label": "Sections (order)",
+    "name": "sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. Replaces the whole list (ignores Detail level): comma-separated, in the order you want. Names: hero = header: priority, recipe name, one-line headline, pills, greeting; error = the error message (facts such as Total Records are laid out as a small table); records = the failed records table, with error-code counts; flow = Source > Workato step > Target, with the failing hop marked; kpis = thin number tiles under it: records processed, failed, success rate, retries, runs with errors, retry success; story = what happened: in plain words, under the hood, likely cause, next steps; signals = things worth knowing: reprocessable?, retry result, recipe changed recently, same error elsewhere; history = failure history of this recipe: trend, 30-day chart, recent similar failures, most common errors; job = Workato job and recipe: status, duration, slowest step, recipe state, last jobs; details = technical details: failure, Workato ids (links), systems, handling; actions = buttons: view job, open recipe, error file, runbook, error log. Also accepted: buttons = actions, links = actions, technical = details, tech = details, message = error, pipeline = flow, header = hero, trend = history, workato = job, tiles = kpis, table = records, rows = records, insights = signals, summary = story, explanation = story."
+  },
+  {
+    "control_type": "text",
+    "label": "Add sections",
+    "name": "show_sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Comma-separated sections to ADD to the Detail level, e.g. kpis,details. Names: hero = header: priority, recipe name, one-line headline, pills, greeting; error = the error message (facts such as Total Records are laid out as a small table); records = the failed records table, with error-code counts; flow = Source > Workato step > Target, with the failing hop marked; kpis = thin number tiles under it: records processed, failed, success rate, retries, runs with errors, retry success; story = what happened: in plain words, under the hood, likely cause, next steps; signals = things worth knowing: reprocessable?, retry result, recipe changed recently, same error elsewhere; history = failure history of this recipe: trend, 30-day chart, recent similar failures, most common errors; job = Workato job and recipe: status, duration, slowest step, recipe state, last jobs; details = technical details: failure, Workato ids (links), systems, handling; actions = buttons: view job, open recipe, error file, runbook, error log. Also accepted: buttons = actions, links = actions, technical = details, tech = details, message = error, pipeline = flow, header = hero, trend = history, workato = job, tiles = kpis, table = records, rows = records, insights = signals, summary = story, explanation = story."
+  },
+  {
+    "control_type": "text",
+    "label": "Hide sections",
+    "name": "hide_sections",
+    "type": "string",
+    "optional": true,
+    "hint": "Comma-separated sections to REMOVE, e.g. history,signals. Names: hero = header: priority, recipe name, one-line headline, pills, greeting; error = the error message (facts such as Total Records are laid out as a small table); records = the failed records table, with error-code counts; flow = Source > Workato step > Target, with the failing hop marked; kpis = thin number tiles under it: records processed, failed, success rate, retries, runs with errors, retry success; story = what happened: in plain words, under the hood, likely cause, next steps; signals = things worth knowing: reprocessable?, retry result, recipe changed recently, same error elsewhere; history = failure history of this recipe: trend, 30-day chart, recent similar failures, most common errors; job = Workato job and recipe: status, duration, slowest step, recipe state, last jobs; details = technical details: failure, Workato ids (links), systems, handling; actions = buttons: view job, open recipe, error file, runbook, error log. Parts you can hide on their own: story.causes, story.steps, history.chart, history.recent, history.common, job.recent, details.failure, details.workato, details.systems, details.handling. Example: story.steps,history.chart. Also accepted: buttons = actions, links = actions, technical = details, tech = details, message = error, pipeline = flow, header = hero, trend = history, workato = job, tiles = kpis, table = records, rows = records, insights = signals, summary = story, explanation = story."
+  },
+  {
+    "control_type": "text",
+    "label": "Subject format",
+    "name": "subject_format",
+    "type": "string",
+    "optional": true,
+    "hint": "Default {emoji} {env} | {subject} (same as today). Also: {recipe} {priority} {category} {recurring} {occurrence} {failed} {total} {signature}"
+  },
+  {
+    "control_type": "select",
+    "label": "Show intro",
+    "name": "show_intro",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no: the email opens straight on the error. Yes = add the greeting and the 'We caught an error in the <recipe> recipe…' line first. A mail message passed in mail_msg always shows, as one plain line.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show intro",
+      "name": "show_intro",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Greeting",
+    "name": "greeting",
+    "type": "string",
+    "optional": true,
+    "hint": "Default: Hi Team,. Only used when Show intro = yes."
+  },
+  {
+    "control_type": "text",
+    "label": "Time zone",
+    "name": "timezone",
+    "type": "string",
+    "optional": true,
+    "hint": "Default America/Los_Angeles (PST/PDT)."
+  },
+  {
+    "control_type": "text",
+    "label": "Brand colour",
+    "name": "brand_color",
+    "type": "string",
+    "optional": true,
+    "hint": "Hex, default #0056D2"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max width (px)",
+    "name": "max_width",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Blank = auto: 800, and wider when the failed-records table has 4 or 5 columns (920 / 1,040), so the columns keep room. A number (480 to 1,200) fixes it. The card is fluid, so a phone still shows it at full width."
+  },
+  {
+    "control_type": "text",
+    "label": "Logo URL",
+    "name": "logo_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property coursera-logo-url"
+  },
+  {
+    "control_type": "text",
+    "label": "Team logo URL",
+    "name": "team_logo_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property iis-team-logo-url"
+  },
+  {
+    "control_type": "text",
+    "label": "Team name",
+    "name": "team_name",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property team-name"
+  },
+  {
+    "control_type": "text",
+    "label": "Alert email",
+    "name": "alert_email",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property alert_email. Also the fallback recipient."
+  },
+  {
+    "control_type": "text",
+    "label": "ServiceNow URL",
+    "name": "servicenow_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property service-now-url"
+  },
+  {
+    "control_type": "text",
+    "label": "Slack channel URL",
+    "name": "slack_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Account property slack-channel-url"
+  },
+  {
+    "control_type": "text",
+    "label": "Team charter URL",
+    "name": "charter_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Default: the MUL Team Charter page"
+  },
+  {
+    "control_type": "text",
+    "label": "Runbook URL",
+    "name": "runbook_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional 'Runbook' button. Per-category links go in config_json runbooks."
+  },
+  {
+    "control_type": "text",
+    "label": "Error file URL",
+    "name": "error_file_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Generate shareable file link › Link"
+  },
+  {
+    "control_type": "text",
+    "label": "Error time (display)",
+    "name": "error_time",
+    "type": "string",
+    "optional": true,
+    "hint": "Blank = now, e.g. Thursday, 19 November 2026 9:11 AM PST"
+  },
+  {
+    "control_type": "text",
+    "label": "Recipe ID override",
+    "name": "recipe_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Blank = calling recipe ID or Job URL"
+  },
+  {
+    "control_type": "select",
+    "label": "Show history",
+    "name": "history",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes. Uses the error log data table.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show history",
+      "name": "history",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "History days",
+    "name": "history_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 90"
+  },
+  {
+    "control_type": "integer",
+    "label": "Chart days",
+    "name": "chart_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 30"
+  },
+  {
+    "control_type": "integer",
+    "label": "Similar failures listed",
+    "name": "similar_limit",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 5"
+  },
+  {
+    "control_type": "integer",
+    "label": "Other recipes window (days)",
+    "name": "cross_recipe_days",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 7. 0 = don't look at other recipes."
+  },
+  {
+    "control_type": "number",
+    "label": "Similarity threshold",
+    "name": "similarity",
+    "type": "number",
+    "optional": true,
+    "parse_output": "float_conversion",
+    "hint": "0.3–1.0, default 0.6. How alike two messages must be to count as the same error."
+  },
+  {
+    "control_type": "text",
+    "label": "Error log table ID",
+    "name": "data_table_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Default c1444a9a-03a7-4c82-8618-7796b7384b37 (Error Notification - TBL)"
+  },
+  {
+    "control_type": "text-area",
+    "label": "History rows (JSON)",
+    "name": "history_rows_json",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional: rows from a Search rows step, as JSON. Used instead of the API."
+  },
+  {
+    "control_type": "select",
+    "label": "Mask emails in history",
+    "name": "mask_history_pii",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Mask emails in history",
+      "name": "mask_history_pii",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Show job & recipe context",
+    "name": "job_context",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes. Needs the Workato API token.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show job & recipe context",
+      "name": "job_context",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Recent jobs shown",
+    "name": "recent_jobs",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 20. 0 = off."
+  },
+  {
+    "control_type": "text",
+    "label": "Workato API base",
+    "name": "workato_api_base",
+    "type": "string",
+    "optional": true,
+    "hint": "Default https://www.workato.com/api"
+  },
+  {
+    "control_type": "select",
+    "label": "Show who changed the recipe",
+    "name": "show_editor",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show who changed the recipe",
+      "name": "show_editor",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Show developer",
+    "name": "show_developer",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no. Yes = look up who wrote the recipe (the first version by a coursera.org address) and show the name in Technical details. Needs the Workato API token and one or two API calls.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Show developer",
+      "name": "show_developer",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Use Azure OpenAI",
+    "name": "ai",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes (when the key is set)",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Use Azure OpenAI",
+      "name": "ai",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Azure chat completions URL",
+    "name": "azure_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Default: the gpt-4o deployment daily_nudge uses"
+  },
+  {
+    "control_type": "number",
+    "label": "AI temperature",
+    "name": "ai_temperature",
+    "type": "number",
+    "optional": true,
+    "parse_output": "float_conversion",
+    "hint": "Default 0.2"
+  },
+  {
+    "control_type": "integer",
+    "label": "AI max tokens",
+    "name": "ai_max_tokens",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 900"
+  },
+  {
+    "control_type": "select",
+    "label": "Redact before sending to Azure",
+    "name": "ai_redact",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes: emails, URLs, Salesforce IDs, long numbers",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Redact before sending to Azure",
+      "name": "ai_redact",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text-area",
+    "label": "AI team notes",
+    "name": "ai_instructions",
+    "type": "string",
+    "optional": true,
+    "hint": "Extra context for Azure, e.g. how your team reprocesses, owners of each system."
+  },
+  {
+    "control_type": "select",
+    "label": "Auto-escalate priority",
+    "name": "auto_escalate",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no. Raises one level when it keeps happening.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Auto-escalate priority",
+      "name": "auto_escalate",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Escalate after (7 days)",
+    "name": "escalate_after",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 5 occurrences"
+  },
+  {
+    "control_type": "select",
+    "label": "Log the error to the data table",
+    "name": "log_row",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes. The step upserts the error log row into the data table 'Error Notification - TBL' (key: Master Job ID, as the old recipe did) before the email is built, also for calls with frequency / error_limit. The Workato API token must be allowed to write data table records. No = nothing is written; the row is still returned in table_row.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Log the error to the data table",
+      "name": "log_row",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Retry decision by",
+    "name": "reprocess_policy",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Azure only (default)",
+        "ai"
+      ],
+      [
+        "Rules only",
+        "rules"
+      ],
+      [
+        "Azure AND rules must agree",
+        "both"
+      ]
+    ],
+    "hint": "Blank = Azure only. If Azure gives no answer the job is not retried. Rules only = the built-in list of temporary errors."
+  },
+  {
+    "control_type": "select",
+    "label": "Min Azure confidence to retry",
+    "name": "reprocess_min_confidence",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Low",
+        "low"
+      ],
+      [
+        "Medium (default)",
+        "medium"
+      ],
+      [
+        "High",
+        "high"
+      ]
+    ],
+    "hint": "Blank = medium"
+  },
+  {
+    "control_type": "select",
+    "label": "Auto-retry",
+    "name": "auto_reprocess",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = YES. For every error Azure says whether a re-run would help (only Azure decides; the caller's Reprocess input is ignored). When it says yes the master job is repeated through the Workato API, at most Max auto-retries times, and never when the run is itself a retry. If Azure says no or gives no answer, or the retry could not be started, the error is emailed. No = nothing is retried and Azure is not asked.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Auto-retry",
+      "name": "auto_reprocess",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Max auto-retries per job",
+    "name": "max_auto_repeats",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 1: how many times one job is repeated"
+  },
+  {
+    "control_type": "select",
+    "label": "Email even when reprocessable",
+    "name": "email_when_reprocessable",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no: a retried error is only logged. Yes = also email it.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Email even when reprocessable",
+      "name": "email_when_reprocessable",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Email when auto-retry fails",
+    "name": "notify_on_repeat_failure",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = yes",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Email when auto-retry fails",
+      "name": "notify_on_repeat_failure",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Max table rows",
+    "name": "max_table_rows",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 25"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max error characters",
+    "name": "max_error_chars",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 3000"
+  },
+  {
+    "control_type": "integer",
+    "label": "Max signals",
+    "name": "max_signals",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 6"
+  },
+  {
+    "control_type": "integer",
+    "label": "Time budget (s)",
+    "name": "time_budget",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 45: all API calls share it"
+  },
+  {
+    "control_type": "integer",
+    "label": "HTTP timeout (s)",
+    "name": "http_timeout",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 12 per call"
+  },
+  {
+    "control_type": "integer",
+    "label": "HTML size limit (KB)",
+    "name": "html_limit_kb",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 100: Gmail clips at ~102 KB"
+  },
+  {
+    "control_type": "select",
+    "label": "Always build the email",
+    "name": "always_render",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "Blank = no. A call that sets frequency / error_limit is only logged, so by default the step skips the lookups and the html (no email goes out). Yes = build the email anyway.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Always build the email",
+      "name": "always_render",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text-area",
+    "label": "Config JSON",
+    "name": "config_json",
+    "type": "string",
+    "optional": true,
+    "hint": "Any setting above, plus titles, severity, env_colors, playbook, runbooks, category_rules, app_names, buttons, table_columns"
+  },
+  {
+    "control_type": "text",
+    "label": "Now (testing)",
+    "name": "now",
+    "type": "string",
+    "optional": true,
+    "hint": "ISO time to render as. Leave blank."
+  }
+]

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title> Workato Alerts</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+         body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            padding-top: 20px;
+            padding-bottom: 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            background-color: #E6F0FA;
+            /*line-height: 1.4;*/
+            max-width: 100%;
+            margin: 1 auto;
+            border-radius: 50px;
+        }
+
+         .container {
+            width: 95%;
+           /*  max-width: 800px;  Set to fixed max-width for consistency */
+            max-width: 900;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .para {
+            background-color: #FFFFFF;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            max-width: 100%;
+            word-wrap: break-word;
+
+        }
+
+        .error-details {
+           /*background-color: #67eadd;*/
+            background-color: #;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            word-wrap: break-word;
+        }
+
+        .error-details2 {
+            background-color: #67eadd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            word-wrap: break-word;
+        }
+
+        .tech-error-details {
+            background-color: #E0FFFF;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            word-wrap: break-word;
+            max-width: 100%;
+            font-size: 13px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #19a5a6;
+            color: white;
+            padding: 2px 10px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            text-align: right;
+            font-size: 11px;
+        }
+
+        table {
+            width: auto;
+            table-layout: auto;
+
+        }
+
+        th {
+
+            text-align: left;
+            width: 120px;
+            word-wrap: break-word;
+
+        }
+
+
+        td {
+
+            text-align: left;
+            word-wrap: break-word;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .logo {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .logo-text {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4A154B;
+            /* Slack color for the logo text */
+        }
+
+        .links-section a {
+            margin: 0 5px;
+            color: #333;
+            text-decoration: none;
+        }
+
+        .social-media-section {
+            margin-top: 15px;
+        }
+
+        .social-icon {
+            height: 30px;
+            margin: 0 10px;
+        }
+
+        .footer-bottom-text p {
+            font-size: 0.8em;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+        
+        .footer {
+            width: 100%; /* Ensures the footer takes full width */
+            max-width: 600px; /* Matches the footer's width with the container */
+            margin: auto; /* Center the footer */
+            padding: 20px;
+            text-align: center;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        
+         .btn-container {
+            text-align: right; /* Aligns the button to the right */
+        }
+        
+        .flexible-chart {
+    max-width: 100%;
+    height: auto;
+    width: 100%;
+    max-height: 50vh;
+    object-fit: contain;
+}
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        
+        <div style="background-color: #0000;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 500px; margin: auto; background-color: #0000;">
+            <tr style="color: #0000;">
+                <td align="center" valign="top" style="padding: 1px; text-align: center;">
+
+                    <img src=#{_dp('{"pill_type":"account_property","property_name":"coursera-logo-url"}')} alt="Logo" style="height: 130px; width; 60px; vertical-align: middle; margin-bottom: 2px;">
+
+                </td>
+            </tr>
+        </table>
+        </div>
+     
+
+
+
+
+        <p >Hi Team,</p>
+        <p >Kindly examine workato daily health report and look out for any irregularities.<b> </b>  </p>
+        
+<h4 class="w3-center w3-round-large w3-hover-opacity" style="text-align:left; background-color:#E6F0FA; color: ;margin-bottom: 0px; padding-bottom: 0px;">Last 90 Days Prod Daily Task Usage </h4>
+
+        <div style="background-color: #0000;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 1000px; margin: auto; background-color: #0000;">
+            <tr style="color: #0000;">
+                <td align="center" valign="top" style="padding: 1px; text-align: center;">
+
+                    <img src=#{_dp('{"pill_type":"output","provider":"graphs_and_charts","line":"73d2961a","path":["chart_url"]}')} alt="Logo"  class="flexible-chart">
+
+                </td>
+            </tr>
+        </table>
+        </div>
+        
+        <h4 class="w3-center w3-round-large w3-hover-opacity" style="text-align:left; background-color:#E6F0FA; color: ;margin-bottom: 0px; padding-bottom: 0px;">Last 90 Days Dev Daily Task Usage </h4>
+
+        <div style="background-color: #0000;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 1000px; margin: auto; background-color: #0000;">
+            <tr style="color: #0000;">
+                <td align="center" valign="top" style="padding: 1px; text-align: center;">
+
+                    <img src=#{_dp('{"pill_type":"output","provider":"graphs_and_charts","line":"5e2adb38","path":["chart_url"]}')} alt="Logo"  class="flexible-chart">
+
+                </td>
+            </tr>
+        </table>
+        </div>
+     
+          #{_dp('{"pill_type":"output","provider":"workato_template","line":"86a66843","path":["document"]}')}
+        #{_dp('{"pill_type":"output","provider":"workato_template","line":"03c83ab8","path":["document"]}')}
+        #{_dp('{"pill_type":"output","provider":"workato_template","line":"0a98c358","path":["document"]}')}
+        
+        
+  
+        
+     
+
+     <div style="background-color: #f7f7f7; border-radius: 5px;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: auto; background-color: #f7f7f7; border-radius: 5px;">
+            <tr style="color: #3333;">
+                <td align="center" valign="top" style="padding: 10px; text-align: center;">
+
+                    <img src=#{_dp('{"pill_type":"account_property","property_name":"iis-team-logo-url"}')} alt="IIS Team Logo" style="height: 40px; vertical-align: middle; margin-bottom: 10px;">
+                    <br>
+                    <span style="font-size: 15px; font-weight: bold; color: #4A154B; vertical-align: middle;">#{_dp('{"pill_type":"account_property","property_name":"team-name"}')}</span>
+
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 0px;">
+                        <tr>
+                            <td style="text-align: center; padding: 10px 0; font-size: 12px;">
+                                <a href="mailto:#{_dp('{"pill_type":"account_property","property_name":"alert_email"}')}?subject=Error%20in%20recipe%20&body=Hi%20IT%20Integrations%20Team," style="margin: 0 5px; text-decoration: none; color: #333;color: rgba(20, 20, 20, 0.3)">Email</a> |
+
+                                <a href=#{_dp('{"pill_type":"account_property","property_name":"service-now-url"}')} style="margin: 0 5px; text-decoration: none; color: #333; color: rgba(20, 20, 20, 0.3)">Service Now</a> |
+                                <a href=#{_dp('{"pill_type":"account_property","property_name":"slack-channel-url"}')} style="margin: 0 5px; text-decoration: none; color: #333;color: rgba(20, 20, 20, 0.3)">Slack </a> |
+                                <a href="https://coursera.atlassian.net/wiki/spaces/MUL/pages/2573336865/Team+Charter" style="margin: 0 5px; text-decoration: none; color: #333;color: rgba(20, 20, 20, 0.3)">Team Charter</a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        </div>
+    </div>
+</body>
+
+</html>

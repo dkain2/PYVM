@@ -1,0 +1,24 @@
+{
+  "to_email_address": "alerts@example.com",
+  "subject": "Failure in Salesforce - AWS S3 UOL Application files Process - Function",
+  "job_url": "https://app.workato.com/recipes/70000001/job/j-TestJob1-abcdef-CD",
+  "recipe_name": "Salesforce - AWS S3 UOL Application files Process - Function",
+  "error_details": "<p>Error Occred while processing UOL Application records from S3 Bucket to Salesforce Services</p><p>Total Records : 35909</p><p>Records Failed: 4</p><p>SFDC Job Id:750VN000018VrEFYA0</p><p>The Processed File Key : london/bachelor-of-science-computer-science-london/applications/application_help_20261119.csv .</p>",
+  "priority": "High",
+  "sourceSystem": "S3",
+  "targetSystem": "SFDC_Services",
+  "sourceObject": "UOL Application files",
+  "targetObject": "Application__c",
+  "column1Name": "Application Id",
+  "column2Name": "Application Primary Id",
+  "column3Name": "Error Message",
+  "dataArray": [
+    {"value1": "100000001_UBS-COSCI-SI_0001_000000000001", "value2": "100000001_UBS-COSCI-SI_0001_0000000000012024/5_04", "value3": "DUPLICATE_VALUE:Duplicate external id specified: 100000001_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --"},
+    {"value1": "100000002_UBS-COSCI-SI_0001_000000000001", "value2": "100000002_UBS-COSCI-SI_0001_0000000000012024/5_04", "value3": "DUPLICATE_VALUE:Duplicate external id specified: 100000002_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --"},
+    {"value1": "100000001_UBS-COSCI-SI_0001_000000000001", "value2": "100000001_UBS-COSCI-SI_0001_0000000000012024/5_04", "value3": "DUPLICATE_VALUE:Duplicate external id specified: 100000001_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --"},
+    {"value1": "100000002_UBS-COSCI-SI_0001_000000000001", "value2": "100000002_UBS-COSCI-SI_0001_0000000000012024/5_04", "value3": "DUPLICATE_VALUE:Duplicate external id specified: 100000002_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --"}
+  ],
+  "env": "prod",
+  "error_file_url": "https://example.com/error-file.csv",
+  "now": "2026-11-19T09:11:00-08:00"
+}

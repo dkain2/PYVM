@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Workato Alerts</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <style>
+        body {
+            margin: 0;
+            padding: 24px 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #1f2933;
+        }
+
+        .frame {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 956px;
+            margin: 0 auto;
+            background-color: #EEF1F4;
+            border-radius: 20px;
+            padding: 18px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 920px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .accent-bar {
+            height: 6px;
+            line-height: 6px;
+            font-size: 0;
+            background-color: #ffc299;
+        }
+
+        .content {
+            padding: 32px 32px 8px;
+        }
+
+        .logo-row td {
+            padding-bottom: 24px;
+        }
+
+        .eyebrow {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #6b7280;
+            margin: 0 0 6px;
+        }
+
+        .recipe-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 20px;
+            line-height: 1.35;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eef0f2;
+            word-wrap: break-word;
+        }
+
+        .greeting {
+            font-size: 15px;
+            margin: 0 0 12px;
+        }
+
+        .lede {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #374151;
+            margin: 0 0 20px;
+            word-wrap: break-word;
+        }
+
+        .alert-box {
+            background-color: #ffc299;
+            border-left: 4px solid #b91c1c;
+            border-radius: 6px;
+            padding: 16px 18px;
+            margin: 0 0 24px;
+            word-wrap: break-word;
+        }
+
+        .alert-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #1f2933;
+            margin: 0 0 8px;
+        }
+
+        .alert-message {
+            font-size: 14px;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            color: #1f2933;
+            line-height: 1.5;
+            margin: 0;
+            word-wrap: break-word;
+        }
+
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            margin: 0 0 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+        }
+
+        th,
+        td {
+            text-align: left;
+            word-wrap: break-word;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+
+        th {
+            width: 140px;
+            background-color: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        td {
+            border-bottom: 1px solid #eef0f2;
+            color: #1f2933;
+        }
+
+        .error-details2,
+        .tech-error-details {
+            background-color: #f9fafb;
+            border: 1px solid #eef0f2;
+            border-left: 3px solid #EEF1F4;
+            border-radius: 6px;
+            padding: 16px 18px;
+            margin: 0;
+            word-wrap: break-word;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 100%;
+        }
+
+        .tech-error-details table,
+        .error-details2 table {
+            width: auto;
+        }
+
+        .tech-error-details th,
+        .error-details2 th {
+            background-color: transparent;
+            border-bottom: none;
+            padding: 4px 10px 4px 0;
+        }
+
+        .tech-error-details td,
+        .error-details2 td {
+            border-bottom: none;
+            padding: 4px 0;
+        }
+
+        .btn-row {
+            margin: 0 0 2px;
+        }
+
+        .btn-table {
+            width: auto;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #eef2ff;
+            color: #000 !important;
+            padding: 1px 1px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .footer-team {
+            font-size: 14px;
+            font-weight: 700;
+            color: #4A154B;
+            margin: 10px 0 14px;
+        }
+
+        .footer-links {
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .footer-links a {
+            color: rgba(20, 20, 20, 0.55);
+            text-decoration: none;
+            margin: 0 4px;
+        }
+
+        .footer-bottom {
+            font-size: 11px;
+            color: #9ca3af;
+            margin: 16px 0 0;
+        }
+
+        .preheader {
+            display: none;
+            visibility: hidden;
+            opacity: 0;
+            color: transparent;
+            height: 0;
+            width: 0;
+            overflow: hidden;
+            mso-hide: all;
+        }
+
+        @media only screen and (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            .frame {
+                border-radius: 14px;
+                padding: 10px;
+            }
+
+            .container {
+                border-radius: 14px;
+            }
+
+            .content {
+                padding: 20px 20px 4px;
+            }
+
+            .btn-row td {
+                text-align: center !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preheader">
+        Error in Salesforce - AWS S3 UOL Application files Process - Function: Error Occred while processing UOL Application records from S3 Bucket to Salesforce Services Total Records : 35909 Records Failed: 4 SFDC Job Id:750VN000018VrEFYA0 The Processed File Key : london/bach…
+        &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+    </div>
+    <div class="frame">
+    <div class="container">
+        <div class="accent-bar">&nbsp;</div>
+
+        <div class="content">
+
+            <table role="presentation" class="logo-row" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td align="left">
+                        <img src="" alt="Coursera" height="40" style="height: 40px; width: auto; display: inline-block; border: 0;">
+                    </td>
+                </tr>
+            </table>
+
+            <p class="eyebrow">Recipe error alert</p>
+            <p class="recipe-name">Salesforce - AWS S3 UOL Application files Process - Function</p>
+
+            <p class="greeting">Hi Team,</p>
+            <p class="lede">We've identified some exceptions occurring in the <b>Salesforce - AWS S3 UOL Application files Process - Function</b> recipe. Kindly review the details provided below.</p>
+
+            <div class="alert-box">
+                <span class="alert-label">Error message</span>
+                <p class="alert-message"><p>Error Occred while processing UOL Application records from S3 Bucket to Salesforce Services</p><p>Total Records : 35909</p><p>Records Failed: 4</p><p>SFDC Job Id:750VN000018VrEFYA0</p><p>The Processed File Key : london/bachelor-of-science-computer-science-london/applications/application_help_20261119.csv .</p></p>
+            </div>
+
+            <div class="table-scroll">
+                <style>
+.table {width:100%; border:1px solid #CCCCCC; border-collapse:collapse; font-size:11px; border-radius:5px; overflow:hidden;}
+.header {background-color:#F2F2F2; color:black; border: 0.1px solid #CCCCCC; text-align:center; border-collapse:collapse;}
+.cell {text-align:center;  border: 0.1px solid #CCCCCC; border-collapse:collapse;}
+.technical-details-table {width:100%; font-size:14px;}
+</style>
+<table class="table">
+  <tr>
+    <th class="header" >Application Id</th>
+    <th class="header" >Application Primary Id</th>
+    <th class="header" >Error Message</th>
+  </tr>
+  <tr>
+    <td class="cell" style="">100000001_UBS-COSCI-SI_0001_000000000001</td>
+    <td class="cell" style="">100000001_UBS-COSCI-SI_0001_0000000000012024/5_04</td>
+    <td class="cell" style="">DUPLICATE_VALUE:Duplicate external id specified: 100000001_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --</td>
+  </tr>
+  <tr>
+    <td class="cell" style="">100000002_UBS-COSCI-SI_0001_000000000001</td>
+    <td class="cell" style="">100000002_UBS-COSCI-SI_0001_0000000000012024/5_04</td>
+    <td class="cell" style="">DUPLICATE_VALUE:Duplicate external id specified: 100000002_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --</td>
+  </tr>
+  <tr>
+    <td class="cell" style="">100000001_UBS-COSCI-SI_0001_000000000001</td>
+    <td class="cell" style="">100000001_UBS-COSCI-SI_0001_0000000000012024/5_04</td>
+    <td class="cell" style="">DUPLICATE_VALUE:Duplicate external id specified: 100000001_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --</td>
+  </tr>
+  <tr>
+    <td class="cell" style="">100000002_UBS-COSCI-SI_0001_000000000001</td>
+    <td class="cell" style="">100000002_UBS-COSCI-SI_0001_0000000000012024/5_04</td>
+    <td class="cell" style="">DUPLICATE_VALUE:Duplicate external id specified: 100000002_ubs-cosci-si_0001_0000000000012024/5_04: Application_Primary_Key__c --</td>
+  </tr>
+</table>
+
+<div class="tech-error-details">
+  <h4 style="text-align:left;">Technical Details</h4>
+  <table class="technical-details-table">
+    <tr><th>Source System</th><td>: S3</td></tr>
+    <tr><th>Target System</th><td>: SFDC_Services</td></tr>
+    <tr><th>Source Object</th><td>: UOL Application files</td></tr>
+    <tr><th>Target Object</th><td>: Application__c</td></tr>
+    <tr><th>Error Time</th><td>: Thursday, 19 November 2026 9:11AM PST</td></tr>
+    <tr><th>Error File</th><td>: <a href="https://example.com/error-file.csv" target="_blank">View Error File</a></td></tr>
+  </table>
+</div>
+            </div>
+
+            <table role="presentation" class="btn-row" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td align="left" style="text-align: left;">
+                        <table role="presentation" class="btn-table" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td align="center" style="border-radius: 6px; background-color: #eef2ff;">
+                                    <a href="https://app.workato.com/recipes/70000001/job/j-TestJob1-abcdef-CD" target="_blank" class="btn">View Job Details &rarr;</a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="footer">
+            <img src="" alt="IIS Team" height="36" style="height: 36px; width: auto; border: 0;">
+            <p class="footer-team"></p>
+            <p class="footer-links">
+                <a href="mailto:?subject=Error%20in%20recipe%20Salesforce%20-%20AWS%20S3%20UOL%20Application%20files%20Process%20-%20Function&amp;body=Hi%20IT%20Integrations%20Team,">Email</a>
+                &middot;
+                <a href="">Service Now</a>
+                &middot;
+                <a href="">Slack</a>
+                &middot;
+                <a href="https://coursera.atlassian.net/wiki/spaces/MUL/pages/2573336865/Team+Charter">Team Charter</a>
+            </p>
+            <p class="footer-bottom">This is an automated alert from Workato integration monitoring.</p>
+        </div>
+    </div>
+    </div>
+</body>
+
+</html>

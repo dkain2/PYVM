@@ -1,0 +1,425 @@
+[
+  {
+    "control_type": "select",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Decide from the inputs (default)",
+        ""
+      ],
+      [
+        "Post the alert",
+        "post"
+      ],
+      [
+        "Handle a click",
+        "click"
+      ]
+    ],
+    "hint": "Blank = a payload or action_id means click, a slack_channel_id (or alert_json) means post."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack channel ID",
+    "name": "slack_channel_id",
+    "type": "string",
+    "optional": true,
+    "hint": "POST: the channel (C0123ABCD, a private channel G..., or a user ID for a direct message). The app must be in a private channel (/invite @app). Blank and no payload = nothing to do."
+  },
+  {
+    "control_type": "text-area",
+    "label": "Alert facts (JSON)",
+    "name": "alert_json",
+    "type": "string",
+    "optional": true,
+    "hint": "POST: the notifier's `alert_json` output, as is. Blank = a short alert is posted from subject, recipe_name, error_details, priority and job_url."
+  },
+  {
+    "control_type": "password",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "xoxb- token of the Slack app: chat:write (and chat:write.public for channels it has not joined), users:read and users:read.email for clicks. The step posts and edits messages itself."
+  },
+  {
+    "control_type": "password",
+    "label": "Workato API token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Reprocesses the job and reads / writes the error log table. Blank = nothing can be reprocessed or logged."
+  },
+  {
+    "control_type": "select",
+    "label": "Slack look",
+    "name": "slack_look",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Short (default)",
+        "new"
+      ],
+      [
+        "Full (every section)",
+        "full"
+      ],
+      [
+        "Old look (plain card)",
+        "old"
+      ]
+    ],
+    "hint": "POST. Blank = short: one attachment with a red bar holding the title, the headline, the error in a code block, the status line with Take it, a 2 x 2 grid of small boxes (what happened, impact, what to do next with Reprocess / Mark resolved, links) and the failed-records table. Full = every section. Old = the plain card. If Slack refuses a block that one feature is left out and the message sent again, down to the plain card, then to text."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack features",
+    "name": "slack_features",
+    "type": "string",
+    "optional": true,
+    "hint": "POST, optional. Blank = headers, bar (the red attachment), grid (the 2 x 2 boxes), cards, panels, datatables, tables, rich, feedback. Names listed = exactly those. 'all' = every one. '+charts' adds one, '-bar' takes one away, 'none' = just sections. Off by default: charts, tiles, adaptive, chips, markdown (used by the full look)."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack buttons",
+    "name": "slack_buttons",
+    "type": "string",
+    "optional": true,
+    "hint": "POST, optional. Which buttons that do something to show: reprocess, acknowledge, resolve, assign. Blank or 'all' = every one; '-reprocess' takes one away; 'none' = only link buttons. A successful reprocess always adds its own 'Check status' button on the thread reply (error_notification_check), whatever this says: it is how that one thread follows up, not a card button."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack mention",
+    "name": "slack_mention",
+    "type": "string",
+    "optional": true,
+    "hint": "POST, optional. Tagged at the top for Critical and High alerts only, e.g. <!subteam^S0123ABCD>, <!here> or <@U0123ABCD>."
+  },
+  {
+    "control_type": "select",
+    "label": "Mask emails in Slack",
+    "name": "slack_mask_pii",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "POST. Blank = yes: email addresses in the error, the records and the details are shown as •••@domain.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Mask emails in Slack",
+      "name": "slack_mask_pii",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Slack thread ts",
+    "name": "slack_thread_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "POST, optional. Post as a reply in this thread."
+  },
+  {
+    "control_type": "integer",
+    "label": "Max table rows",
+    "name": "max_table_rows",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "POST. Default 25 failed records in the table (Slack takes at most 100)."
+  },
+  {
+    "control_type": "text",
+    "label": "Subject (fallback)",
+    "name": "subject",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Recipe name (fallback)",
+    "name": "recipe_name",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text-area",
+    "label": "Error message (fallback)",
+    "name": "error_details",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Priority (fallback)",
+    "name": "priority",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Critical, High, Medium or Low. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Job URL (fallback)",
+    "name": "job_url",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Master job ID (fallback)",
+    "name": "calling_master_job_id",
+    "type": "string",
+    "optional": true,
+    "hint": "POST. Only used when alert_json is blank."
+  },
+  {
+    "control_type": "text-area",
+    "label": "Slack payload",
+    "name": "payload",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK: the block_actions payload Slack sent to the Interactivity URL (JSON, or still form-encoded as payload=...). Map the trigger's payload field here."
+  },
+  {
+    "control_type": "text",
+    "label": "Action ID",
+    "name": "action_id",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: the clicked action's id, when the payload is not mapped. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Button value",
+    "name": "value",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: the clicked button's value (the whole action button). Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: who clicked. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel (click)",
+    "name": "channel",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: the channel of the message. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Message ts (click)",
+    "name": "message_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: the ts of the message. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Selected user",
+    "name": "selected_user",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: the person picked in Assign to. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Feedback value",
+    "name": "feedback_value",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional: positive or negative. Wins over the payload."
+  },
+  {
+    "control_type": "text",
+    "label": "Who may reprocess",
+    "name": "allowed_user_ids",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional. Slack user IDs, comma-separated, that may reprocess or resolve. Blank = anyone who can see the message."
+  },
+  {
+    "control_type": "integer",
+    "label": "Reprocess cooldown (min)",
+    "name": "cooldown_minutes",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "CLICK. Default 10: a job reprocessed less than this long ago is not reprocessed again. 0 = off."
+  },
+  {
+    "control_type": "integer",
+    "label": "Max reprocesses per job",
+    "name": "max_reprocess",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "CLICK. Default 3: a job reprocessed this many times already is not run again from Slack."
+  },
+  {
+    "control_type": "select",
+    "label": "Update the message",
+    "name": "update_message",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "CLICK. Blank = yes. Puts who did what on the alert's status line, and takes the used buttons away.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Update the message",
+      "name": "update_message",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Reply in the thread",
+    "name": "thread_reply",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "CLICK. Blank = yes. A short line in the alert's thread saying who did what.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Reply in the thread",
+      "name": "thread_reply",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "password",
+    "label": "Slack signing secret",
+    "name": "slack_signing_secret",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK, optional. With raw_body, slack_request_timestamp and slack_signature the step checks the request is really from Slack and does nothing if not. Blank = not checked."
+  },
+  {
+    "control_type": "text-area",
+    "label": "Raw request body",
+    "name": "raw_body",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK. The request body exactly as received (payload=...), for the signature check."
+  },
+  {
+    "control_type": "text",
+    "label": "X-Slack-Request-Timestamp",
+    "name": "slack_request_timestamp",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK. The header, for the signature check."
+  },
+  {
+    "control_type": "text",
+    "label": "X-Slack-Signature",
+    "name": "slack_signature",
+    "type": "string",
+    "optional": true,
+    "hint": "CLICK. The header (v0=...), for the signature check."
+  },
+  {
+    "control_type": "text",
+    "label": "Error log table ID",
+    "name": "data_table_id",
+    "type": "string",
+    "optional": true,
+    "hint": "Default c1444a9a-03a7-4c82-8618-7796b7384b37 (Error Notification - TBL). A button can carry its own."
+  },
+  {
+    "control_type": "text",
+    "label": "Workato API base",
+    "name": "workato_api_base",
+    "type": "string",
+    "optional": true,
+    "hint": "Default https://www.workato.com/api"
+  },
+  {
+    "control_type": "text",
+    "label": "Time zone",
+    "name": "timezone",
+    "type": "string",
+    "optional": true,
+    "hint": "Default America/Los_Angeles. The timestamps written to the error log use it; Slack draws the ones in messages in each reader's own."
+  },
+  {
+    "control_type": "integer",
+    "label": "HTTP timeout (s)",
+    "name": "http_timeout",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 12 per call"
+  },
+  {
+    "control_type": "integer",
+    "label": "Time budget (s)",
+    "name": "time_budget",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion",
+    "render_input": "integer_conversion",
+    "hint": "Default 25: all calls share it"
+  },
+  {
+    "control_type": "text",
+    "label": "Now (testing)",
+    "name": "now",
+    "type": "string",
+    "optional": true,
+    "hint": "ISO time to act as. Leave blank."
+  }
+]

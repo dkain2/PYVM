@@ -1,0 +1,760 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "block_id": "en_title_1",
+      "text": {
+        "type": "plain_text",
+        "text": "❗ High · Salesforce - AWS S3 UOL Application files Process - Function",
+        "emoji": true
+      },
+      "level": 1
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*10 of 35,909 UOL Application records failed to reach SFDC Services · data validation*\n⛔ *Will not auto retry*  ·  ⏰ 19 Nov · 9:11 AM PST  ·  PRODUCTION"
+      },
+      "expand": true
+    },
+    {
+      "type": "rich_text",
+      "block_id": "en_error_1",
+      "elements": [
+        {
+          "type": "rich_text_section",
+          "elements": [
+            {
+              "type": "emoji",
+              "name": "rotating_light"
+            },
+            {
+              "type": "text",
+              "text": " Error",
+              "style": {
+                "bold": true
+              }
+            },
+            {
+              "type": "text",
+              "text": "   "
+            },
+            {
+              "type": "text",
+              "text": "REQUIRED_FIELD_MISSING ×4  INVALID_EMAIL_ADDRESS ×3  DUPLICATE_VALUE ×3",
+              "style": {
+                "code": true
+              }
+            }
+          ]
+        },
+        {
+          "type": "rich_text_preformatted",
+          "elements": [
+            {
+              "type": "text",
+              "text": "Error Occred while processing UOL Application records from S3 Bucket to Salesforce Services\nTotal Records          : 35,909\nRecords Failed         : 10\nSFDC Job Id            : 750VN000018VrEFYA0\nThe Processed File Key : london/bachelor-of-science-computer-science-london/applications/application_help_20261119.csv"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "block_id": "error_notification_status",
+      "text": {
+        "type": "mrkdwn",
+        "text": "🆕 *Open*  ·  nobody has picked this up yet"
+      },
+      "expand": true,
+      "accessory": {
+        "type": "button",
+        "text": {
+          "type": "plain_text",
+          "text": "🙋 Take it",
+          "emoji": true
+        },
+        "action_id": "error_notification_acknowledge",
+        "value": "{\"v\":1,\"m\":\"j-TestJob1-abcdef-CD\",\"r\":\"70000001\",\"j\":\"j-TestJob1-abcdef-CD\",\"n\":\"Salesforce - AWS S3 UOL Application files Process - Function\",\"e\":\"Production\",\"p\":\"High\",\"s\":\"260e58db\"}"
+      }
+    },
+    {
+      "type": "layout",
+      "block_id": "en_grid_1",
+      "label": "Error summary",
+      "is_label_visible": false,
+      "rows": [
+        {
+          "items": [
+            {
+              "block": {
+                "type": "container",
+                "block_id": "en_what_1",
+                "title": {
+                  "type": "plain_text",
+                  "text": "📣 What happened",
+                  "emoji": true
+                },
+                "subtitle": {
+                  "type": "plain_text",
+                  "text": "📋 Data validation",
+                  "emoji": true
+                },
+                "child_blocks": [
+                  {
+                    "type": "rich_text",
+                    "block_id": "en_what_text_1",
+                    "elements": [
+                      {
+                        "type": "rich_text_section",
+                        "elements": [
+                          {
+                            "type": "text",
+                            "text": "Some data didn't meet SFDC Services's rules (format, required value or allowed list), so it was rejected."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "width": "standard"
+            },
+            {
+              "block": {
+                "type": "container",
+                "block_id": "en_impact_1",
+                "title": {
+                  "type": "plain_text",
+                  "text": "📉 Impact",
+                  "emoji": true
+                },
+                "subtitle": {
+                  "type": "plain_text",
+                  "text": "Target: SFDC Services",
+                  "emoji": true
+                },
+                "child_blocks": [
+                  {
+                    "type": "rich_text",
+                    "block_id": "en_impact_text_1",
+                    "elements": [
+                      {
+                        "type": "rich_text_section",
+                        "elements": [
+                          {
+                            "type": "text",
+                            "text": "10 of 35,909 Application__c records didn't reach SFDC Services; the other 35,899 went through. 99.97% of the run went through."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "width": "standard"
+            }
+          ]
+        },
+        {
+          "items": [
+            {
+              "block": {
+                "type": "container",
+                "block_id": "en_next_1",
+                "title": {
+                  "type": "plain_text",
+                  "text": "✅ What to do next",
+                  "emoji": true
+                },
+                "subtitle": {
+                  "type": "plain_text",
+                  "text": "⛔ Will not auto retry",
+                  "emoji": true
+                },
+                "child_blocks": [
+                  {
+                    "type": "rich_text",
+                    "block_id": "en_next_text_1",
+                    "elements": [
+                      {
+                        "type": "rich_text_section",
+                        "elements": [
+                          {
+                            "type": "text",
+                            "text": "1. Compare the failing value with the field's rules in SFDC Services\n2. Add a clean-up or formatting step to the recipe"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "actions",
+                    "block_id": "error_notification_actions|j-TestJob1-abcdef-CD|70000001",
+                    "elements": [
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "♻️ Reprocess",
+                          "emoji": true
+                        },
+                        "action_id": "error_notification_reprocess",
+                        "value": "{\"v\":1,\"m\":\"j-TestJob1-abcdef-CD\",\"r\":\"70000001\",\"j\":\"j-TestJob1-abcdef-CD\",\"n\":\"Salesforce - AWS S3 UOL Application files Process - Function\",\"e\":\"Production\",\"p\":\"High\",\"s\":\"260e58db\"}",
+                        "confirm": {
+                          "title": {
+                            "type": "plain_text",
+                            "text": "Reprocess this job?",
+                            "emoji": true
+                          },
+                          "text": {
+                            "type": "mrkdwn",
+                            "text": "This repeats master job `j-TestJob1-abcdef-CD` of *Salesforce - AWS S3 UOL Application files Process - Function* through the Workato API. It was not retried automatically: make sure the cause is fixed."
+                          },
+                          "confirm": {
+                            "type": "plain_text",
+                            "text": "Yes, reprocess",
+                            "emoji": true
+                          },
+                          "deny": {
+                            "type": "plain_text",
+                            "text": "Cancel",
+                            "emoji": true
+                          }
+                        }
+                      },
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "✅ Mark resolved",
+                          "emoji": true
+                        },
+                        "action_id": "error_notification_resolve",
+                        "value": "{\"v\":1,\"m\":\"j-TestJob1-abcdef-CD\",\"r\":\"70000001\",\"j\":\"j-TestJob1-abcdef-CD\",\"n\":\"Salesforce - AWS S3 UOL Application files Process - Function\",\"e\":\"Production\",\"p\":\"High\",\"s\":\"260e58db\"}",
+                        "confirm": {
+                          "title": {
+                            "type": "plain_text",
+                            "text": "Mark as resolved?",
+                            "emoji": true
+                          },
+                          "text": {
+                            "type": "mrkdwn",
+                            "text": "This records that the error has been dealt with."
+                          },
+                          "confirm": {
+                            "type": "plain_text",
+                            "text": "Yes, resolved",
+                            "emoji": true
+                          },
+                          "deny": {
+                            "type": "plain_text",
+                            "text": "Cancel",
+                            "emoji": true
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "width": "standard"
+            },
+            {
+              "block": {
+                "type": "container",
+                "block_id": "en_open_1",
+                "title": {
+                  "type": "plain_text",
+                  "text": "🔗 Open",
+                  "emoji": true
+                },
+                "subtitle": {
+                  "type": "plain_text",
+                  "text": "the job, the recipe, the file",
+                  "emoji": true
+                },
+                "child_blocks": [
+                  {
+                    "type": "rich_text",
+                    "block_id": "en_open_text_1",
+                    "elements": [
+                      {
+                        "type": "rich_text_section",
+                        "elements": [
+                          {
+                            "type": "text",
+                            "text": "Everything else is in the email."
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "actions",
+                    "block_id": "en_open_buttons_1",
+                    "elements": [
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "View job",
+                          "emoji": true
+                        },
+                        "url": "https://app.workato.com/recipes/70000001/job/j-TestJob1-abcdef-CD",
+                        "action_id": "error_link_card_view_job",
+                        "style": "primary"
+                      },
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "Error file",
+                          "emoji": true
+                        },
+                        "url": "https://example.com/error-file.csv",
+                        "action_id": "error_link_card_error_file"
+                      },
+                      {
+                        "type": "button",
+                        "text": {
+                          "type": "plain_text",
+                          "text": "Open recipe",
+                          "emoji": true
+                        },
+                        "url": "https://app.workato.com/recipes/70000001",
+                        "action_id": "error_link_grid_1"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "width": "standard"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "data_table",
+      "caption": "Failed records",
+      "rows": [
+        [
+          {
+            "type": "raw_text",
+            "text": "Application Id"
+          },
+          {
+            "type": "raw_text",
+            "text": "Application Primary Id"
+          },
+          {
+            "type": "raw_text",
+            "text": "Error Message"
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000001_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01201"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "REQUIRED_FIELD_MISSING",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Required fields are missing: [Program__c]"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000002_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01202"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "INVALID_EMAIL_ADDRESS",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Email: invalid email address"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000003_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01203"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "DUPLICATE_VALUE",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Duplicate external id specified"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000004_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "link",
+                    "url": "https://example.my.salesforce.com/a0X000000000004",
+                    "text": "APP-2026-01204"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "REQUIRED_FIELD_MISSING",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Required fields are missing: [Program__c]"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000005_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01205"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "INVALID_EMAIL_ADDRESS",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Email: invalid email address"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000006_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01206"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "DUPLICATE_VALUE",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Duplicate external id specified"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000007_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01207"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "REQUIRED_FIELD_MISSING",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Required fields are missing: [Program__c]"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000008_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "link",
+                    "url": "https://example.my.salesforce.com/a0X000000000008",
+                    "text": "APP-2026-01208"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "INVALID_EMAIL_ADDRESS",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Email: invalid email address"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000009_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01209"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "DUPLICATE_VALUE",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Duplicate external id specified"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "type": "raw_text",
+            "text": "100000010_UBS-COSCI-SI_0001"
+          },
+          {
+            "type": "raw_text",
+            "text": "APP-2026-01210"
+          },
+          {
+            "type": "rich_text",
+            "elements": [
+              {
+                "type": "rich_text_section",
+                "elements": [
+                  {
+                    "type": "text",
+                    "text": "REQUIRED_FIELD_MISSING",
+                    "style": {
+                      "bold": true,
+                      "code": true
+                    }
+                  },
+                  {
+                    "type": "text",
+                    "text": " "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Required fields are missing: [Program__c]"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "`REQUIRED_FIELD_MISSING` ×4  `INVALID_EMAIL_ADDRESS` ×3  `DUPLICATE_VALUE` ×3"
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "Full details are in the email  ·  `#260e58db`"
+        }
+      ]
+    }
+  ]
+}

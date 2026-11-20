@@ -1,0 +1,639 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Ok",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Error",
+    "name": "error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "warnings",
+    "label": "Warnings",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Action",
+    "name": "action",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Send email",
+    "name": "send_email",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "To email",
+    "name": "to_email",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Html",
+    "name": "html",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Subject",
+    "name": "subject",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Preheader",
+    "name": "preheader",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Text body",
+    "name": "text_body",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Reprocessable",
+    "name": "reprocessable",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Reprocess source",
+    "name": "reprocess_source",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Reprocess reason",
+    "name": "reprocess_reason",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Reprocess confidence",
+    "name": "reprocess_confidence",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Reprocess attempted",
+    "name": "reprocess_attempted",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Reprocess enqueued",
+    "name": "reprocess_enqueued",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Reprocess job id",
+    "name": "reprocess_job_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Reprocess error",
+    "name": "reprocess_error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Master job id",
+    "name": "master_job_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "table_row",
+    "label": "Error log row",
+    "type": "object",
+    "optional": true,
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Job URL",
+        "name": "job_url",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Date",
+        "name": "date",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Error Message",
+        "name": "error_message",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Frequency",
+        "name": "frequency",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Recipe Name",
+        "name": "recipe_name",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Error Limit",
+        "name": "error_limit",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Error TimeStamp",
+        "name": "error_timestamp",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Email",
+        "name": "email",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Source System",
+        "name": "source_system",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Target System",
+        "name": "target_system",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Source Object",
+        "name": "source_object",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Target Object",
+        "name": "target_object",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Status",
+        "name": "status",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Recipie Id",
+        "name": "recipe_id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Job Id",
+        "name": "job_id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Master Job ID",
+        "name": "master_job_id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Reprocess Count",
+        "name": "reprocess_count",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion"
+      },
+      {
+        "control_type": "checkbox",
+        "label": "Reprocess_Flag",
+        "name": "reprocess_flag",
+        "type": "boolean",
+        "optional": true,
+        "render_input": "boolean_conversion",
+        "parse_output": "boolean_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Error File Path",
+        "name": "error_file_path",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Error File Sharable URL",
+        "name": "error_file_sharable_url",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "integer",
+        "label": "Sharable Link Expires on",
+        "name": "sharable_link_expires_on",
+        "type": "integer",
+        "optional": true,
+        "parse_output": "integer_conversion"
+      }
+    ]
+  },
+  {
+    "control_type": "text",
+    "label": "Table row json",
+    "name": "table_row_json",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Row logged",
+    "name": "row_logged",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Row action",
+    "name": "row_action",
+    "type": "string",
+    "optional": true,
+    "hint": "inserted, updated or failed. Blank = nothing was written (log_row is no, no token, or a test run)"
+  },
+  {
+    "control_type": "text",
+    "label": "Row record id",
+    "name": "row_record_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Row error",
+    "name": "row_error",
+    "type": "string",
+    "optional": true,
+    "hint": "Why the data table write failed. The email is sent anyway"
+  },
+  {
+    "control_type": "text",
+    "label": "Look used",
+    "name": "look_used",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "sections_rendered",
+    "label": "Sections rendered",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Priority",
+    "name": "priority",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Priority escalated",
+    "name": "priority_escalated",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Severity color",
+    "name": "severity_color",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Env",
+    "name": "env",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error category",
+    "name": "error_category",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error category label",
+    "name": "error_category_label",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error signature",
+    "name": "error_signature",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Headline",
+    "name": "headline",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Is batch",
+    "name": "is_batch",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Records total",
+    "name": "records_total",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Records failed",
+    "name": "records_failed",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Success rate",
+    "name": "success_rate",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Explanation source",
+    "name": "explanation_source",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "AI error",
+    "name": "ai_error",
+    "type": "string",
+    "optional": true,
+    "hint": "Why Azure gave no answer when it was asked (blank = fine). The email is built from the playbook anyway"
+  },
+  {
+    "control_type": "text",
+    "label": "Functional summary",
+    "name": "functional_summary",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Technical summary",
+    "name": "technical_summary",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "likely_causes",
+    "label": "Likely causes",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "name": "next_steps",
+    "label": "Next steps",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "History used",
+    "name": "history_used",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "History total",
+    "name": "history_total",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "History same type",
+    "name": "history_same_type",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "History 7d",
+    "name": "history_7d",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "History trend",
+    "name": "history_trend",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "First seen",
+    "name": "first_seen",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Last seen",
+    "name": "last_seen",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Is recurring",
+    "name": "is_recurring",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Other recipes affected",
+    "name": "other_recipes_affected",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Job context used",
+    "name": "job_context_used",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Recipe running",
+    "name": "recipe_running",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Developer name",
+    "name": "developer_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Developer email",
+    "name": "developer_email",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Recent runs checked",
+    "name": "recent_jobs_checked",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Recent runs with an error",
+    "name": "recent_jobs_failed",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "name": "signals",
+    "label": "Signals",
+    "type": "array",
+    "of": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Html bytes",
+    "name": "html_bytes",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Elapsed ms",
+    "name": "elapsed_ms",
+    "type": "integer",
+    "optional": true,
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text-area",
+    "label": "Alert facts (JSON)",
+    "name": "alert_json",
+    "type": "string",
+    "optional": true
+  }
+]

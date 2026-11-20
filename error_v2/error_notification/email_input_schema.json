@@ -1,0 +1,454 @@
+[
+  {
+    "control_type": "text",
+    "label": "To email address",
+    "name": "to_email_address",
+    "type": "string",
+    "optional": false,
+    "hint": "Email Address"
+  },
+  {
+    "control_type": "text",
+    "label": "Subject",
+    "name": "subject",
+    "type": "string",
+    "optional": false,
+    "hint": "Email's Subject"
+  },
+  {
+    "control_type": "text",
+    "label": "mail message",
+    "name": "mail_msg",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Job URL",
+    "name": "job_url",
+    "type": "string",
+    "optional": false,
+    "hint": "Workato Jobs URL"
+  },
+  {
+    "control_type": "text",
+    "label": "Recipe name",
+    "name": "recipe_name",
+    "type": "string",
+    "optional": false,
+    "hint": "Name of the workato recipe"
+  },
+  {
+    "control_type": "text",
+    "label": "Error message",
+    "name": "error_details",
+    "type": "string",
+    "optional": false,
+    "hint": "Error Details",
+    "of": "object"
+  },
+  {
+    "control_type": "text",
+    "label": "priority",
+    "name": "priority",
+    "type": "string",
+    "optional": true,
+    "hint": "Critical, High or Medium"
+  },
+  {
+    "control_type": "text",
+    "label": "sourceSystem",
+    "name": "sourceSystem",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "targetSystem",
+    "name": "targetSystem",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Source Object Name",
+    "name": "sourceObject",
+    "type": "string",
+    "optional": true,
+    "hint": "The name of the object being synced from source system"
+  },
+  {
+    "control_type": "text",
+    "label": "Target Object Name",
+    "name": "targetObject",
+    "type": "string",
+    "optional": true,
+    "hint": "The name of the object that is being created in the target system"
+  },
+  {
+    "control_type": "text",
+    "label": "ErroredApp",
+    "name": "ErroredApp",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "ErroredAction",
+    "name": "ErroredAction",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error Step Number",
+    "name": "stepNumber",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Retry count",
+    "name": "retry_count",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "File name",
+    "name": "file_name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "File content",
+    "name": "file_content",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column1Name",
+    "name": "column1Name",
+    "type": "string",
+    "optional": true,
+    "hint": "Please populate this field to pass the table in the notification"
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 1 Width",
+    "parse_output": "integer_conversion",
+    "name": "column1Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column2Name",
+    "name": "column2Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 2 Width",
+    "parse_output": "integer_conversion",
+    "name": "column2Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column3Name",
+    "name": "column3Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 3 Width",
+    "parse_output": "integer_conversion",
+    "name": "column3Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column4Name",
+    "name": "column4Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 4 Width",
+    "parse_output": "integer_conversion",
+    "name": "column4Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "column5Name",
+    "name": "column5Name",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 5 Width",
+    "parse_output": "integer_conversion",
+    "name": "column5Width",
+    "type": "integer",
+    "optional": true,
+    "hint": "%",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "frequency",
+    "parse_output": "integer_conversion",
+    "name": "frequency",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "error_limit",
+    "parse_output": "integer_conversion",
+    "name": "error_limit",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "name": "dataArray",
+    "type": "array",
+    "of": "object",
+    "label": "dataArray",
+    "optional": true,
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "value1",
+        "name": "value1",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value2",
+        "name": "value2",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value3",
+        "name": "value3",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value4",
+        "name": "value4",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value5",
+        "name": "value5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url1",
+        "name": "url1",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url2",
+        "name": "url2",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url3",
+        "name": "url3",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url4",
+        "name": "url4",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url5",
+        "name": "url5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Column1 Bold",
+        "name": "column1_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 Bold",
+        "name": "column2_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 Bold",
+        "name": "column3_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 Bold",
+        "name": "column4_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 Bold",
+        "name": "column5_bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column1 color",
+        "name": "column1_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 color",
+        "name": "column2_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 color",
+        "name": "column3_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 color",
+        "name": "column4_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 color",
+        "name": "column5_color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code #ff6347"
+      }
+    ]
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Sch run",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "sch_run",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Sch run",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "sch_run",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Reprocess",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "reprocess",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Reprocess",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "reprocess",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Calling Master Job id",
+    "name": "calling_master_job_id",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Is repeated",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "is_Repeated",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Is repeated",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "is_Repeated",
+      "type": "boolean",
+      "optional": true
+    }
+  }
+]

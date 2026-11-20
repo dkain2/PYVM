@@ -1,0 +1,306 @@
+[
+  {
+    "control_type": "text",
+    "label": "Source System",
+    "name": "Source_System",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Target System",
+    "name": "Target_System",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "sourceObject",
+    "name": "sourceObject",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "targetObject",
+    "name": "targetObject",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Errored App",
+    "name": "Errored_App",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Errored_Action",
+    "name": "Errored_Action",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error Step Number",
+    "name": "stepNumber",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Retry Count",
+    "name": "Retry_Count",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Error Time",
+    "name": "Error_Time",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "name": "ErrorFIleURL",
+    "type": "string",
+    "optional": true,
+    "control_type": "text",
+    "label": "Error File URL"
+  },
+  {
+    "control_type": "text",
+    "label": "column1",
+    "name": "column1",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column2",
+    "name": "column2",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column3",
+    "name": "column3",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column4",
+    "name": "column4",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "column5",
+    "name": "column5",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 1 Width",
+    "parse_output": "integer_conversion",
+    "name": "column1Width",
+    "type": "integer",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 2 Width",
+    "parse_output": "integer_conversion",
+    "name": "column2Width",
+    "type": "integer",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 3 Width",
+    "parse_output": "integer_conversion",
+    "name": "column3Width",
+    "type": "integer",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 4 Width",
+    "parse_output": "integer_conversion",
+    "name": "column4Width",
+    "type": "integer",
+    "optional": true
+  },
+  {
+    "control_type": "integer",
+    "label": "Column 5 Width",
+    "parse_output": "integer_conversion",
+    "name": "column5Width",
+    "type": "integer",
+    "optional": true
+  },
+  {
+    "name": "ErrorList",
+    "type": "array",
+    "of": "object",
+    "label": "Errors",
+    "optional": true,
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "value1",
+        "type": "string",
+        "name": "value1",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value2",
+        "type": "string",
+        "name": "value2",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value3",
+        "type": "string",
+        "name": "value3",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value4",
+        "type": "string",
+        "name": "value4",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "value5",
+        "name": "value5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url1",
+        "name": "url1",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url2",
+        "name": "url2",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url3",
+        "name": "url3",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url4",
+        "name": "url4",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "url5",
+        "name": "url5",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "column1 Bold",
+        "name": "column1Bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 Bold",
+        "name": "column2Bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 Bold",
+        "name": "column3Bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 Bold",
+        "name": "column4Bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 Bold",
+        "name": "column5Bold",
+        "type": "string",
+        "optional": true,
+        "hint": "Yes"
+      },
+      {
+        "control_type": "text",
+        "label": "Column1 color",
+        "name": "column1Color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code"
+      },
+      {
+        "control_type": "text",
+        "label": "Column2 color",
+        "name": "column2Color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code"
+      },
+      {
+        "control_type": "text",
+        "label": "Column3 color",
+        "name": "column3Color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code"
+      },
+      {
+        "control_type": "text",
+        "label": "Column4 color",
+        "name": "column4Color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code"
+      },
+      {
+        "control_type": "text",
+        "label": "Column5 color",
+        "name": "column5Color",
+        "type": "string",
+        "optional": true,
+        "hint": "html hex color code"
+      }
+    ]
+  }
+]
