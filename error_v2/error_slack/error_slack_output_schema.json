@@ -207,6 +207,38 @@
     "optional": true
   },
   {
+    "control_type": "checkbox",
+    "label": "Genie requested",
+    "name": "genie_requested",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Genie prompt",
+    "name": "genie_prompt",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Genie context",
+    "name": "genie_context",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Genie posted",
+    "name": "genie_posted",
+    "type": "boolean",
+    "optional": true,
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
     "control_type": "text",
     "label": "Error log row action",
     "name": "row_action",

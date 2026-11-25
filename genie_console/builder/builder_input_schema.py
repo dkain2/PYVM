@@ -13,6 +13,30 @@
   },
   {
     "control_type": "text",
+    "label": "env",
+    "type": "string",
+    "name": "env",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "env"
+    },
+    "hint": "dev or prod: which genie_console table to read and write (same columns in both). Blank = dev, the table this step has always used -- the production recipe must set this to prod explicitly. Map it from a project property or environment variable, not a fixed value, so the same recipe reads dev in dev and prod in prod with no manual change after deployment. Overridden by table_id if that is also set. Must match the env given to the responder and click recipes, or they will read and write different tables."
+  },
+  {
+    "control_type": "text",
+    "label": "table_id",
+    "type": "string",
+    "name": "table_id",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "table_id"
+    },
+    "hint": "Optional. ID of the genie_console data table (as it appears in the table's URL in Workato), overriding env entirely. Blank = use env instead. Point it at a one-off table (e.g. a sandbox copy) without a code change. Must match the table_id given to the responder and click recipes, or they will read and write different tables."
+  },
+  {
+    "control_type": "text",
     "label": "workato_api_token",
     "type": "string",
     "name": "workato_api_token",
@@ -157,6 +181,18 @@
   },
   {
     "control_type": "text",
+    "label": "analyst_skill_always",
+    "type": "string",
+    "name": "analyst_skill_always",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "analyst_skill_always"
+    },
+    "hint": "Optional. on or off, blank = off. on: the shared analyst skill (analyst_skill_handle) is attached to every genie Integra builds, even when 'No skills' was picked on the details step -- 'No skills' then means no project-specific lookup skills, not literally none. off: the old behaviour ('No skills' means none, the shared skill included)."
+  },
+  {
+    "control_type": "text",
     "label": "kb_doc_detail",
     "type": "string",
     "name": "kb_doc_detail",
@@ -177,7 +213,19 @@
     "details": {
       "real_name": "forge_folder_id"
     },
-    "hint": "Optional. ID of the folder every genie and its skills are built in, e.g. the genie console folder (35842663 while testing; pass the production folder ID when this moves to production). Nothing is created: the same folder is used for every genie, and the folder's running recipes are not stopped. Blank = a 'Genie - <name>' folder is created inside the first chosen project, as before."
+    "hint": "Optional. ID of the folder every genie and its skills are built in, e.g. the genie console folder (35842663 while testing; pass the production folder ID when this moves to production). This is the PARENT: each genie gets its own 'Genie - <genie name>' folder inside it (made once, reused on a retry), and the genie, its skills and its knowledge base are built there. See folder_mode for the old way. Blank = the 'Genie - <name>' folder is created inside the first chosen project."
+  },
+  {
+    "control_type": "text",
+    "label": "folder_mode",
+    "type": "string",
+    "name": "folder_mode",
+    "optional": true,
+    "extends_schema": false,
+    "details": {
+      "real_name": "folder_mode"
+    },
+    "hint": "Optional. inside (the default) or shared. inside: forge_folder_id is the parent, and each genie is built in its own 'Genie - <genie name>' folder created in it. shared: the old behaviour, forge_folder_id is the one folder every genie and its skills are built in, nothing is created and its running recipes are not stopped. Needed on every call that starts a build or makes a knowledge base, with the same value."
   },
   {
     "control_type": "text",

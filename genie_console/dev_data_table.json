@@ -1,0 +1,203 @@
+{
+            "id": "6d53d2dd-c00d-4130-aa1c-b0cbfdcc484c",
+            "numeric_id": 160903,
+            "name": "genie_console",
+            "schema": [
+                {
+                    "type": "string",
+                    "name": "record_type",
+                    "optional": true,
+                    "field_id": "f7253c35-2566-411e-9e60-c273e271d0db",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "record_key",
+                    "optional": true,
+                    "field_id": "a68f2119-5168-4cca-b28c-f25b8d998ea3",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "id",
+                    "optional": true,
+                    "field_id": "434caf4f-8243-42e3-8ec8-d0732829458e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "status",
+                    "optional": true,
+                    "field_id": "6b76da26-90e4-42ef-a556-e376ed6fbd8f",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "channel",
+                    "optional": true,
+                    "field_id": "910af0ed-f992-4707-a509-be760593b203",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "genie_name",
+                    "optional": true,
+                    "field_id": "c294a065-0718-4211-8b95-a07f8923881e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "persona",
+                    "optional": true,
+                    "field_id": "6e2cf0fc-bbaf-47f4-8f69-4521d6a4e1f9",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "invoke_keyword",
+                    "optional": true,
+                    "field_id": "e11379fd-9f0e-4462-b591-628601c7acc3",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "workato_projects",
+                    "optional": true,
+                    "field_id": "bb65e886-001e-4c76-98e1-e39c30b0b7b5",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "recipes",
+                    "optional": true,
+                    "field_id": "68ffbdfa-b286-4821-81b2-e1115603d599",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "creator_name",
+                    "optional": true,
+                    "field_id": "bfe00319-33f9-457a-8e9c-2d4d743a3a5f",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "creator_id",
+                    "optional": true,
+                    "field_id": "7791d979-e9ea-407b-9e19-dab7facce631",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "creator_email",
+                    "optional": true,
+                    "field_id": "94fa5f94-ce4e-4d6e-944f-d4ec9a4621ee",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "lookup_tables",
+                    "optional": true,
+                    "field_id": "517959b3-745c-4742-bf2a-a63002d85694",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "data_tables",
+                    "optional": true,
+                    "field_id": "15f782e5-ebcd-4ae4-a2f6-3126cf94d424",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "created_at",
+                    "optional": true,
+                    "field_id": "1be76181-05f8-4134-b410-455fceebbb7f",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "setup_thread_ts",
+                    "optional": true,
+                    "field_id": "00f5e6dc-d335-48b0-96bf-d19312aadad8",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "updated_at",
+                    "optional": true,
+                    "field_id": "8f9aa1b3-3674-40f6-81f9-b189fc04ebd7",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "other_assets",
+                    "optional": true,
+                    "field_id": "906794d0-62ab-4830-a86b-b1f14e0ce84e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "system_prompt",
+                    "optional": true,
+                    "field_id": "c9e4fc54-83f8-4cf6-917b-dd52dadb1878",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "skills",
+                    "optional": true,
+                    "field_id": "73e51201-9e67-41f5-aa89-0afc4b57d0db",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "genie_purpose",
+                    "optional": true,
+                    "field_id": "911f1a86-857b-4675-a7dd-47d476b0b083",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "forge_state",
+                    "optional": true,
+                    "field_id": "612b517c-6267-470f-a0d0-35d132c4172e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "project_owner",
+                    "optional": true,
+                    "field_id": "527df99b-1f3b-46b0-9d3c-1a3b9a4e9173",
+                    "metadata": {},
+                    "multivalue": false
+                }
+            ],
+            "project_id": 18280980,
+            "folder_id": 35842742,
+            "created_at": "2026-10-15T08:37:06.111-07:00",
+            "updated_at": "2026-10-29T11:34:22.801-07:00"
+        }

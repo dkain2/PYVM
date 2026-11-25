@@ -237,6 +237,20 @@ for mode, shared in (("none", "shared_skills: []"), ("all", "skl-1")):
     check("mode '{}' hands the genie the right shared skills".format(mode),
           shared in starter.result["forge_task_instructions"])
 
+# analyst_skill_always = on: the shared analyst skill is attached even in "No skills" mode.
+class AlwaysStarter(Starter):
+    input = {"analyst_skill_handle": "skl-1", "analyst_skill_always": "on"}
+
+starter = AlwaysStarter()
+builder.Context.next_integra_job(starter, {"genie_name": "G", "persona": "support"},
+                                 {"job": builder.JOB_GENIE, "plan": [], "skill_mode": "none",
+                                  "folder_id": 7}, "1.1")
+check("analyst_skill_always=on: shared skill attached even with 'No skills' picked",
+      "skl-1" in starter.result["forge_task_instructions"])
+check("analyst_skill_always blank/off: the input switch default",
+      [builder.analyst_skill_always_mode(v) for v in ("on", " OFF ", "", None, "x")] ==
+      ["on", "off", "off", "off", "off"])
+
 # ---------------------------------------------------------------------------
 # Confirm summary as a table; the old summary is untouched
 # ---------------------------------------------------------------------------
@@ -732,7 +746,7 @@ def main_click(action, **extra):
 _find, _search, _cols = builder.Table.find, builder.Table.search, builder.resolve_columns
 builder.Table.find = lambda self, key: (dict(GENIE), None)
 builder.Table.search = lambda self, where, limit=100: ([], None)
-builder.resolve_columns = lambda token, warnings: None
+builder.resolve_columns = lambda token, warnings, table_id=None: None
 try:
     out = main_click(builder.ACTION_KB_ADD)
     check("main: Add knowledge base opens the form", out["ok"] and out["step"] == "manage"
@@ -884,13 +898,40 @@ _keep = builder._request
 builder._request = lambda url, headers, payload=None, method="GET": (calls.append((method, url)) or ({}, None))
 t = builder.Table("tok")
 check("Table.delete: DELETE of the record URL", t.delete({"$record_id": "r-1"}) is True
-      and calls == [("DELETE", builder.TABLE_RECORD_URL.format("r-1"))], calls)
+      and calls == [("DELETE", builder.TABLE_RECORD_URL.format(builder.DEFAULT_TABLE_ID, "r-1"))], calls)
 check("Table.delete: a row without a record id is an error, nothing sent", t.delete({}) is False
       and len(calls) == 1 and "no $record_id" in t.errors[-1])
 builder._request = lambda *a, **k: (None, "HTTP 500")
 check("Table.delete: a failed request is reported", builder.Table("tok").delete({"$record_id": "r"}) is False)
 builder._request = _keep
 check("Table.delete: dry run sends nothing", builder.Table("tok", True).delete({"$record_id": "r"}) is True)
+
+# table_id input: blank keeps the table this step has always used; a value points it elsewhere.
+check("Table: blank table_id falls back to DEFAULT_TABLE_ID",
+      builder.DEFAULT_TABLE_ID in builder.Table("tok").query_url)
+check("Table: a custom table_id is used instead",
+      "other-table-id" in builder.Table("tok", table_id="other-table-id").records_url
+      and builder.DEFAULT_TABLE_ID not in builder.Table("tok", table_id="other-table-id").records_url)
+_keep = builder._request
+urls = []
+builder._request = lambda url, headers, payload=None, method="GET": (urls.append(url) or ({"data": {"schema": []}}, None))
+builder.COLUMNS["_test_only"] = None   # force resolve_columns to call out, even with nothing missing to fill
+builder.resolve_columns("tok", [], table_id="other-table-id")
+del builder.COLUMNS["_test_only"]
+builder._request = _keep
+check("resolve_columns: reads the schema of the given table_id, not the default",
+      urls == [builder.TABLE_SCHEMA_URL.format("other-table-id")], urls)
+
+# env input: dev | prod, blank = dev; table_id, if set, overrides it entirely.
+check("env input: dev / prod / blank / production / garbage",
+      [builder.env_mode(v) for v in ("dev", " PROD ", "", None, "production", "x")] ==
+      ["dev", "prod", "dev", "dev", "prod", "dev"])
+check("resolve_table_id: blank env is DEV_TABLE_ID (the table this step has always used)",
+      builder.resolve_table_id({}) == builder.DEV_TABLE_ID == builder.DEFAULT_TABLE_ID)
+check("resolve_table_id: env=prod is PROD_TABLE_ID",
+      builder.resolve_table_id({"env": "prod"}) == builder.PROD_TABLE_ID)
+check("resolve_table_id: table_id overrides env",
+      builder.resolve_table_id({"env": "prod", "table_id": "other-table-id"}) == "other-table-id")
 
 # A paused genie must not answer: the responder only reads status = active.
 check("responder asks only for status active (so a paused genie is silent)",
@@ -908,16 +949,31 @@ builder.MANAGE_VIEWER = ""
 class FolderCtx(object):
     genie_folder = builder.Context.genie_folder
     def __init__(self, **inputs): self.input, self.result, self.dry_run, self.workato_token = inputs, {}, False, "t"
-fc = FolderCtx(forge_folder_id=" 35842663 ")
+fc = FolderCtx(forge_folder_id=" 35842663 ", folder_mode="shared")
 _keep = builder.ensure_folder
 builder.ensure_folder = lambda *a: (_ for _ in ()).throw(AssertionError("must not create a folder"))
 check("forge_folder_id: that folder is used, no folder created", fc.genie_folder({"workato_projects": "[]"}) == "35842663"
       and fc.result["genie_folder_id"] == "35842663")
 builder.ensure_folder = _keep
 src = open(os.path.join(HERE, "builder.py")).read()
-check("forge_folder_id: running recipes of the shared folder are not stopped",
-      'shared = bool(str(self.input.get("forge_folder_id") or "").strip())' in src
+check("forge_folder_id shared: running recipes of the shared folder are not stopped",
+      'and folder_mode(self.input.get("folder_mode")) == "shared"' in src
       and "if not state.get(\"add_to\") and not shared:" in src)
+# Default: forge_folder_id is the parent, the genie gets its own folder in it.
+made = []
+builder.ensure_folder = lambda token, parent, name: (made.append((parent, name)) or (555, None))
+fc = FolderCtx(forge_folder_id=" 35842663 ")
+check("forge_folder_id: own 'Genie - <name>' folder created inside it",
+      fc.genie_folder({"genie_name": "snap", "workato_projects": "[]"}) == 555
+      and made == [("35842663", "Genie - snap")] and fc.result["genie_folder_id"] == "555")
+fc = FolderCtx(forge_folder_id="35842663", folder_mode="inside")
+check("folder_mode inside = the default", fc.genie_folder({"genie_name": "snap"}) == 555)
+fc = FolderCtx()
+made[:] = []
+check("no forge_folder_id: folder in the first project, as before",
+      fc.genie_folder({"genie_name": "snap", "workato_projects": '[{"folder_id": 9, "name": "P"}]'}) == 555
+      and made == [(9, "Genie - snap")])
+builder.ensure_folder = _keep
 
 # A skill that failed shows its real error on a context line (fail_detail).
 FS = {"job": builder.JOB_SKILL, "next": 1,

@@ -17,9 +17,13 @@
       [
         "Handle a click",
         "click"
+      ],
+      [
+        "Post the genie's diagnosis",
+        "genie"
       ]
     ],
-    "hint": "Blank = a payload or action_id means click, a slack_channel_id (or alert_json) means post."
+    "hint": "Blank = a genie_response (or genie_error) means genie, a payload or action_id means click, a slack_channel_id (or alert_json) means post."
   },
   {
     "control_type": "text",
@@ -73,7 +77,7 @@
         "old"
       ]
     ],
-    "hint": "POST. Blank = short: one attachment with a red bar holding the title, the headline, the error in a code block, the status line with Take it, a 2 x 2 grid of small boxes (what happened, impact, what to do next with Reprocess / Mark resolved, links) and the failed-records table. Full = every section. Old = the plain card. If Slack refuses a block that one feature is left out and the message sent again, down to the plain card, then to text."
+    "hint": "POST. Blank = short: one attachment with a red sidebar, in sections with a divider between them: the title and the headline, the error in a code block, the failed-records table, where it broke (source, Workato and target, a cross on the system that failed), then what happened, impact and what to do next as plain sections with one row of buttons (Reprocess / Mark resolved, links), and the status line with Take it last. Full = every section. Old = the plain card. If Slack refuses a block that one feature is left out and the message sent again, down to the plain card, then to text. In slack_features: -status_last puts the status back between the flow and What happened, and -dividers -flow -headline -status_last gives the short look before the recent changes; +grid swaps the plain sections for a 2 x 2 grid of boxes, but Slack refuses the grid inside an attachment, so it needs -bar."
   },
   {
     "control_type": "text",
@@ -81,7 +85,7 @@
     "name": "slack_features",
     "type": "string",
     "optional": true,
-    "hint": "POST, optional. Blank = headers, bar (the red attachment), grid (the 2 x 2 boxes), cards, panels, datatables, tables, rich, feedback. Names listed = exactly those. 'all' = every one. '+charts' adds one, '-bar' takes one away, 'none' = just sections. Off by default: charts, tiles, adaptive, chips, markdown (used by the full look)."
+    "hint": "POST, optional. Blank = headers, bar (the red sidebar), cards, panels, datatables, tables, rich, feedback, dividers (a line between the sections of the short look), flow (source > Workato > target with a cross on the failed system), headline (the one-sentence headline as a small grey line under the title), status_last (the status with Take it after What to do next and the buttons), records_after_error (the failed-records table right under the Error section instead of at the bottom), meta_context (the retry / time / environment line under the headline as small grey text instead of a section). Off by default: footer (a last line pointing to the email, with the error's reference), card_icons (the icons on What happened and Impact), flow_icons (the compass and the icons on the line under the systems in Where it broke; the tick and cross on the systems stay either way), clock_icon (the alarm clock before the time), professional (summary first, the status right under the title, no decorative emojis, the time in each reader's own time zone). Names listed = exactly those. 'all' = every one. '+charts' adds one, '-dividers' takes one away, 'none' = just sections. Off by default: grid (the 2 x 2 boxes: Slack refuses them inside the red-sidebar attachment, so it needs -bar), charts, tiles, adaptive, chips, markdown (used by the full look)."
   },
   {
     "control_type": "text",
@@ -89,7 +93,7 @@
     "name": "slack_buttons",
     "type": "string",
     "optional": true,
-    "hint": "POST, optional. Which buttons that do something to show: reprocess, acknowledge, resolve, assign. Blank or 'all' = every one; '-reprocess' takes one away; 'none' = only link buttons. A successful reprocess always adds its own 'Check status' button on the thread reply (error_notification_check), whatever this says: it is how that one thread follows up, not a card button."
+    "hint": "POST, optional. Which buttons that do something to show: reprocess, acknowledge, resolve, assign, diagnose (Diagnosis). Blank or 'all' = every one; '-reprocess' takes one away; 'none' = only link buttons. A successful reprocess always adds its own 'Check status' button on the thread reply (error_notification_check), whatever this says: it is how that one thread follows up, not a card button."
   },
   {
     "control_type": "text",
@@ -257,6 +261,30 @@
     "hint": "CLICK, optional: positive or negative. Wins over the payload."
   },
   {
+    "control_type": "text-area",
+    "label": "Genie response",
+    "name": "genie_response",
+    "type": "string",
+    "optional": true,
+    "hint": "DIAGNOSE, second call: the troubleshooter genie's answer (text, or the genie action's response object). Setting it makes this step post the analysis in the thread. Pass it together with genie_context."
+  },
+  {
+    "control_type": "text-area",
+    "label": "Genie context",
+    "name": "genie_context",
+    "type": "string",
+    "optional": true,
+    "hint": "DIAGNOSE, second call: the genie_context output of the Diagnose click (the thread, the 'Diagnosing...' reply the answer replaces, who asked). Pass it unchanged."
+  },
+  {
+    "control_type": "text",
+    "label": "Genie error",
+    "name": "genie_error",
+    "type": "string",
+    "optional": true,
+    "hint": "DIAGNOSE, second call, optional: why the genie gave no answer (the genie step's error). That reply then says the diagnosis failed, instead of staying on 'Diagnosing...'."
+  },
+  {
     "control_type": "text",
     "label": "Who may reprocess",
     "name": "allowed_user_ids",
@@ -333,6 +361,33 @@
       "control_type": "text",
       "label": "Reply in the thread",
       "name": "thread_reply",
+      "type": "string",
+      "optional": true,
+      "toggle_hint": "Use custom value"
+    }
+  },
+  {
+    "control_type": "select",
+    "label": "Diagnosis line on the status",
+    "name": "diagnosis_on_status",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "Yes",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "hint": "CLICK. Blank = no: a Diagnosis click writes 'Diagnosis requested by ...' in a small grey line at the bottom of the message, and the status with Take it is left as it was. Yes = the old way: the line goes on the status line, above Open.",
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "control_type": "text",
+      "label": "Diagnosis line on the status",
+      "name": "diagnosis_on_status",
       "type": "string",
       "optional": true,
       "toggle_hint": "Use custom value"

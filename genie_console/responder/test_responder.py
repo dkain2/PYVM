@@ -214,7 +214,8 @@ class ReplyFallback(unittest.TestCase):
     def run_reply(self, reject=(), answer=WIDE_TABLE):
         slack = self.FakeSlack(reject)
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
-        r.reply({"genie_response": answer, "genie_name": "SNAP", "thinking_ts": "1.1"},
+        r.reply({"genie_response": answer, "genie_name": "SNAP", "thinking_ts": "1.1",
+                 "answer_layout": "card"},
                 FakeTable(), slack, result)
         return slack, result
 
@@ -259,7 +260,7 @@ class SeveralTables(unittest.TestCase):
         slack = ReplyFallback.FakeSlack(reject)
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
         r.reply({"genie_response": answer, "genie_name": "SNAP", "thinking_ts": "1.1",
-                 "user_id": "U1", "look": look}, FakeTable(), slack, result)
+                 "user_id": "U1", "look": look, "answer_layout": "card"}, FakeTable(), slack, result)
         return slack, result
 
     def blocks(self, slack, n):
@@ -311,7 +312,8 @@ class SeveralTables(unittest.TestCase):
                 return ReplyFallback.FakeSlack._call(self, method, payload)
         slack = SecondFails()
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
-        r.reply({"genie_response": self.TWO, "genie_name": "SNAP", "thinking_ts": "1.1"},
+        r.reply({"genie_response": self.TWO, "genie_name": "SNAP", "thinking_ts": "1.1",
+                 "answer_layout": "card"},
                 FakeTable(), slack, result)
         self.assertTrue(result["posted"])                    # the first part went out
         self.assertTrue(any("part 2 of 2" in w for w in result["warnings"]))
@@ -470,7 +472,8 @@ class ThinkingLine(unittest.TestCase):
     def test_the_answer_replaces_the_plain_line(self):
         slack = ReplyFallback.FakeSlack()
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
-        r.reply({"genie_response": "Hi", "genie_name": "rocket", "thinking_ts": "1.1"},
+        r.reply({"genie_response": "Hi", "genie_name": "rocket", "thinking_ts": "1.1",
+                 "answer_layout": "card"},
                 FakeTable(), slack, result)
         method, payload = slack.sent[0]
         self.assertEqual((method, payload["ts"], payload["text"]), ("chat.update", "1.1", ""))
@@ -495,6 +498,38 @@ class ThinkingLine(unittest.TestCase):
             self.assertEqual("blocks" in payload and "attachments" not in payload, plain_line, look)
             self.assertEqual(result["thinking_ts"], "1.2")
             self.assertEqual(result["warnings"], [])
+
+
+class TableURLs(unittest.TestCase):
+    def test_default_table_id_when_blank(self):
+        table = r.Table("tok")
+        self.assertIn(r.DEFAULT_TABLE_ID, table.query_url)
+        self.assertIn(r.DEFAULT_TABLE_ID, table.records_url)
+        self.assertEqual(table.record_url.format("rec1"),
+                         r.TABLE_RECORD_URL.format(r.DEFAULT_TABLE_ID, "rec1"))
+
+    def test_custom_table_id(self):
+        table = r.Table("tok", table_id="other-table-id")
+        self.assertIn("other-table-id", table.query_url)
+        self.assertIn("other-table-id", table.records_url)
+        self.assertNotIn(r.DEFAULT_TABLE_ID, table.query_url)
+
+
+class EnvAndTableId(unittest.TestCase):
+    def test_env_input(self):
+        self.assertEqual([r.env_mode(v) for v in ("dev", " PROD ", "", None, "production", "x")],
+                         ["dev", "prod", "dev", "dev", "prod", "dev"])
+
+    def test_blank_env_is_dev_table_the_table_this_step_has_always_used(self):
+        self.assertEqual(r.resolve_table_id({}), r.DEV_TABLE_ID)
+        self.assertEqual(r.resolve_table_id({}), r.DEFAULT_TABLE_ID)
+
+    def test_env_prod_is_prod_table(self):
+        self.assertEqual(r.resolve_table_id({"env": "prod"}), r.PROD_TABLE_ID)
+
+    def test_table_id_overrides_env(self):
+        self.assertEqual(r.resolve_table_id({"env": "prod", "table_id": "other-table-id"}),
+                         "other-table-id")
 
 
 class FakeTable(object):
@@ -820,7 +855,7 @@ class FeedbackAction(unittest.TestCase):
         data = {"action": "feedback", "workato_api_token": "t"}
         data.update(extra)
         real = r.Table
-        r.Table = lambda token, dry_run=False: table
+        r.Table = lambda token, dry_run=False, table_id=None: table
         try:
             return r.main(data)
         finally:
@@ -999,7 +1034,7 @@ class NewLookFallback(unittest.TestCase):
         slack = ReplyFallback.FakeSlack(reject)
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
         r.reply({"genie_response": SAMPLES["rich"], "genie_name": "SNAP", "thinking_ts": "1.1",
-                 "look": look}, FakeTable(), slack, result)
+                 "look": look, "answer_layout": "card"}, FakeTable(), slack, result)
         return slack, result
 
     def test_new_look_is_sent_first(self):
@@ -1031,7 +1066,8 @@ class NewLookFallback(unittest.TestCase):
                 return ReplyFallback.FakeSlack._call(self, method, payload)
         slack = Reasoned()
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
-        r.reply({"genie_response": "Hi", "genie_name": "SNAP", "thinking_ts": "1.1"},
+        r.reply({"genie_response": "Hi", "genie_name": "SNAP", "thinking_ts": "1.1",
+                 "answer_layout": "card"},
                 FakeTable(), slack, result)
         self.assertTrue(any("unsupported block type: markdown" in w for w in result["warnings"]))
 
@@ -1122,7 +1158,7 @@ class KnowledgeBaseNote(unittest.TestCase):
                      record_key="SNAP:C1", invoke_keyword="SNAP", id="gin-1")
 
         class AskTable(object):
-            def __init__(self, token, dry_run=False): pass
+            def __init__(self, token, dry_run=False, table_id=None): pass
             def query(self, where, limit=200):
                 return ([dict(genie)] if "$and" in where else []), None
 
@@ -1335,7 +1371,7 @@ class SecretsInTheFlow(unittest.TestCase):
         slack = ReplyFallback.FakeSlack()
         result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
         r.reply(dict({"genie_response": answer or self.ANSWER, "genie_name": "SNAP", "thinking_ts": "1.1",
-                      "look": look}, **extra), FakeTable(), slack, result)
+                      "look": look, "answer_layout": "card"}, **extra), FakeTable(), slack, result)
         return json.dumps([payload for _m, payload in slack.sent]), result
 
     def test_the_card_never_holds_a_secret_in_either_look(self):
@@ -1419,7 +1455,7 @@ class AskStepSecrets(unittest.TestCase):
         genie = self.GENIE
 
         class AskTable(object):
-            def __init__(self, token, dry_run=False): pass
+            def __init__(self, token, dry_run=False, table_id=None): pass
             def query(self, where, limit=200):
                 return ([dict(genie)] if "$and" in where else []), None
 
@@ -1671,6 +1707,185 @@ class BoldShowsAsBold(unittest.TestCase):
     def test_the_input_switch(self):
         self.assertEqual([r.bold_mode(v) for v in ("off", " OFF ", "on", "", None, "x")],
                          ["off", "off", "on", "on", "on", "on"])
+
+
+class KeywordOnlyStartsThread(unittest.TestCase):
+    """A bare keyword (hello card, no genie call) saves its thread, so replies in it need no
+    keyword. thread_start = off is the old behaviour."""
+
+    GENIE = {"record_key": "SNAP:C1", "record_type": "channel_genie", "status": "active",
+             "channel": "C1", "invoke_keyword": "SNAP", "genie_name": "snap",
+             "persona": "support", "id": "gin-1"}
+
+    class AskTable(FakeTable):
+        def query(self, where, limit=200):
+            if "$and" in where:                      # the channel's active genies
+                return [dict(row) for row in self.rows
+                        if row.get("record_type") == "channel_genie"], None
+            return FakeTable.query(self, where, limit)
+
+    def ask(self, table, **data):
+        slack = ReplyFallback.FakeSlack()
+        input_ = dict({"action": "ask", "channel": "C1", "message_ts": "5.5", "user_id": "U9",
+                       "text": "snap"}, **data)
+        result = {"channel": "C1", "reply_thread_ts": input_.get("thread_ts") or "5.5",
+                  "warnings": [], "dm_sent": [], "conversation_saved": False,
+                  "conversation_key": "", "conversation_found": False, "skipped": "",
+                  "call_genie": False, "is_followup": False, "conversation_id": ""}
+        r.ask(input_, table, slack, result)
+        return result
+
+    def saved(self, table):
+        return [f for _row, f in table.saved if f.get("record_type") == r.CONVERSATION_TYPE]
+
+    def test_bare_keyword_saves_the_thread(self):
+        table = self.AskTable([self.GENIE])
+        result = self.ask(table)
+        self.assertTrue(result["empty_question"])
+        self.assertFalse(result["call_genie"])
+        self.assertTrue(result["conversation_saved"])
+        self.assertEqual(result["conversation_key"], "conv:C1:5.5")
+        fields = self.saved(table)[0]
+        self.assertEqual((fields["record_key"], fields["id"], fields["invoke_keyword"],
+                          fields["status"], fields["creator_id"]),
+                         ("conv:C1:5.5", "", "SNAP", "active", "U9"))
+
+    def test_the_reply_in_that_thread_needs_no_keyword(self):
+        table = self.AskTable([self.GENIE, {"record_key": "conv:C1:5.5", "id": "",
+                                            "invoke_keyword": "SNAP"}])
+        result = self.ask(table, text="what can you answer", thread_ts="5.5",
+                          message_ts="6.6")
+        self.assertTrue(result["matched"])
+        self.assertTrue(result["call_genie"])
+        self.assertEqual(result["keyword"], "SNAP")
+        self.assertFalse(result["is_followup"])            # no genie conversation yet
+        self.assertEqual(result["conversation_id"], "")
+
+    def test_once_the_genie_answered_it_is_a_followup(self):
+        table = self.AskTable([self.GENIE, {"record_key": "conv:C1:5.5", "id": "conv-9",
+                                            "invoke_keyword": "SNAP"}])
+        result = self.ask(table, text="and why?", thread_ts="5.5", message_ts="7.7")
+        self.assertTrue(result["is_followup"])
+        self.assertEqual(result["conversation_id"], "conv-9")
+
+    def test_an_existing_thread_row_is_not_overwritten(self):
+        table = self.AskTable([self.GENIE, {"record_key": "conv:C1:5.5", "id": "conv-9"}])
+        result = self.ask(table, thread_ts="5.5", message_ts="8.8")      # "snap" again in it
+        self.assertEqual(self.saved(table), [])
+        self.assertFalse(result["conversation_saved"])
+
+    def test_off_is_the_old_behaviour(self):
+        table = self.AskTable([self.GENIE])
+        result = self.ask(table, thread_start="off")
+        self.assertEqual(table.saved, [])
+        self.assertFalse(result["conversation_saved"])
+
+    def test_a_real_question_saves_nothing_here(self):
+        table = self.AskTable([self.GENIE])
+        result = self.ask(table, text="snap why did it fail?")
+        self.assertTrue(result["call_genie"])
+        self.assertEqual(table.saved, [])           # the reply step saves it, with the id
+
+    def test_the_mode(self):
+        self.assertEqual([r.thread_start_mode(v) for v in ("", None, "on", "OFF", "x")],
+                         ["on", "on", "on", "off", "on"])
+
+
+class PlainBlocksLayout(unittest.TestCase):
+    """The new look's answer goes out as plain message blocks (no coloured bar); the card is
+    the fallback for a long answer, a rejection, an error, the old look, or answer_layout=card."""
+
+    ANSWER = "## Root cause\n\nThere is **no filter**.\n\n| a | b |\n|---|---|\n| 1 | 2 |"
+
+    class FakeSlack(r.Slack):
+        def __init__(self, reject_blocks=False):
+            r.Slack.__init__(self, "x", dry_run=False)
+            self.reject_blocks = reject_blocks
+            self.sent = []
+
+        def _get(self, method, params):
+            return {"ok": True, "permalink": ""}
+
+        def _call(self, method, payload):
+            self.last = payload
+            if self.reject_blocks and payload.get("blocks"):
+                self.errors.append("slack.{}: invalid_blocks".format(method))
+                return None
+            self.sent.append((method, payload))
+            return {"ok": True, "ts": "1.2"}
+
+    def run_reply(self, answer=None, slack=None, thinking="1.1", **extra):
+        slack = slack or self.FakeSlack()
+        result = {"channel": "C1", "reply_thread_ts": "1.0", "warnings": [], "dm_sent": []}
+        r.reply(dict({"genie_response": answer or self.ANSWER, "genie_name": "SNAP",
+                      "persona": "support", "thinking_ts": thinking, "user_id": "U1"}, **extra),
+                FakeTable(), slack, result)
+        return slack, result
+
+    def test_default_edits_the_thinking_line_into_plain_blocks(self):
+        slack, result = self.run_reply()
+        (method, payload), = slack.sent
+        self.assertEqual(method, "chat.update")
+        self.assertEqual(payload["attachments"], [])        # the old card, if any, is cleared
+        self.assertTrue(payload["blocks"])
+        self.assertNotIn("color", json.dumps(payload))
+        self.assertEqual(payload["text"], "")
+        types = [b["type"] for b in payload["blocks"]]
+        self.assertIn("header", types)
+        self.assertIn("table", types)
+        self.assertEqual(types[-1], "context_actions")       # feedback buttons last
+        self.assertTrue(result["posted"])
+        self.assertGreater(result["answer_sections"], 0)
+
+    def test_with_no_thinking_message_it_posts_blocks(self):
+        slack, _ = self.run_reply(thinking="")
+        (method, payload), = slack.sent
+        self.assertEqual(method, "chat.postMessage")
+        self.assertNotIn("attachments", payload)
+        self.assertEqual(payload["thread_ts"], "1.0")
+
+    def test_card_is_the_old_behaviour(self):
+        slack, _ = self.run_reply(answer_layout="card")
+        (_m, payload), = slack.sent
+        self.assertEqual(payload["blocks"], [])
+        self.assertIn("color", payload["attachments"][0])
+
+    def test_a_long_answer_is_the_card(self):
+        long_answer = "\n\n".join("Paragraph {} ".format(i) + "x" * 2000 for i in range(8))
+        slack, _ = self.run_reply(answer=long_answer)
+        self.assertEqual(len(slack.sent), 1)
+        (_m, payload), = slack.sent
+        self.assertEqual(payload["blocks"], [])
+        self.assertTrue(payload["attachments"][0]["blocks"])
+
+    def test_rejected_blocks_are_sent_again_as_the_card(self):
+        slack, result = self.run_reply(slack=self.FakeSlack(reject_blocks=True))
+        (_m, payload), = slack.sent
+        self.assertIn("color", payload["attachments"][0])
+        self.assertTrue(any("the card" in w for w in result["warnings"]))
+        self.assertTrue(result["posted"])
+
+    def test_an_error_stays_a_red_card(self):
+        slack, _ = self.run_reply(genie_error="boom")
+        _m, payload = slack.sent[0]                  # the owners are told in later messages
+        self.assertEqual(payload["attachments"][0]["color"], r.COLOR_ERROR)
+
+    def test_the_old_look_is_still_the_card(self):
+        slack, _ = self.run_reply(look="old")
+        (_m, payload), = slack.sent
+        self.assertIn("color", payload["attachments"][0])
+
+    def test_several_tables_are_several_plain_messages(self):
+        two = ("## T\n\n| a |\n|---|\n| 1 |\n\nthen\n\n| b |\n|---|\n| 2 |")
+        slack, _ = self.run_reply(answer=two)
+        self.assertEqual([m for m, _p in slack.sent], ["chat.update", "chat.postMessage"])
+        for _m, payload in slack.sent:
+            self.assertTrue(payload["blocks"])
+            self.assertNotIn("color", json.dumps(payload))
+
+    def test_the_mode(self):
+        self.assertEqual([r.answer_layout_mode(v) for v in ("", None, "blocks", "CARD", "x")],
+                         ["blocks", "blocks", "blocks", "card", "blocks"])
 
 
 if __name__ == "__main__":

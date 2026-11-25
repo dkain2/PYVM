@@ -8,17 +8,37 @@ POST   (slack_channel_id, and the notifier's alert_json)
     email is untouched: this step never sends or stops it. It posts when the alert would be emailed (a retried error, or a call
     with frequency / error_limit, posts nothing: `skipped` says why). If alert_json is empty (the notifier failed, or was not
     mapped) a short alert is posted from subject, recipe_name, error_details, priority and job_url.
-    THE SHORT LOOK (the default, slack_look blank or new): business only, nobody has to scroll, all in ONE attachment with a red bar
-    (feature bar), and no carousel: section blocks and containers only, so it never swipes. The title (priority and recipe), one
-    line (the headline, the retry verdict, how often, when), the error itself in a code block under a red label (its facts lined up,
-    the error codes beside the label), the status line with Take it, then a 2 x 2 grid of small containers (feature grid: a layout):
-    What happened | Impact, What to do next | Open. Without the grid (refused, or switched off) the same four come as plain sections
-    with one row of buttons, never as a carousel. The boxes carry the same words and buttons: What happened (View job), Impact (Error
-    file or Open recipe), What to do next (Reprocess, Mark resolved), Open (the rest of the links), then the failed records as a
-    table with page navigation (data_table; -datatables gives the plain table). A footer line points to the email for the details. No Assign person picker: it cannot sit in a box (it is in the full look).
-    A box's body is rich_text, not a section: confirmed live, a section inside a container still folds behind "Show more" even
-    with expand: true, which only holds for a section at the top level of the message (the headline, the status line). rich_text
-    never folds. -rich falls back to a section there too, the best that can be done without it.
+    THE SHORT LOOK (the default, slack_look blank or new): business only, nobody has to scroll past it to see the point. It sits
+    in ONE attachment with a red sidebar (bar, the default -- user, 2026-11-21: "bring this format back"), a divider between the
+    parts (feature dividers), top to bottom:
+        title (priority and recipe), one grey headline (feature headline), a meta line: the retry verdict, when, the environment
+        ---  the error, in a code block under a red label (its facts lined up, the error codes beside the label)
+        ---  Where it broke (feature flow): a small grey block drawing Source > Workato > Target with a cross on the system that
+             failed (a tick on those before it, a white dot on those after it, which were never reached), then the source object,
+             the failed step, the target object
+        ---  What happened / Impact / What to do next as plain sections, then one row of buttons (Reprocess, Mark resolved,
+             Diagnosis, the links)
+        ---  the status with Take it: the "Diagnosis requested" line when someone asked, "Open - nobody has picked this up yet"
+             while nobody owns the error (feature status_last, user, 2026-11-22: "keep the old formatting, bring the status after
+             What to do next")
+        ---  the failed records as a table with page navigation (data_table; -datatables gives the plain table)
+        (feature footer, off by default: a last line that points to the email for the details, with the error's reference)
+        No Assign person picker: it cannot sit here (it is in the full look).
+    The wording and the emoji are the original ones, except that the Where it broke block and the clock before the time carry
+    none (+flow_icons and +clock_icon bring them back). The tick, cross and white dot on the three systems stay (they say which one
+    failed), and the line under them is labelled "Source object: ... Target object: ..." instead of icons. slack_features
+    "-status_last" puts the status back between the flow and What happened; "-dividers -flow -headline -status_last" is the short look before the recent changes. "+professional" asks for the
+    summary-first look instead (set aside by the user on 2026-11-22, kept as an option): the status with Take it right under the
+    title, What happened / Impact / What to do next and the buttons, then the flow and the error, no decorative emojis, the time in
+    each reader's own time zone.
+    +grid swaps the three plain sections for a 2 x 2 grid of small containers instead (What happened | Impact, What to do next |
+    Open) -- but it needs -bar: confirmed live (2026-11-21), Slack refuses the grid's layout block outright inside an attachment
+    ("Block type is not supported in this container"), every time, whatever is inside it, so asking for both lands back on the
+    plain sections anyway (one wasted retry). A grid box's body is rich_text, not a section, so it never folds behind "Show
+    more" the way a section does once it sits inside a container (confirmed live); -rich falls back to a section there.
+    A plain section (the default cards, and the records table under -datatables) DOES fold behind "Show more" inside this
+    attachment even with expand: true (confirmed live: an attachment does not honour it) -- accepted, not fought: the reader can
+    always open it, and the full story is in the email besides.
     THE FULL LOOK (slack_look = full) reads like the email for a wider and wider audience, the technical part and the actions last:
         1  a plain-language message for the business: the headline, what happened, the impact (the raw error comes later)
         2  one carousel, a card to a section: what to do next / the error, where it broke, the failed records / how often, run
@@ -46,8 +66,11 @@ CLICK  (payload, or action_id with value / user_id / channel / message_ts)
                                      (POST /recipes/:id/repeat_jobs), marks the error log row Reprocessed (count + 1), and records
                                      who, when and the new job id. Refused, with a private message to the person who clicked, when
                                      the job was reprocessed less than `cooldown_minutes` ago (a double click, or someone else
-                                     just did it), when it has been reprocessed `max_reprocess` times already, or when the
-                                     person is not in `allowed_user_ids`.
+                                     just did it) or when it has been reprocessed `max_reprocess` times already. A person who is
+                                     not in `allowed_user_ids` gets a pop-up instead (a Slack modal, opened with the click's
+                                     trigger_id): "Sorry, you do not have privilege to reprocess this job." and an Okay button.
+                                     This is checked first of all, before any lookup, because the trigger_id lives ~3 seconds; if
+                                     the pop-up cannot open, the same words go as a private message.
     error_notification_acknowledge   "Take it", the button on the status line: someone is looking into it. The line then says who.
     error_notification_resolve       "Mark resolved" (confirmed by a popup too). Closes the buttons.
     error_notification_assign        the "Assign to..." person picker: records the owner and tags them in the thread.
@@ -58,6 +81,15 @@ CLICK  (payload, or action_id with value / user_id / channel / message_ts)
                                      still running -> the button stays, relabelled "Check again"; finished and the row says Failed
                                      Again (and that row is newer than this reprocess) -> the button goes, the error is posted back
                                      into the thread as a new reply; finished and not Failed Again -> "Completed", button goes.
+                                     Every one of these lines names who reprocessed ("Reprocessed by Ada"): the name rides in the
+                                     button's value, else it is read from the error log row, whoever clicks Check status.
+    error_notification_call_genie    ":ai-: Diagnosis", the fifth button. Read-only, so it stays after a reprocess or a resolve. The
+                                     click posts "Diagnosing..." in the thread and RETURNS genie_requested, genie_prompt (everything
+                                     known about the failure, no failed-record rows) and genie_context; the recipe's IF on this action
+                                     id sends genie_prompt to the Error Troubleshooter genie (genie_error_troubleshooter.md) and calls
+                                     this step again with genie_response + genie_context (mode = genie), which replaces the "Diagnosing..."
+                                     reply with the analysis, in the same place (a new thread reply only if that reply cannot be
+                                     edited). This step never calls the genie itself.
     A click on a link or fact button that does reach this step is answered with action = noop.
 
     WHAT A CLICK DOES TO THE MESSAGE. The status line under the title (block id error_notification_status) is replaced, newest first,
@@ -90,7 +122,8 @@ WHAT IT WRITES DOWN (the error log table, one row per master job; 26 new columns
     Count + 1, Reprocess_Flag = false. If the table does not have the new columns yet, the action is still done and the old columns
     are still written; the warnings say so.
 
-`mode` = post or click forces one; blank decides: a payload or action_id means click, a slack_channel_id (or an alert_json) means post.
+`mode` = post, click or genie forces one; blank decides: a genie_response (or genie_error) means genie, a payload or action_id means click,
+a slack_channel_id (or an alert_json) means post.
 NOTHING HERE MAY BREAK THE RECIPE. Every call has a timeout; a failure goes into `error` / `warnings` and the step still returns.
 
 Input schema: error_slack_input_schema.json   Output schema: error_slack_output_schema.json
@@ -130,13 +163,23 @@ ACT_RESOLVE = ACTION_PREFIX + "resolve"
 ACT_ASSIGN = ACTION_PREFIX + "assign"
 ACT_FEEDBACK = ACTION_PREFIX + "feedback"
 ACT_CHECK = ACTION_PREFIX + "check"
+ACT_GENIE = ACTION_PREFIX + "call_genie"        # "Diagnosis": the recipe's IF on this (or on genie_requested) calls the genie
+# user, 2026-11-22: "use this emoji for diagnosis :ai-: ... not diagnosis with AI": the workspace's own emoji stands in for the brain, and
+# every line of the feature says just "Diagnosis" (the disclaimer under the answer still says it was written by AI). To go back to the old
+# icon and wording, change these two and the strings that use them (do_diagnose, genie_flow, diagnosis_blocks, b_actions).
+AI_ICON = ":ai-:"
+DIAGNOSE_LABEL = "Diagnosis"
 INFO_PREFIX = "error_info_"
 LINK_PREFIX = "error_link_"
 STATUS_BLOCK_ID = "error_notification_status"
 ACTIONS_BLOCK_ID = "error_notification_actions"
 CHECK_BLOCK_ID = "error_notification_check"     # the thread reply that holds the "check status" button
+# user, 2026-11-23: "take it button is going up when someone asked for a diagnosis ... keep this update in context at the bottom of the
+# message": a Diagnosis click writes its line in a small grey context block (this id) at the end of the message, newest first, and the
+# status section with Take it is left alone. diagnosis_on_status = yes puts it back on the status line, as it was.
+ACTIVITY_BLOCK_ID = "error_notification_activity"
 ACTIONS = {ACT_REPROCESS: "reprocess", ACT_ACK: "acknowledge", ACT_RESOLVE: "resolve", ACT_ASSIGN: "assign",
-           ACT_FEEDBACK: "feedback", ACT_CHECK: "check"}
+           ACT_FEEDBACK: "feedback", ACT_CHECK: "check", ACT_GENIE: "call_genie"}
 JOB_FINISHED_STATUSES = {"succeeded", "success", "completed", "failed", "error", "errored", "stopped", "cancelled", "aborted"}
 
 # The old columns this step reads and writes, and the new ones (data_table_new_columns.md lists them for adding by hand).
@@ -171,6 +214,7 @@ OUTPUT_DEFAULTS = (
     ("master_job_id", ""), ("recipe_id", ""),
     ("reprocess_attempted", False), ("reprocess_enqueued", False), ("reprocess_job_id", ""), ("reprocess_error", ""),
     ("check_result", ""),
+    ("genie_requested", False), ("genie_prompt", ""), ("genie_context", ""), ("genie_posted", False),
     ("row_action", ""), ("row_record_id", ""), ("row_error", ""),
     ("message_updated", False), ("thread_posted", False), ("private_message_sent", False),
     ("assigned_user_id", ""), ("feedback", ""), ("signature_checked", False),
@@ -181,7 +225,8 @@ INPUT_NAMES = (
     "slack_look", "slack_features", "slack_buttons", "slack_mention", "slack_mask_pii", "slack_thread_ts", "max_table_rows",
     "subject", "recipe_name", "error_details", "priority", "job_url", "calling_master_job_id",
     "payload", "action_id", "value", "user_id", "channel", "message_ts", "selected_user", "feedback_value",
-    "allowed_user_ids", "cooldown_minutes", "max_reprocess", "update_message", "thread_reply",
+    "genie_response", "genie_context", "genie_error",
+    "allowed_user_ids", "cooldown_minutes", "max_reprocess", "update_message", "thread_reply", "diagnosis_on_status",
     "slack_signing_secret", "raw_body", "slack_request_timestamp", "slack_signature",
     "data_table_id", "workato_api_base", "timezone", "http_timeout", "time_budget", "now",
 )
@@ -282,6 +327,7 @@ def settings(inp):
         "max_reprocess": max(1, min(50, to_int(inp.get("max_reprocess"), 3))),
         "update_message": truthy(inp.get("update_message"), True),
         "thread_reply": truthy(inp.get("thread_reply"), True),
+        "diagnosis_on_status": truthy(inp.get("diagnosis_on_status"), False),
         "timezone": text_of(pick("timezone", "America/Los_Angeles")).strip(),
         "http_timeout": max(3, min(60, to_int(inp.get("http_timeout"), 12))),
         "time_budget": max(5, min(85, to_int(inp.get("time_budget"), 25))),
@@ -381,6 +427,7 @@ def parse_click(inp):
         "channel": text_of(inp.get("channel") or as_dict(payload.get("channel")).get("id") or container.get("channel_id")).strip(),
         "message_ts": text_of(inp.get("message_ts") or message.get("ts") or container.get("message_ts")).strip(),
         "thread_ts": text_of(message.get("thread_ts")).strip(),
+        "trigger_id": text_of(payload.get("trigger_id")).strip(),      # lets the step open a pop-up; Slack lets it live ~3 seconds
         "message": message,
     }
     if inp.get("feedback_value") not in (None, ""):
@@ -522,19 +569,26 @@ def status_text(blocks):
     return ""
 
 
-def stacked(old, line):
-    """The new line first, then what was there before (the 'Open' line is dropped), at most STATUS_LINES."""
-    lines = [l for l in text_of(old).split("\n") if l.strip() and not l.startswith("🆕")]
-    return "\n".join(([line] + lines)[:STATUS_LINES])
+def stacked(old, line, keep_open=False):
+    """The new line first, then what was there before (the 'Open' line is dropped), at most STATUS_LINES. keep_open: the click does
+    not change who owns the error (a diagnosis was asked for), so "Open · nobody has picked this up yet" stays, last, under it."""
+    # Slack returns an emoji as its :name: in a message it hands back, so ":new:" is the Open line as much as the emoji is
+    # (it was not dropped: "Open · nobody has picked this up yet" stayed under every click); the plain wording is matched as well
+    def is_open(l):
+        return l.startswith(("🆕", ":new:")) or bool(re.search(r"nobody has (picked this up|taken this) yet", l, re.I))
+    given = [l for l in text_of(old).split("\n") if l.strip()]
+    lines = [l for l in given if not is_open(l)]
+    opened = [l for l in given if is_open(l)][:1] if keep_open else []
+    return "\n".join(([line] + lines)[:STATUS_LINES - len(opened)] + opened)
 
 
-def patch_blocks(blocks, line, remove):
+def patch_blocks(blocks, line, remove, keep_open=False):
     """Put `line` first in the status block, and take the buttons in `remove` (action ids) out of the actions block; a block
     left with no element goes. Returns whether the status block was there."""
     found = False
     for block in list(blocks):
         if block.get("block_id") == STATUS_BLOCK_ID:
-            text = stacked(status_text(blocks), line)
+            text = stacked(status_text(blocks), line, keep_open)
             if block.get("type") == "section":                 # the status line with its Take it button
                 block["text"] = {"type": "mrkdwn", "text": text}
                 if (block.get("accessory") or {}).get("action_id") in remove:
@@ -552,11 +606,11 @@ def patch_blocks(blocks, line, remove):
                     inner = dict(item.get("block") or {})
                     if isinstance(inner.get("child_blocks"), list):
                         inner["child_blocks"] = [dict(k) for k in inner["child_blocks"]]
-                        patch_blocks(inner["child_blocks"], line, remove)
+                        patch_blocks(inner["child_blocks"], line, remove, keep_open)
                     item["block"] = inner
         elif block.get("type") == "container" and isinstance(block.get("child_blocks"), list):
             block["child_blocks"] = [dict(k) for k in block["child_blocks"]]
-            found = patch_blocks(block["child_blocks"], line, remove) or found
+            found = patch_blocks(block["child_blocks"], line, remove, keep_open) or found
         elif block.get("type") == "carousel":               # the short look keeps its buttons in the cards
             cards = []
             for card in block.get("elements") or []:
@@ -570,16 +624,46 @@ def patch_blocks(blocks, line, remove):
     return found
 
 
-def update_message(cfg, click, line, remove, deadline):
-    """chat.update with the status line and without the buttons in `remove`. -> (updated, error)."""
+def patch_activity(blocks, line):
+    """Put `line` first in the grey activity block at the end of `blocks` (ACTIVITY_BLOCK_ID), at most STATUS_LINES, newest first;
+    the block is added at the very end the first time."""
+    for block in blocks:
+        if block.get("block_id") == ACTIVITY_BLOCK_ID:
+            elements = block.get("elements") or []
+            old = [l for l in text_of(elements[0].get("text") if elements else "").split("\n") if l.strip()]
+            block["elements"] = [mrk("\n".join(([line] + old)[:STATUS_LINES]))]
+            return
+    blocks.append({"type": "context", "block_id": ACTIVITY_BLOCK_ID, "elements": [mrk(line)]})
+
+
+def update_message(cfg, click, line, remove, deadline, keep_open=False, bottom=False):
+    """chat.update with the status line and without the buttons in `remove`. bottom: the line goes in the grey activity block at the
+    end of the message instead, and the status block is not touched. -> (updated, error)."""
     message = click["message"]
     if not (click["channel"] and click["message_ts"] and blocks_of(message)):
         return False, "the click did not carry the message"
     seen = []
-    top, attachments = edit_message(message, lambda blocks: seen.append(patch_blocks(blocks, line, remove)))
-    if not any(seen):
-        return False, "the message has no status block"
-    payload = {"channel": click["channel"], "ts": click["message_ts"], "text": text_of(message.get("text")) or "Error alert"}
+    if bottom:
+        lists = []
+        top, attachments = edit_message(message, lists.append)
+        # the list that holds the alert (its status or its buttons), else the last one: the attachment of the red-bar look
+        target = next((b for b in lists if any(x.get("block_id") == STATUS_BLOCK_ID or text_of(x.get("block_id")).startswith(ACTIONS_BLOCK_ID)
+                                                for x in b if isinstance(x, dict))), lists[-1])
+        patch_activity(target, line)
+    else:
+        top, attachments = edit_message(message, lambda blocks: seen.append(patch_blocks(blocks, line, remove, keep_open)))
+        if not any(seen):
+            return False, "the message has no status block"
+    # A message posted as one attachment (the red bar) has no top-level text on purpose: Slack shows that text above the card. An
+    # edit must not give it one, so the "Error alert" fallback is only for a message that holds blocks at its top level, and the
+    # one an earlier edit already put on a card is cleared (text "" is what removes it).
+    shown = text_of(message.get("text"))
+    carded = any(isinstance(a, dict) for a in attachments)
+    if carded and shown.strip() in ("", "Error alert"):
+        shown = ""
+    elif not shown:
+        shown = "Error alert"
+    payload = {"channel": click["channel"], "ts": click["message_ts"], "text": shown}
     if top is not None:
         payload["blocks"] = top
     if any(isinstance(a, dict) for a in attachments):
@@ -747,6 +831,15 @@ def job_finished(body):
     return text_of(body.get("status")).strip().lower() in JOB_FINISHED_STATUSES
 
 
+def reprocessed_by(value, stored):
+    """'Reprocessed by *Name*' for the check thread: the person comes from the button (u, un), else from the error log row. Their
+    Slack id alone is shown as a mention; with nobody known the line says so rather than leave the question open."""
+    name = text_of(value.get("un")).strip() or text_of(stored.get(TRACK_COLUMNS["reprocessed_by"])).strip()
+    uid = text_of(value.get("u")).strip() or text_of(stored.get(TRACK_COLUMNS["reprocessed_by_id"])).strip()
+    who = "*{}*".format(sx(name)) if name else "<@{}>".format(uid) if uid else "someone (not recorded)"
+    return "Reprocessed by " + who
+
+
 class Run(object):
     """Everything one click needs, and what it leaves behind."""
 
@@ -757,13 +850,13 @@ class Run(object):
         self.stored = {}
 
     # -- Slack
-    def tell(self, line, remove=(), thread=None):
+    def tell(self, line, remove=(), thread=None, keep_open=False, bottom=False):
         """The status line on the message (best effort), the reply in the thread, both optional. thread=False skips the thread
         reply entirely (do_reprocess posts its own, with a check-status button, instead); any other value (including the default,
         None) posts one, with `thread` as its text, or `line` when `thread` is blank."""
         cfg, click, result = self.cfg, self.click, self.result
         if cfg["slack_bot_token"] and cfg["update_message"]:
-            ok, err = update_message(cfg, click, line, set(remove), self.deadline)
+            ok, err = update_message(cfg, click, line, set(remove), self.deadline, keep_open, bottom)
             result["message_updated"] = ok
             if not ok and err:
                 self.warnings.append("message not updated: " + clip(err, 200))
@@ -784,6 +877,20 @@ class Run(object):
         if err:
             self.warnings.append("private message not sent: " + clip(err, 200))
 
+    def popup(self, title, text):
+        """A pop-up in the middle of the screen with one "Okay" button (a Slack modal: views.open with the click's trigger_id, which
+        only lives ~3 seconds, so callers use this before anything slow). Returns whether it opened. When it cannot (no trigger_id, it
+        expired, Slack said no) the same words go as a private message instead, so the person is never left with silence."""
+        cfg, click = self.cfg, self.click
+        if cfg["slack_bot_token"] and click.get("trigger_id"):
+            view = {"type": "modal", "title": pt(title, 24), "close": pt("Okay", 24), "blocks": [{"type": "section", "text": mrk(text)}]}
+            body, err = slack_call(cfg, "views.open", {"trigger_id": click["trigger_id"], "view": view}, self.deadline)
+            if body is not None:
+                return True
+            self.warnings.append("pop-up not opened, sent as a private message instead: " + clip(err, 200))
+        self.whisper(text)
+        return False
+
     def post_check_thread(self, master, recipe_id, job_id):
         """A reply with a 'Check status' button, in its own block (CHECK_BLOCK_ID) so a later click can find and edit just this
         message. The button carries master, recipe_id, the new job id and when this reprocess happened (so a check never reads a
@@ -791,8 +898,10 @@ class Run(object):
         cfg, click = self.cfg, self.click
         if not (cfg["slack_bot_token"] and cfg["thread_reply"] and click["channel"] and click["message_ts"]):
             return
-        text = "⏳ *In progress* · job `{}`".format(job_id)
-        value = json.dumps({"v": 1, "m": master, "r": recipe_id, "j": job_id, "t": self.now.isoformat()},
+        # who reprocessed rides in the button (u = Slack id, un = name), so every later check can say it without the error log
+        text = "⏳ *In progress* · job `{}` · {}".format(job_id, reprocessed_by({"u": self.user["id"], "un": self.user["name"]}, {}))
+        value = json.dumps({"v": 1, "m": master, "r": recipe_id, "j": job_id, "t": self.now.isoformat(),
+                            "u": self.user["id"], "un": clip(self.user["name"], 80)},
                            separators=(",", ":"), ensure_ascii=False)[:1900]
         block = {"type": "section", "block_id": CHECK_BLOCK_ID, "text": mrk(text), "expand": True,
                 "accessory": {"type": "button", "text": pt("🔄 Check status"), "action_id": ACT_CHECK, "value": value}}
@@ -889,14 +998,23 @@ def refuse(run, why, line):
     run.whisper(line)
 
 
+NO_REPROCESS_RIGHT = "Sorry, you do not have privilege to reprocess this job."
+
+
+def not_allowed_to_reprocess(cfg, user_id):
+    return bool(cfg["allowed"]) and user_id.upper() not in cfg["allowed"]
+
+
 def do_reprocess(run):
     cfg, job, user, now, result = run.cfg, run.job, run.user, run.now, run.result
     if not (job["master"] and job["recipe_id"]):
         return refuse(run, "no job", "This message does not say which job to reprocess.")
     if not cfg["workato_api_token"]:
         return refuse(run, "no workato_api_token", "Reprocess is not set up: the step has no Workato token.")
-    if cfg["allowed"] and user["id"].upper() not in cfg["allowed"]:
-        return refuse(run, "not allowed", "You are not on the list of people who may reprocess jobs.")
+    if not_allowed_to_reprocess(cfg, user["id"]):         # click_flow normally stops this earlier, with the pop-up
+        result.update({"refused": "not allowed", "result": NO_REPROCESS_RIGHT, "handled": True})
+        run.popup("Reprocess", NO_REPROCESS_RIGHT)
+        return
     stored = run.stored
     last = parse_when(stored.get(TRACK_COLUMNS["reprocessed_at"]))
     if last and cfg["cooldown_minutes"] and timedelta(0) <= now - last < timedelta(minutes=cfg["cooldown_minutes"]):
@@ -1009,6 +1127,8 @@ def do_check(run):
     except ValueError:
         value = {}
     reprocessed_at = parse_when(value.get("t"))
+    value = value if isinstance(value, dict) else {}
+    by = reprocessed_by(value, run.stored)
     try:
         body = workato_get(cfg, "/recipes/{}/jobs/{}".format(urllib_parse.quote(recipe_id), urllib_parse.quote(job_id)), run.deadline)
     except Exception as exc:  # noqa: BLE001 - a failed check must never raise
@@ -1019,7 +1139,7 @@ def do_check(run):
     if not job_finished(body):
         result["check_result"] = "running"
         result["result"] = "still running"
-        run.update_check("⏳ *Still running* · last checked {}".format(slack_when(now)), "🔄 Check again")
+        run.update_check("⏳ *Still running* · {} · last checked {}".format(by, slack_when(now)), "🔄 Check again")
         return
     status = text_of(run.stored.get(BASE_COLUMNS["status"])).strip().lower()
     error_ts = parse_when(run.stored.get("Error TimeStamp"))
@@ -1030,18 +1150,566 @@ def do_check(run):
         result.update({"check_result": "failed_again", "result": "failed again"})
         log_fields[TRACK_COLUMNS["reprocess_result"]] = "failed_again"
         run.write(log_fields)
-        run.update_check("❌ *Failed again* · {}".format(slack_when(now)))
+        run.update_check("❌ *Failed again* · {} · {}".format(by, slack_when(now)))
         shown = clip(message, 2800).replace('''```''', "'''")
-        run.post_thread("🚨 *The reprocessed job failed again*\n```{}```".format(shown))
+        run.post_thread("🚨 *The reprocessed job failed again* ({})\n```{}```".format(by, shown))
     else:
         result.update({"check_result": "completed", "result": "completed"})
         log_fields[TRACK_COLUMNS["reprocess_result"]] = "completed"
         run.write(log_fields)
-        run.update_check("✅ *Completed* · {}".format(slack_when(now)))
+        run.update_check("✅ *Completed* · {} · {}".format(by, slack_when(now)))
+
+
+# ------------------------------------------------------------------------------------------------ Diagnose with AI
+#
+# Two calls of this step, with the recipe's genie step between them (the recipe does the IF on action = call_genie, or on
+# genie_requested = true, or on the action id error_notification_call_genie):
+#   1. the CLICK on "Diagnosis" -> this step posts a "Diagnosing..." reply in the thread and returns `genie_prompt` (all it
+#      knows: ids, the error, the systems, what the alert said, the error log row) and `genie_context` (where to answer).
+#   2. the recipe sends genie_prompt to the error troubleshooter genie (genie_error_troubleshooter.md), which reads the job and the
+#      recipe in Workato and answers; then this step is called again with genie_response + genie_context (mode = genie), and
+#      replaces the "Diagnosing..." reply (genie_context carries its ts) with the analysis. Nothing here calls the genie: that is the recipe's step.
+# No failed record rows go in the prompt (they can hold learner data), only the error, the counts and the ids.
+# The answer is posted the way the genie responder (genie_console/responder/responder.py) lays one out: header, a divider between
+# sections, native tables, thumbs; md_to_mrkdwn, split_sections and native_table below are ported from it (a Workato step cannot import it).
+
+GENIE_BRIEF = """Analyse why this Workato recipe job failed. Explain what went wrong in business terms first, then the technical cause and the fix.
+
+# The failure (from the alert)
+{facts}
+
+# What the alert said
+{alert}
+
+# What to do
+1. Read the job in Workato with your tools: the master job {master} of recipe {recipe_id} (job handle {job_id}). Read the recipe itself too. Do not guess what a tool can tell you.
+2. Walk the job from its start (the trigger) to the step that failed, in order: what each step did, with which input, what it returned, and whether it succeeded. Use the recipe's own step comments and names. Stop at the failing step and look at its input and error closely; a callable recipe or function that was called is part of the flow, so check that it was running.
+3. Find the root cause and say how sure you are. If something cannot be read (a tool failed, no access), say so and do not fill the gap with a guess.
+
+# How to answer (this is posted to Slack, keep it under about 3,500 characters)
+Use these sections, in this order, each starting with its title in bold (*Title*):
+*In plain words*: two or three sentences a non-technical person understands. No step numbers, no field names.
+*Business impact*: who or what is affected, how much, and whether data was lost or only delayed.
+*What happened, step by step*: the flow from the trigger to the error, one short line per step: ✅ for a step that worked, ❌ for the one that failed, ⚪ for steps never reached.
+*Root cause*: the technical reason, with the evidence (step, field, value or missing value, status).
+*How to fix it*: numbered steps, and who does each (recipe owner, Salesforce admin, data team).
+*After the fix*: is it safe to reprocess this job, and could it create duplicates or other side effects?
+*Confidence*: high, medium or low, and what you could not verify.
+Recipes: never write a recipe id or a recipe number in the answer. Name a recipe by its name, as a Slack link with the id only inside the link: <https://app.workato.com/recipes/RECIPE_ID|Recipe name>. Job ids may be written in `code`.
+Formatting: Slack mrkdwn only (*bold*, `code`, "•" bullets, numbered lines). No tables, no # headings. Never write personal data (names or emails of learners, record values); use ids and counts."""
+
+
+def message_text(message, cfg, limit=3000):
+    """The words of the alert as shown in Slack (title, headline, error, status, cards), without the failed-records table, the
+    buttons or anything else that is not prose."""
+    def strings(x, out):
+        if isinstance(x, dict):
+            for key, val in x.items():
+                if key in ("accessory", "value", "action_id", "block_id", "image_url"):
+                    continue
+                if key == "text" and isinstance(val, str):
+                    out.append(val)
+                else:
+                    strings(val, out)
+        elif isinstance(x, list):
+            for item in x:
+                strings(item, out)
+    lines = []
+    for blocks in blocks_of(message):
+        for block in blocks:
+            if isinstance(block, dict) and block.get("type") in ("header", "section", "context", "rich_text"):
+                parts = []
+                strings(block, parts)
+                line = "".join(parts).strip() if block.get("type") == "rich_text" else " ".join(p.strip() for p in parts if p.strip())
+                if line:
+                    lines.append(line)
+    return clip(mask(cfg, "\n".join(lines)), limit)
+
+
+def genie_prompt(run):
+    """Everything this step knows about the failure, as the message to send to the troubleshooter genie."""
+    cfg, job, stored, click = run.cfg, run.job, run.stored, run.click
+    def row(column):
+        return text_of(stored.get(column)).strip()
+    systems = " > ".join(x for x in ("{}{}".format(row("Source System"), " ({})".format(row("Source Object")) if row("Source Object") else ""),
+                                     "Workato", "{}{}".format(row("Target System"), " ({})".format(row("Target Object")) if row("Target Object") else "")) if x.strip())
+    lines = [("Environment", job.get("environment")), ("Priority", job.get("priority")),
+             ("Recipe", "{} (id {})".format(job.get("recipe_name") or row("Recipe Name"), job.get("recipe_id")) if job.get("recipe_id") else job.get("recipe_name")),
+             ("Master job", job.get("master")), ("Job handle", job.get("job_id")), ("Job link", row("Job URL")),
+             ("Error time", row("Error TimeStamp")), ("Systems (source > Workato > target)", systems if row("Source System") or row("Target System") else ""),
+             ("Status in the error log", row("Status")), ("Reprocessed so far", "{} time(s)".format(row("Reprocess Count")) if row("Reprocess Count") else ""),
+             ("Alert reference", job.get("signature")),
+             ("Error message (error log)", clip(mask(cfg, row("Error Message")), 1500))]
+    facts = "\n".join("- {}: {}".format(k, text_of(v).strip()) for k, v in lines if text_of(v).strip()) or "- (the alert carried no ids)"
+    return clip(GENIE_BRIEF.format(facts=facts, alert=message_text(click["message"], cfg) or "(the alert text was not part of the click)",
+                                   master=job.get("master") or "?", recipe_id=job.get("recipe_id") or "?",
+                                   job_id=job.get("job_id") or job.get("master") or "?"), 12000)
+
+
+def do_diagnose(run):
+    """'Diagnosis': tell the thread, hand the recipe a prompt for the genie and where to answer (see the block above)."""
+    cfg, job, user, now, result, click = run.cfg, run.job, run.user, run.now, run.result, run.click
+    if not job["master"]:
+        return refuse(run, "no job", "This message does not say which job to diagnose.")
+    result["handled"] = True
+    # "Diagnosis requested by <who>" goes in a grey context block at the bottom of the message (user, 2026-11-23), so the status
+    # section with Take it stays as it was: asking for a diagnosis does not change who owns the error. diagnosis_on_status = yes is
+    # the old way: the line on the status line, "Open · nobody has picked this up yet" kept under it.
+    asked = "{} *{} requested* by <@{}> · {}".format(AI_ICON, DIAGNOSE_LABEL, user["id"], slack_when(now))
+    if cfg["diagnosis_on_status"]:
+        run.tell(asked, remove=(), thread=False, keep_open=True)
+    else:
+        run.tell(asked, remove=(), thread=False, bottom=True)
+    thread_ts, progress_ts = click["thread_ts"] or click["message_ts"], ""
+    if cfg["slack_bot_token"] and cfg["thread_reply"] and click["channel"] and thread_ts:
+        # short on purpose (user, 2026-11-22): the line, a spinner emoji, and who asked in a grey context line under it
+        body, err = slack_call(cfg, "chat.postMessage", {"channel": click["channel"], "thread_ts": thread_ts, "unfurl_links": False,
+                                                        "text": AI_ICON + " Diagnosing…",
+                                                        "blocks": [sl_section(AI_ICON + " Diagnosing…  :loading-2:"),
+                                                                   sl_context("Asked by {}".format(sx(user["name"])))]},
+                               run.deadline)
+        result["thread_posted"] = body is not None
+        progress_ts = text_of(as_dict(body).get("ts"))
+        if err:
+            run.warnings.append("thread reply not posted: " + clip(err, 200))
+    context = {"v": 1, "channel": click["channel"], "thread_ts": thread_ts, "progress_ts": progress_ts, "master": job["master"],
+               "recipe_id": job["recipe_id"], "job_id": job["job_id"], "recipe_name": job["recipe_name"],
+               "user_id": user["id"], "user_name": user["name"], "t": now.isoformat()}
+    result.update({"genie_requested": True, "genie_prompt": genie_prompt(run), "result": "AI diagnosis requested",
+                   "genie_context": json.dumps(context, separators=(",", ":"), ensure_ascii=False)})
+    run.write(common_fields(user, now, "Diagnose", "AI diagnosis requested", run.stored))
+
+
+RECIPE_ID_IN_CODE = re.compile(r"`(?:id:\s*)?(\d{6,10})`")
+RECIPE_ID_AFTER_WORD = re.compile(r"(?i)\b(recipe)(?:\s+id)?[:#\s]+(\d{6,10})\b")
+RECIPE_ID_PAREN = re.compile(r"(?i)\(\s*id:\s*(\d{6,10})\s*\)")
+MAX_RECIPE_LOOKUPS = 6
+
+
+def recipe_link(recipe_id, name):
+    """A recipe as its clickable name: the id lives only inside the link (user, 2026-11-22: show names, not recipe ids)."""
+    return "<https://app.workato.com/recipes/{}|{}>".format(recipe_id, sx(clip(name, 90)).replace("|", "/"))
+
+
+def name_recipes(text, cfg, deadline, warnings, known=None):
+    """Recipe ids the genie wrote anyway become the recipe's name: `52902528` -> a link with the name, "recipe 52902528" -> "recipe
+    <link>", "(id: 52902528)" -> "(name)". A number is only replaced when Workato says it is a recipe (up to MAX_RECIPE_LOOKUPS
+    lookups; `known` = {id: name} needs none), so a connection id or a count is left alone. Inside a code block there is no link, so
+    the plain name goes there. A lookup that fails leaves the id as it was."""
+    ids = (set(RECIPE_ID_IN_CODE.findall(text)) | {m[1] for m in RECIPE_ID_AFTER_WORD.findall(text)}
+           | set(RECIPE_ID_PAREN.findall(text)))
+    names = {k: v for k, v in (known or {}).items() if k in ids and v}
+    lookups = failed = 0
+    for rid in sorted(ids - set(names)):
+        if not cfg["workato_api_token"] or lookups >= MAX_RECIPE_LOOKUPS:
+            break
+        lookups += 1
+        try:
+            body = workato_get(cfg, "/recipes/{}?exclude_code=yes".format(urllib_parse.quote(rid)), deadline)
+        except Exception:  # noqa: BLE001 - a 404 means "not a recipe"; anything else only leaves the id
+            failed += 1
+            continue
+        if text_of(as_dict(body).get("name")).strip():
+            names[rid] = text_of(body["name"]).strip()
+    if failed and not names:
+        warnings.append("recipe names not looked up ({} lookups failed): the answer keeps its ids".format(failed))
+    if not names:
+        return text
+    def plain_in_code(part):
+        for rid, name in names.items():
+            shown = sx(name).replace("\\", "/")
+            part = re.sub(r"\(\s*id:\s*{}\s*\)".format(rid), lambda m: "(" + shown + ")", part)
+            part = re.sub(r"(?<!\d){}(?!\d)".format(rid), lambda m: shown, part)
+        return part
+
+    def linked_in_prose(part):
+        part = RECIPE_ID_IN_CODE.sub(lambda m: recipe_link(m.group(1), names[m.group(1)]) if m.group(1) in names else m.group(0), part)
+        spans = part.split("`")                                   # what is left inside inline code has no link: the plain name
+        for j in range(len(spans)):
+            if j % 2:
+                spans[j] = plain_in_code(spans[j])
+                continue
+            for rid, name in names.items():
+                link = recipe_link(rid, name)
+                spans[j] = re.sub(r"(?i)\b(recipe)(?:\s+id)?[:#\s]+{}\b".format(rid), lambda m: m.group(1) + " " + link, spans[j])
+                spans[j] = re.sub(r"\(\s*id:\s*{}\s*\)".format(rid), lambda m: "(" + link + ")", spans[j])
+        return "`".join(spans)
+
+    pieces = text.split("```")                                    # odd pieces are code blocks
+    return "```".join(plain_in_code(piece) if i % 2 else linked_in_prose(piece) for i, piece in enumerate(pieces))
+
+
+def genie_text(raw):
+    """The genie's answer as text: a string, or what an action returns (an object with response / text / answer / ...)."""
+    if isinstance(raw, str) and raw.strip().startswith(("{", "[")):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            pass
+    if isinstance(raw, dict):
+        for key in ("response", "answer", "text", "output", "message", "content", "result"):
+            if text_of(raw.get(key)).strip():
+                return genie_text(raw[key])
+        return ""
+    if isinstance(raw, list):
+        return "\n".join(x for x in (genie_text(i) for i in raw) if x)
+    return text_of(raw).strip()
+
+
+# ---- the answer, made to look like the genie responder's (genie_console/responder/responder.py: to_mrkdwn, split_sections,
+# native tables, dividers, header, thumbs). That file cannot be imported from a Workato step, so the logic is ported here.
+
+DIVIDER_MARK = "\x00divider\x00"        # stands in for a markdown rule until the blocks are built
+TABLE_MARK = "\x00table:{}\x00"         # stands in for a table until the blocks are built
+TABLE_MARK_RE = re.compile(r"\x00table:(\d+)\x00")
+HEADER_RE = re.compile(r"^\s*#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\n|$)")
+MD_LABEL = r"(?:[^\[\]]|\[[^\[\]]*\])+"           # a link's label may hold brackets: "[FIN] - recipe"
+CELL_TOKEN = re.compile(r"`[^`]+`|\*\*[^*]+?\*\*|\[" + MD_LABEL + r"\]\(https?://[^)\s]+\)|\*[^*\s][^*]*\*")
+CELL_LINK = re.compile(r"\[(" + MD_LABEL + r")\]\((https?://[^)\s]+)\)")
+SLACK_LINK = re.compile(r"<(https?://[^|>\s]+)\|([^>\n]+)>")
+SLACK_BARE_LINK = re.compile(r"<(https?://[^|>\s]+)>")
+KEEP_LINK = re.compile(r"<(?:https?://|mailto:)[^<>\s|]+(?:\|[^<>\n]*)?>")
+
+
+def neutralize(text):
+    """& < > escaped everywhere except in a real link (<https://...|label>), so a mention (<@U..>, <!channel>) in an answer can
+    never ping anyone, while a link the genie wrote the Slack way stays a link."""
+    text, out, pos = text_of(text).replace("\r\n", "\n"), [], 0
+    for match in KEEP_LINK.finditer(text):
+        out.append(sx(text[pos:match.start()]))
+        out.append(match.group(0))
+        pos = match.end()
+    out.append(sx(text[pos:]))
+    return "".join(out)
+
+
+def md_inline(text):
+    """Bold, strike and links, outside `inline code` only."""
+    parts = text.split("`")
+    for i in range(0, len(parts), 2):
+        part = re.sub(r"\*\*(.+?)\*\*", r"*\1*", parts[i])
+        part = re.sub(r"__(.+?)__", r"*\1*", part)
+        part = re.sub(r"~~(.+?)~~", r"~\1~", part)
+        parts[i] = re.sub(r"\[(" + MD_LABEL + r")\]\((https?://[^)\s]+)\)",
+                          lambda m: "<{}|{}>".format(m.group(2), m.group(1).replace("|", "/")), part)
+    return "`".join(parts)
+
+
+def slack_links_to_markdown(text):
+    """<url|label> -> [label](url) outside `code`: in a table row the | of a Slack link would cut the cell in two."""
+    parts = text.split("`")
+    for i in range(0, len(parts), 2):
+        parts[i] = SLACK_LINK.sub(lambda m: "[{}]({})".format(m.group(2).replace("|", "/"), m.group(1)), parts[i])
+        parts[i] = SLACK_BARE_LINK.sub(r"\1", parts[i])
+    return "`".join(parts)
+
+
+def cell_elements(text, bold=False):
+    """A table cell's markdown (`code`, **bold**, *italic*, [link](url)) as rich_text elements."""
+    elements, position = [], 0
+
+    def add(piece, **style):
+        if bold:
+            style["bold"] = True
+        element = {"type": "text", "text": piece}
+        if style:
+            element["style"] = style
+        elements.append(element)
+
+    for match in CELL_TOKEN.finditer(text):
+        if match.start() > position:
+            add(text[position:match.start()])
+        token = match.group(0)
+        if token.startswith("`"):
+            add(token[1:-1], code=True)
+        elif token.startswith("**"):
+            add(token[2:-2], bold=True)
+        elif token.startswith("["):
+            label, url = CELL_LINK.match(token).groups()
+            element = {"type": "link", "url": url, "text": label}
+            if bold:
+                element["style"] = {"bold": True}
+            elements.append(element)
+        else:
+            add(token[1:-1], italic=True)
+        position = match.end()
+    if position < len(text):
+        add(text[position:])
+    return elements
+
+
+def native_cell(text, header=False):
+    text = text.strip()
+    if not text:
+        return {"type": "raw_text", "text": " "}                      # a cell may not be empty
+    if not header and not CELL_TOKEN.search(text):
+        return {"type": "raw_text", "text": text}
+    return {"type": "rich_text", "elements": [{"type": "rich_text_section", "elements": cell_elements(text, bold=header)}]}
+
+
+def native_table(rows):
+    """A Slack table block: bold header row, cells that wrap. column_settings has one real object per column."""
+    columns = len(rows[0])
+    body = [[native_cell(row[i] if i < len(row) else "", header=(n == 0)) for i in range(columns)] for n, row in enumerate(rows)]
+    return {"type": "table", "rows": body, "column_settings": [{"align": "left", "is_wrapped": True} for _ in range(columns)]}
+
+
+def md_to_mrkdwn(markdown, tables):
+    """What a model writes -> what Slack renders; code blocks are left alone. A markdown table becomes a native table: its rows are
+    appended to `tables` and a marker (TABLE_MARK) is left in the text; a rule (---) becomes DIVIDER_MARK; headings become *bold*
+    lines, - bullets become bullets. A table over Slack's limits is cut, with a note under it."""
+    out, table, in_fence = [], [], False
+
+    def flush_table():
+        if not table:
+            return
+        rows = [[cell.strip() for cell in slack_links_to_markdown(r).strip().strip("|").split("|")]
+                for r in table if not re.match(r"^\s*\|?[\s:\-|]+\|?\s*$", r)]
+        del table[:]
+        if not rows:
+            return
+        columns = min(max(len(row) for row in rows), SL_TABLE_COLS)
+        kept = rows[:SL_TABLE_ROWS]
+        while len(kept) > 1 and sum(len(cell) for row in kept for cell in row) > SL_TABLE_CHARS:
+            kept.pop()
+        out.append(TABLE_MARK.format(len(tables)))
+        tables.append([(row + [""] * columns)[:columns] for row in kept])
+        if len(kept) < len(rows) or columns < max(len(row) for row in rows):
+            out.append("_The table was too big for one Slack table and was cut short ({} of {} rows)._".format(len(kept) - 1, len(rows) - 1))
+
+    for line in (markdown or "").replace("\r\n", "\n").split("\n"):
+        if line.strip().startswith("```"):
+            flush_table()
+            in_fence = not in_fence
+            out.append("```")
+            continue
+        if in_fence:
+            out.append(line)
+            continue
+        if re.match(r"^\s*\|.*\|\s*$", line):
+            table.append(line)
+            continue
+        flush_table()
+        if re.match(r"^\s*([-*_])(\s*\1){2,}\s*$", line):               # ---, ***, ___
+            out.append(DIVIDER_MARK)
+            continue
+        heading = re.match(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if heading:
+            out.append("*{}*".format(heading.group(1).replace("**", "").replace("*", "")))
+            continue
+        out.append(md_inline(re.sub(r"^(\s*)[-*+]\s+", "\\1• ", line)))
+    flush_table()
+    if in_fence:
+        out.append("```")
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
+def split_sections(text, limit=2900):          # = SL_SECTION, which is defined further down
+    """Pieces under `limit`, cut at blank lines and never inside a code block; a paragraph still too long is cut at line breaks, and a
+    cut code block is closed and reopened so each piece renders on its own."""
+    units, current, in_fence = [], [], False
+    for line in text.split("\n"):
+        if line.count("```") % 2:
+            in_fence = not in_fence
+        current.append(line)
+        if not line.strip() and not in_fence:
+            units.append("\n".join(current).strip())
+            current = []
+    if current:
+        units.append("\n".join(current).strip())
+    pieces = []
+    for unit in filter(None, units):
+        if len(unit) <= limit:
+            pieces.append(unit)
+            continue
+        fenced = unit.startswith("```") and unit.endswith("```")
+        body, chunk = (unit[3:-3] if fenced else unit), ""
+        wrap = "```{}```" if fenced else "{}"
+        for line in body.split("\n"):
+            while len(line) > limit - 10:                               # one enormous line
+                pieces.append(wrap.format(line[:limit - 10]))
+                line = line[limit - 10:]
+            if len(chunk) + len(line) + 1 > limit - 10:
+                pieces.append(wrap.format(chunk.strip("\n")))
+                chunk = ""
+            chunk += line + "\n"
+        if chunk.strip():
+            pieces.append(wrap.format(chunk.strip("\n")))
+    merged = []
+    for piece in pieces:                                                # pack small pieces together
+        if merged and len(merged[-1]) + len(piece) + 2 <= limit:
+            merged[-1] += "\n\n" + piece
+        else:
+            merged.append(piece)
+    return merged
+
+
+def split_title(answer):
+    """(title, rest): a # heading on the answer's first line becomes the card's header. No title when the answer is only that."""
+    match = HEADER_RE.match(answer or "")
+    if not match:
+        return "", answer
+    title = re.sub(r"[*_`~]", "", CELL_LINK.sub(r"\1", match.group(1))).strip()
+    rest = answer[match.end():].strip()
+    return (title, rest) if title and rest else ("", answer)
+
+
+def diagnosis_sections(text):
+    """The answer cut at its bold titles (a line that starts with *Title*): In plain words, Business impact, Root cause, ... A
+    paragraph that opens with a short bold phrase of its own splits too, which is harmless. No titles = one piece."""
+    parts = [p.strip() for p in re.split(r"\n(?=\*[^*\n]{2,70}\*)", text) if p.strip()]
+    return parts or [text]
+
+
+def flat_text(answer, limit=3800):
+    """The answer as plain mrkdwn text: for a notification and for the message that goes out when Slack refuses the blocks."""
+    tables = []
+    text = md_to_mrkdwn(neutralize(split_title(answer)[1]), tables)
+    text = text.replace(DIVIDER_MARK, "――――――")
+    text = TABLE_MARK_RE.sub(lambda m: "```{}```".format("\n".join(" | ".join(r) for r in tables[int(m.group(1))])), text)
+    return clip(text, limit)
+
+
+def feedback_block(block_id):
+    """Thumbs under the answer (the responder has them too). The block id carries the job, so a click is written to its error log row."""
+    return {"type": "context_actions", "block_id": block_id, "elements": [{
+        "type": "feedback_buttons", "action_id": ACT_FEEDBACK,
+        "positive_button": {"text": pt("Helpful analysis", 75), "value": "positive"},
+        "negative_button": {"text": pt("Not helpful", 75), "value": "negative"}}]}
+
+
+def diagnosis_blocks(answer, asker, feedback_id="", max_body=44, max_chars=30000):
+    """The analysis as blocks, the way the responder lays out an answer: a header (the answer's own # title, else "AI diagnosis"),
+    each section of it on its own with a divider between sections (a rule in the text is a divider too), a markdown table as a
+    native table, who asked in a grey context line, and thumbs. One table block per message: later tables are shown as code."""
+    title, rest = split_title(answer)
+    tables = []
+    sections = diagnosis_sections(md_to_mrkdwn(neutralize(rest), tables))
+    body, cut, used_table = [], False, False
+    for section in sections:
+        if body:
+            body.append({"type": "divider"})
+        for part in section.split(DIVIDER_MARK):
+            for n, piece in enumerate(TABLE_MARK_RE.split(part)):          # text, table number, text, ...
+                if n % 2:
+                    rows = tables[int(piece)]
+                    if not used_table:
+                        body.append(native_table(rows))
+                        used_table = True
+                    else:
+                        body.append(sl_section("```{}```".format("\n".join(" | ".join(r) for r in rows))))
+                    continue
+                body += [sl_section(c) for c in split_sections(piece.strip())]
+            body.append({"type": "divider"})
+    out = []
+    for block in body:                                                      # no divider first, last or twice in a row
+        if block["type"] == "divider" and (not out or out[-1]["type"] == "divider"):
+            continue
+        out.append(block)
+    while out and out[-1]["type"] == "divider":
+        out.pop()
+    kept, size = [], 0
+    for block in out:                                                       # Slack: 50 blocks, and a message that is not huge
+        size += len(json.dumps(block, ensure_ascii=False))
+        if len(kept) >= max_body or size > max_chars:
+            cut = True
+            break
+        kept.append(block)
+    out = kept
+    while out and out[-1]["type"] == "divider":
+        out.pop()
+    head = {"type": "header", "text": {"type": "plain_text", "text": clip(AI_ICON + " " + (title or DIAGNOSE_LABEL), 150), "emoji": True}}
+    foot = sl_context("Asked by {} · written by AI from the job and the recipe in Workato · check it before acting on it".format(sx(asker)))
+    blocks = [head] + out
+    if cut:
+        blocks.append(sl_context("_The diagnosis was longer than one Slack message and was cut short._"))
+    blocks.append(foot)
+    if feedback_id:
+        blocks.append(feedback_block(feedback_id))
+    return blocks
+
+
+def genie_flow(inp, cfg, result, warnings, now, deadline):
+    """The second call: put the genie's analysis into the "Diagnosing..." reply (genie_response + the genie_context the first call returned)."""
+    try:
+        ctx = json.loads(text_of(inp.get("genie_context"))) if text_of(inp.get("genie_context")).strip() else {}
+    except ValueError:
+        ctx = {}
+    ctx = ctx if isinstance(ctx, dict) else {}
+    channel, thread_ts, progress_ts = text_of(ctx.get("channel")), text_of(ctx.get("thread_ts")), text_of(ctx.get("progress_ts"))
+    result.update({"channel": channel, "message_ts": thread_ts, "master_job_id": text_of(ctx.get("master")),
+                   "recipe_id": text_of(ctx.get("recipe_id")), "user_id": text_of(ctx.get("user_id")),
+                   "user_name": text_of(ctx.get("user_name")), "action": "call_genie", "handled": True})
+    if not (channel and thread_ts):
+        result["error"] = "genie_context is needed (the genie_context the Diagnose click returned): it says which thread to answer in"
+        return
+    if not cfg["slack_bot_token"]:
+        result["error"] = "no slack_bot_token"
+        return
+    asker = text_of(ctx.get("user_name")).strip() or "someone"
+    answer = genie_text(inp.get("genie_response")).strip()
+    if answer:
+        known = {text_of(ctx.get("recipe_id")): text_of(ctx.get("recipe_name"))} if ctx.get("recipe_id") and ctx.get("recipe_name") else {}
+        answer = name_recipes(answer, cfg, deadline, warnings, known)
+    problem = ""
+    if not answer:
+        problem = clip(genie_text(inp.get("genie_error")) or "the AI came back with nothing", 300)
+        blocks = [sl_section("⚠️ *The diagnosis could not be produced*: {}\nClick *{}* to try again.".format(sx(problem), DIAGNOSE_LABEL)),
+                  sl_context("Asked by {}".format(sx(asker)))]
+        text = "The AI could not produce a diagnosis: " + problem
+    else:
+        job_block = "{}|{}|{}".format(ACTIONS_BLOCK_ID, ctx.get("master"), ctx.get("recipe_id"))[:250] if ctx.get("master") and ctx.get("recipe_id") else ""
+        blocks = diagnosis_blocks(answer, asker, job_block)
+        text = clip("{} {}: {}".format(AI_ICON, DIAGNOSE_LABEL, flat_text(answer)), 3000)
+    plain = clip("{} *{}*\n{}".format(AI_ICON, DIAGNOSE_LABEL, flat_text(answer) if answer else text), 3900)
+
+    def put(method, target):
+        """The diagnosis sent with `method`: as blocks, then without the thumbs, then as plain text. -> (body, error)."""
+        payload = dict(target, text=text, blocks=blocks)
+        body, err = slack_call(cfg, method, payload, deadline)
+        if body is None and "invalid_blocks" in text_of(err) and answer and blocks[-1].get("type") == "context_actions":
+            # the thumbs are the likeliest block a workspace refuses: send the same message without them before giving up on blocks
+            warnings.append("Slack refused the thumbs under the diagnosis ({}); sent without them".format(clip(err, 160)))
+            payload["blocks"] = blocks[:-1]
+            body, err = slack_call(cfg, method, payload, deadline)
+        if body is None and "invalid_blocks" in text_of(err):      # a refused block must not cost the analysis: plain text instead
+            warnings.append("Slack refused the diagnosis blocks ({}); sent as text".format(clip(err, 160)))
+            if method == "chat.update":                            # an edit keeps its old blocks unless it brings new ones
+                body, err = slack_call(cfg, method, dict(target, text=plain, blocks=[sl_section(c) for c in split_sections(plain)[:45]]), deadline)
+            else:
+                body, err = slack_call(cfg, method, dict(target, text=plain), deadline)
+        return body, err
+
+    # user, 2026-11-22: "i dont want to see 'AI diagnosis . ready below' ... just update this message with the diagnosis, store the
+    # thread id": the "Diagnosing..." reply (its ts rode in genie_context from the click) becomes the diagnosis, in the same place. Only
+    # when it cannot be edited (no ts, deleted, an edit refused) is the diagnosis posted as a new reply in the thread.
+    body, err = None, ""
+    if progress_ts:
+        body, err = put("chat.update", {"channel": channel, "ts": progress_ts})
+        if body is None:
+            warnings.append("the Diagnosing reply was not updated ({}); posted the diagnosis as a new reply".format(clip(err, 160)))
+    if body is None:
+        body, err = put("chat.postMessage", {"channel": channel, "thread_ts": thread_ts, "unfurl_links": False})
+    result["genie_posted"] = body is not None
+    if body is None:
+        result["error"] = "the diagnosis was not posted: " + clip(err, 300)
+        return
+    if problem:
+        result["error"] = "no diagnosis: " + problem
+    result["result"] = "AI diagnosis posted" if answer else "AI diagnosis failed"
+    if cfg["workato_api_token"] and ctx.get("master"):               # the Action Log keeps who asked, and that it was answered
+        click = {"channel": channel, "message_ts": thread_ts, "thread_ts": thread_ts, "message": {}, "value": "", "block_id": "",
+                 "action_id": ACT_GENIE, "selected_user": "", "user_id": text_of(ctx.get("user_id")), "user_name": asker}
+        job = {"master": text_of(ctx.get("master")), "recipe_id": text_of(ctx.get("recipe_id")), "job_id": text_of(ctx.get("job_id")),
+               "recipe_name": text_of(ctx.get("recipe_name")), "environment": "", "priority": "", "signature": "", "table": ""}
+        user = {"id": text_of(ctx.get("user_id")), "name": asker, "email": "", "note": ""}
+        run = Run(cfg, click, job, user, now, result, warnings, deadline)
+        run.load_row()
+        run.write(common_fields(user, now, "Diagnose", result["result"], run.stored))
 
 
 HANDLERS = {"reprocess": do_reprocess, "acknowledge": do_acknowledge, "resolve": do_resolve, "assign": do_assign,
-            "feedback": do_feedback, "check": do_check}
+            "feedback": do_feedback, "check": do_check, "call_genie": do_diagnose}
 
 
 # ================================================================================================ POST: the alert
@@ -1062,11 +1730,47 @@ HANDLERS = {"reprocess": do_reprocess, "acknowledge": do_acknowledge, "resolve":
 # fallback_canary (a test block for clients).
 
 SLACK_FEATURES = ("headers", "bar", "grid", "cards", "panels", "datatables", "tables", "rich", "feedback",
-                  "chips", "tiles", "adaptive", "charts", "markdown")
-DEFAULT_FEATURES = ("headers", "bar", "grid", "cards", "panels", "datatables", "tables", "rich", "feedback")
+                  "chips", "tiles", "adaptive", "charts", "markdown", "dividers", "flow", "headline", "professional", "status_last", "footer", "card_icons",
+                  "flow_icons", "clock_icon", "records_after_error", "meta_context")
+# bar IS back in the default set (user, 2026-11-21: "bring this format back, let the show more button be visible"): one red
+# attachment reading as an error at a glance. grid is NOT default alongside it: Slack refuses the grid's layout block outright
+# inside an attachment ("Block type is not supported in this container"), every time, so asking for both would only cost a
+# wasted retry before landing on the same plain-section cards anyway -- those cards may fold behind "Show more" inside an
+# attachment (confirmed live: a section's expand is not honoured there), which is accepted rather than fought. +grid is still
+# there to ask for outside the bar (-bar +grid, or slack_look = full, which never uses either).
+# dividers and flow (user, 2026-11-21: "add divider before error, after error and take it ... add a section telling the source,
+# workato and target ... cross for failed system") are on by default and are the short look's only; Slack never refuses either
+# (a divider and a context block are the oldest blocks there are), so neither is in SL_PEEL. "-dividers -flow" is the short look
+# exactly as it was before them (a test pins that), so the old layout stays one input away.
+# headline (user, 2026-11-22: "put the headline in context"): the one-sentence headline under the title is a small grey context block
+# and the retry / time / environment line below it a section of its own; "-headline" is the old bold section holding both.
+# status_last (user, 2026-11-22: "keep the old formatting only, just bring the status section after What to do next"): the status
+# (the "AI diagnosis requested" line, the "Open" line and Take it) sits after What happened / Impact / What to do next and the
+# buttons, with a divider on each side, instead of between the flow and What happened. The wording and every emoji are the old ones.
+# "-status_last" puts it back in the middle.
+# card_icons (user, 2026-11-22: "remove emojis from this section: What happened · Formula / data shape ... Impact"): the megaphone on What
+# happened, the category's icon beside its name (the abacus) and the chart on Impact are off by default; "+card_icons" brings them back.
+# What to do next keeps its tick (the user did not name it); +professional drops that one too.
+# flow_icons and clock_icon (user, 2026-11-22: "remove emojis from this section: Where it broke ... also remove the emoji clock", then "that
+# green tick and cross was good"): the compass and the icons on the line under the three systems are off by default (that line says
+# "Source object: ... Target object: ..." instead); "+flow_icons" brings them back, and also gives a box with no verdict its icon. The
+# tick, cross and white dot on the systems are NOT behind it: they stay in every look. The alarm clock before the time in the meta line
+# is off by default; "+clock_icon" brings it back.
+# footer (user, 2026-11-22: "remove this part: Full details are in the email to ... · #signature"): the last line of the short look is
+# off by default; "+footer" brings it back. (The signature is still in the technical details of the full look and in the email.)
+# records_after_error (user, 2026-11-22: "failed record section should come after error section"): the failed records table sits right
+# under the Error section, before Where it broke, instead of at the very bottom. "-records_after_error" puts it back at the bottom.
+# meta_context (user, 2026-11-23: "bring this section as context: Will not auto retry · 21 Nov · 8:52 PM PST · DEVELOPMENT"): the
+# retry / time / environment line under the headline is a small grey context block, not a section. It only applies with headline on
+# (-headline keeps the old bold section holding both). "-meta_context" puts it back as a section.
+# professional (user, 2026-11-22, then set aside the same day): summary first and details after, the status with Take it right
+# under the title, no decorative emojis, the time in each reader's own time zone. It is still here and is OFF by default:
+# "+professional" asks for it.
+DEFAULT_FEATURES = ("headers", "bar", "cards", "panels", "datatables", "tables", "rich", "feedback", "dividers", "flow", "headline",
+                    "status_last", "records_after_error", "meta_context")
 BAR_COLOR = "#DC2626"         # the short look sits in one attachment with a red bar: it reads as an error at a glance
 LAST_SENT = {}                # the last message posted (for the command line preview)
-SLACK_BUTTONS = ("reprocess", "acknowledge", "resolve", "assign")
+SLACK_BUTTONS = ("reprocess", "acknowledge", "resolve", "assign", "diagnose")
 SL_HEADER, SL_SECTION, SL_FIELD, SL_BUTTON = 150, 2900, 1900, 75
 SL_CARD_TEXT, SL_CARD_BODY, SL_CAROUSEL = 150, 200, 10
 SL_TABLE_ROWS, SL_TABLE_COLS, SL_TABLE_CHARS, SL_CELL = 100, 20, 9000, 280
@@ -1163,6 +1867,17 @@ def mrk(text):
 
 def pt(text, limit=SL_BUTTON):
     return {"type": "plain_text", "text": clip(text_of(text), limit) or " ", "emoji": True}
+
+
+EMOJI_LEAD_RE = re.compile("^[\U0001F000-\U0001FFFF←-⯿️‍]+\\s*")
+
+
+def strip_lead_emoji(text):
+    """A container's title bar shows a leading emoji as the literal ':name:' text instead of the glyph (confirmed live,
+    2026-11-21: 'What happened' showed as ':mega: What happened'); its subtitle and its buttons render the same emoji fine, so
+    only a title built for that bar has its leading icon taken off."""
+    text = text_of(text)
+    return EMOJI_LEAD_RE.sub("", text).strip() or text
 
 
 def sl_section(text, limit=SL_SECTION, expand=True, **extra):
@@ -1337,8 +2052,8 @@ def b_top(f, look, cfg):
     return [(0, {"type": "context", "block_id": look.bid("brand"), "elements": brand[:10]}), (0, head), (0, status)]
 
 
-def status_open():
-    return "🆕 *Open*  ·  nobody has picked this up yet"
+def status_open(pro=False):
+    return "*Open*  ·  Nobody has taken this yet" if pro else "🆕 *Open*  ·  nobody has picked this up yet"
 
 
 def status_block(f, look):
@@ -1346,9 +2061,10 @@ def status_block(f, look):
     "🙋 @name is looking into it" here instead (error_click), so everyone sees who has it. Otherwise a plain line."""
     master = g(f, "master") or g(f, "job_handle")
     if look.has("acknowledge") and master and g(f, "recipe_id"):
-        return {"type": "section", "block_id": STATUS_BLOCK_ID, "text": mrk(status_open()), "expand": True,
-                "accessory": {"type": "button", "text": pt("🙋 Take it"), "action_id": ACT_ACK, "value": button_context(f)}}
-    return {"type": "context", "block_id": STATUS_BLOCK_ID, "elements": [mrk(status_open())]}
+        return {"type": "section", "block_id": STATUS_BLOCK_ID, "text": mrk(status_open(look.on("professional"))), "expand": True,
+                "accessory": {"type": "button", "text": pt("Take it" if look.on("professional") else "🙋 Take it"),
+                              "action_id": ACT_ACK, "value": button_context(f)}}
+    return {"type": "context", "block_id": STATUS_BLOCK_ID, "elements": [mrk(status_open(look.on("professional")))]}
 
 
 def pills_line(f, cfg, chips=False):
@@ -1716,7 +2432,8 @@ def b_actions(f, look, cfg):
             note = ("The analysis says a re-run should work." if likely else
                     "The AI advised against a re-run: fix the cause first." if g(dec, "source") in ("ai", "ai+rules") else
                     "It was not retried automatically: make sure the cause is fixed.")
-            button = {"type": "button", "text": pt("♻️ Reprocess"), "action_id": ACT_REPROCESS, "value": value,
+            pro = look.on("professional")
+            button = {"type": "button", "text": pt("Reprocess" if pro else "♻️ Reprocess"), "action_id": ACT_REPROCESS, "value": value,
                       "confirm": {"title": pt("Reprocess this job?", 100),
                                   "text": mrk(clip("This repeats master job `{}` of *{}* through the Workato API. {}".format(
                                       sx(master), sx(clip(g(f, "recipe_name"), 80)), note), 300)),
@@ -1725,11 +2442,16 @@ def b_actions(f, look, cfg):
                 button["style"] = "primary"
             elements.append(button)
         if look.has("resolve"):
-            elements.append({"type": "button", "text": pt("✅ Mark resolved"), "action_id": ACT_RESOLVE, "value": value,
+            elements.append({"type": "button", "text": pt("Mark resolved" if look.on("professional") else "✅ Mark resolved"),
+                             "action_id": ACT_RESOLVE, "value": value,
                              "confirm": {"title": pt("Mark as resolved?", 100), "text": mrk("This records that the error has been dealt with."),
                                          "confirm": pt("Yes, resolved", 30), "deny": pt("Cancel", 30)}})
+        if look.has("diagnose"):      # read-only: it asks the AI to explain the failure, so it stays after a resolve and a reprocess
+            elements.append({"type": "button", "text": pt(DIAGNOSE_LABEL if look.on("professional") else "{} {}".format(AI_ICON, DIAGNOSE_LABEL)),
+                             "action_id": ACT_GENIE, "value": value})
         if look.has("assign"):
-            elements.append({"type": "users_select", "action_id": ACT_ASSIGN, "placeholder": pt("🙋 Assign to…", 150)})
+            elements.append({"type": "users_select", "action_id": ACT_ASSIGN,
+                             "placeholder": pt("Assign to…" if look.on("professional") else "🙋 Assign to…", 150)})
         if elements:      # the block id carries the job, because a users_select has no value to carry it
             out.append((0, {"type": "actions", "block_id": "{}|{}|{}".format(ACTIONS_BLOCK_ID, master, g(f, "recipe_id"))[:250],
                             "elements": elements}))
@@ -1889,8 +2611,10 @@ def short_cards(f, look, cfg):
 
     what = g(story, "functional") or g(f, "headline") or clip(g(f, "error_plain"), 200)
     what_body, what_raw = body_of(mask(cfg, what) or "The recipe stopped with an error.")
-    first = {"type": "card", "block_id": look.bid("card"), "title": mrk("📣 *What happened*"),
-             "subtitle": mrk(clip("{} {}".format(g(cat, "icon"), g(cat, "label")).strip() or "Recipe error", SL_CARD_TEXT)),
+    pro = look.on("professional")                       # no emoji in any title; the category is its words only
+    plain = pro or not look.on("card_icons")            # What happened and Impact: words only unless +card_icons asks for the icons
+    first = {"type": "card", "block_id": look.bid("card"), "title": mrk("*What happened*" if plain else "📣 *What happened*"),
+             "subtitle": mrk(clip((g(cat, "label") if plain else "{} {}".format(g(cat, "icon"), g(cat, "label"))).strip() or "Recipe error", SL_CARD_TEXT)),
              "body": what_body, "raw_body": what_raw, "actions": link("View job", True)}
     often = ("{}× in the last 7 days".format(h["week_total"]) if h.get("week_total", 0) >= 2 else
              "{} time in {} days".format(ordinal(h["occurrence"]), h["days"]) if h.get("same") else
@@ -1899,13 +2623,12 @@ def short_cards(f, look, cfg):
     if g(f, "rate_text"):
         impact_raw += " {} of the run went through.".format(f["rate_text"])
     impact_body, impact_raw = body_of(impact_raw)
-    second = {"type": "card", "block_id": look.bid("card"), "title": mrk("📉 *Impact*"),
+    second = {"type": "card", "block_id": look.bid("card"), "title": mrk("*Impact*" if plain else "📉 *Impact*"),
               "subtitle": mrk(clip(often or (g(f, "target") and "Target: " + g(f, "target")) or "This run", SL_CARD_TEXT)),
               "body": impact_body, "raw_body": impact_raw, "actions": link("Error file") or link("Open recipe")}
     steps = g(story, "steps", [])
     next_body, next_raw = body_of(numbered_raw(steps, 2, 90) if steps else clip(g(retry, "detail"), 200) or "Look at the job in Workato.")
-    third = {"type": "card", "title": mrk("✅ *What to do next*"),
-             "subtitle": mrk(clip("{} {}".format(g(retry, "icon"), g(retry, "head")).strip() or "Needs a person", SL_CARD_TEXT)),
+    third = {"type": "card", "title": mrk("*What to do next*" if pro else "✅ *What to do next*"), "subtitle": mrk(""),  # the retry verdict is already in the top line
              "body": next_body, "raw_body": next_raw}
     buttons = [e for _, block in b_actions(f, look, cfg) if block.get("block_id", "").startswith(ACTIONS_BLOCK_ID)
                for e in block["elements"] if e["type"] == "button"][:3]
@@ -1948,12 +2671,51 @@ def error_block(f, look, cfg):
         return None
     codes = "  ".join("{}{}".format(c, " ×{}".format(n) if n > 1 else "") for c, n in g(f, "codes", [])[:3])
     if look.on("rich"):
-        label = [{"type": "emoji", "name": "rotating_light"}, {"type": "text", "text": " Error", "style": {"bold": True}}]
+        label = ([{"type": "text", "text": "Error", "style": {"bold": True}}] if look.on("professional") else
+                 [{"type": "emoji", "name": "rotating_light"}, {"type": "text", "text": " Error", "style": {"bold": True}}])
         if codes:
             label += [{"type": "text", "text": "   "}, {"type": "text", "text": codes, "style": {"code": True}}]
         return {"type": "rich_text", "block_id": look.bid("error"), "elements": [
             {"type": "rich_text_section", "elements": label}, preformatted(text, 900)]}
-    return sl_section("🚨 *Error*{}\n```{}```".format("   `" + codes + "`" if codes else "", text.replace("```", "\'\'\'")))
+    return sl_section("{}*Error*{}\n```{}```".format("" if look.on("professional") else "🚨 ", "   `" + codes + "`" if codes else "",
+                                                     text.replace("```", "\'\'\'")))
+
+
+FLOW_ORDER = ("source", "workato", "target")
+FLOW_IDLE = {"source": "📤", "workato": "⚙️", "target": "📥"}      # no verdict to give: just what each box is
+FLOW_OK, FLOW_FAILED, FLOW_UNREACHED = "✅", "❌", "⚪"
+
+
+def flow_block(f, look, cfg):
+    """'Where it broke' (the card of the full look, drawn for the short one) as a small grey context block: the source, Workato and
+    the target as one line, with a mark in front of each -- a cross on the system that failed, a tick on those before it (they did
+    their part), a white dot on those after it (never reached, so nothing can be said about them) -- then, in the same grey, what
+    each was doing: the source object, the failed step, the target object. No legend line: the marks speak for themselves (user,
+    2026-11-21: "remove this, no need this legend"). Which system failed is the notifier's `failing`; when it
+    says nothing the boxes get no verdict, only an icon. Without a source and a target there is nothing to draw: None."""
+    source, target = text_of(g(f, "source")).strip(), text_of(g(f, "target")).strip()
+    if not (source or target):
+        return None
+    failing = g(f, "failing")
+    names = {"source": source or "Source system", "workato": "Workato", "target": target or "Target system"}
+    at = FLOW_ORDER.index(failing) if failing in FLOW_ORDER else -1
+    pro = look.on("professional")
+    icons = look.on("flow_icons") and not pro          # the decorative ones: the compass, an icon per box, an icon per detail
+    nodes = []
+    for i, key in enumerate(FLOW_ORDER):
+        # The tick, cross and white dot always stay (user, 2026-11-22: "that green tick and cross was good"): they say which system
+        # failed. Only the icons that merely decorate (a box with no verdict, the compass, the detail line's) come with +flow_icons.
+        mark = (FLOW_IDLE[key] if icons else "") if at < 0 else FLOW_OK if i < at else FLOW_FAILED if i == at else FLOW_UNREACHED
+        name = sx(clip(names[key].replace("*", ""), 60))
+        nodes.append("{} {}".format(mark, "*{}*".format(name) if i == at else name).strip())
+    step = "Step " + text_of(g(f, "step")).strip() if text_of(g(f, "step")).strip() else ""
+    action = " › ".join(text_of(x).strip() for x in (g(f, "errored_app"), g(f, "errored_action")) if text_of(x).strip()) \
+        or text_of(g(f, "step_title")).strip()
+    doing = (("📤" if icons else "Source object:", g(f, "source_obj")), ("🔧" if icons else "", " · ".join(x for x in (step, action) if x)),
+             ("📥" if icons else "Target object:", g(f, "target_obj")))
+    detail = "   ·   ".join("{} {}".format(icon, sx(clip(mask(cfg, text), 70))).strip() for icon, text in doing if text_of(text).strip())
+    lines = ["🧭 *Where it broke*" if icons else "*Where it broke*", "   ➜   ".join(nodes)] + ([detail] if detail else [])
+    return {"type": "context", "block_id": look.bid("flow"), "elements": [mrk("\n".join(lines))]}
 
 
 def grid_block(f, look, cfg):
@@ -1977,8 +2739,12 @@ def grid_block(f, look, cfg):
         kids = [body_block]
         if buttons:
             kids.append({"type": "actions", "block_id": block_id or look.bid(kind + "_buttons"), "elements": buttons[:4]})
-        return {"type": "container", "block_id": look.bid(kind), "title": pt(re.sub(r"[*_]", "", card["title"]["text"]), 150),
-                "subtitle": pt(re.sub(r"[*_`]", "", card["subtitle"]["text"]), 150), "child_blocks": kids}
+        title_text = strip_lead_emoji(re.sub(r"[*_]", "", card["title"]["text"]))
+        block = {"type": "container", "block_id": look.bid(kind), "title": pt(title_text, 150), "child_blocks": kids}
+        sub = re.sub(r"[*_`]", "", card["subtitle"]["text"]).strip()
+        if sub:
+            block["subtitle"] = pt(sub, 150)
+        return block
 
     actions = [a for a in nxt.get("actions", []) if "url" not in a]
     first = [{"block": box(what, "what"), "width": "standard"}, {"block": box(impact, "impact"), "width": "standard"}]
@@ -1993,40 +2759,133 @@ def grid_block(f, look, cfg):
 
 
 def build_slack_short(f, look, cfg):
-    """The short look (the default): the title, one business line, the 2 x 2 grid of boxes with their buttons, one footer line.
-    Nothing technical: the email has it. No carousel anywhere: without the grid (refused, or switched off) the same four come as
-    plain sections with one row of buttons."""
+    """The short look (the default). With `+professional` (off by default) it reads summary first, details after, and a divider
+    between the parts:
+        title, one grey headline, a meta line (retry verdict, time in each reader's own time zone, environment)
+        status with Take it
+        ---  What happened / Impact / What to do next (plain sections, or the 2 x 2 grid), the buttons
+        ---  where it broke: source, Workato and target, a cross on the one that failed (feature flow)
+        ---  the error, in a code block
+        ---  the failed records as a table
+        and, only with +footer, one footer line.
+    Without `professional` it is the layout as it was, with the old emojis: the meta line, the error, the failed records (feature
+    records_after_error; without it they close the message), the flow, then the three
+    sections and the buttons, then the status with Take it (feature status_last; without it the status sits between the flow and
+    the three sections as it used to). Dividers, flow and headline still apply. Nothing technical beyond that: the email has it. No carousel anywhere: without the
+    grid (refused, or switched off) the same come as plain sections with one row of buttons."""
+    pro = look.on("professional")
     sev, retry = g(f, "sev", {}), g(f, "retry", {})
-    blocks = [b for _, b in b_top(f, look, cfg)]
-    blocks.pop(0)                                                      # no logo row: every line counts
-    team, env = g(f, "team", {}), g(f, "env").upper()
+    top = [b for _, b in b_top(f, look, cfg)]
+    top.pop(0)                                                         # no logo row: every line counts
+    title, status = top[0], top[-1]
+    blocks = [title]
+
+    def rule():
+        """A divider between two sections: never two in a row, and none until something is above it."""
+        if look.on("dividers") and len(blocks) > 1 and blocks[-1].get("type") != "divider":
+            blocks.append({"type": "divider", "block_id": look.bid("divider")})
+
+    team, env = g(f, "team", {}), g(f, "env")
     mention = cfg["slack_mention"] if g(sev, "label") in ("Critical", "High") else ""
     h = g(f, "history") or {}
-    often = "🔁 {}× in 7 days".format(h["week_total"]) if h.get("week_total", 0) >= 2 else ""
-    line = "  ·  ".join(x for x in ("{} *{}*".format(g(retry, "icon"), sx(g(retry, "head"))) if retry else "", often,
-                                     "⏰ " + sx(g(f, "error_time")) if g(f, "error_time") else "", env, mention) if x)
+    if pro:
+        # the time is drawn in each reader's own time zone (a global audience); without a time the notifier's own text is used
+        when = parse_when(f.get("now"))
+        when_text = slack_when(when) if when else sx(g(f, "error_time"))
+        often = "{}× in 7 days".format(h["week_total"]) if h.get("week_total", 0) >= 2 else ""
+        line = "  ·  ".join(x for x in ("*{}*".format(sx(g(retry, "head"))) if g(retry, "head") else "", often, when_text, sx(env), mention) if x)
+    else:
+        often = "🔁 {}× in 7 days".format(h["week_total"]) if h.get("week_total", 0) >= 2 else ""
+        line = "  ·  ".join(x for x in ("{} *{}*".format(g(retry, "icon"), sx(g(retry, "head"))) if retry else "", often,
+                                         ("⏰ " if look.on("clock_icon") else "") + sx(g(f, "error_time")) if g(f, "error_time") else "",
+                                         env.upper(), mention) if x)
     headline = g(f, "headline") or clip(g(f, "error_plain"), 200)
-    text = "*{}*".format(sx(clip(mask(cfg, headline), 280)))
-    blocks.insert(1, sl_section(text + ("\n" + line if line else "")))
+    said = sx(clip(mask(cfg, headline), 280))
+    heading = []
+    if look.on("headline") and said.strip():
+        heading.append({"type": "context", "block_id": look.bid("headline"), "elements": [mrk(said)]})
+        if line and look.on("meta_context"):                           # small grey text, like the headline above it
+            heading.append({"type": "context", "block_id": look.bid("meta"), "elements": [mrk(clip(line, 2900))]})
+        elif line:
+            heading.append(sl_section(line))
+    else:
+        heading.append(sl_section("*{}*".format(said) + ("\n" + line if line else "")))
     error = error_block(f, look, cfg)
-    if error:
-        blocks.insert(2, error)                                         # the error itself, outside the cards
+    flow = flow_block(f, look, cfg) if look.on("flow") else None
     cards = short_cards(f, look, cfg)
+    summary = []                                                       # What happened / Impact / What to do next, and the buttons
     if look.on("grid"):
-        blocks.append(grid_block(f, look, cfg))
+        summary.append(grid_block(f, look, cfg))
     else:                                                              # refused or switched off: plain sections, never a carousel
         for card in cards:
-            blocks.append(sl_section("{}  ·  _{}_\n{}".format(card["title"]["text"], card["subtitle"]["text"], card["body"]["text"])))
+            sub = card["subtitle"]["text"].strip()
+            head = "{}  ·  _{}_".format(card["title"]["text"], sub) if sub else card["title"]["text"]
+            summary.append(sl_section("{}\n{}".format(head, card["body"]["text"])))
         buttons = [e for c in cards for e in c.get("actions", [])][:6]
         if buttons:
-            blocks.append({"type": "actions", "block_id": "{}|{}|{}".format(ACTIONS_BLOCK_ID, g(f, "master") or g(f, "job_handle"),
-                                                                           g(f, "recipe_id"))[:250], "elements": buttons})
+            summary.append({"type": "actions", "block_id": "{}|{}|{}".format(ACTIONS_BLOCK_ID, g(f, "master") or g(f, "job_handle"),
+                                                                            g(f, "recipe_id"))[:250], "elements": buttons})
+    table = []
     if g(f, "cols") and g(f, "rows") and (look.on("datatables") or look.on("tables")):
         # the failed records as a table with page navigation: short however many rows there are
         table = [b for _, b in b_records(f, look.without(["panels"]), cfg) if b["type"] != "section"]
-        blocks.extend(table)
-    blocks.append(sl_context("Full details are in the email{}  ·  `#{}`".format(
-        " to " + sx(g(team, "name")) if g(team, "name") else "", g(f, "signature"))))
+    records_up = look.on("records_after_error")
+    footer = sl_context("Full details are in the email{}  ·  `#{}`".format(
+        " to " + sx(g(team, "name")) if g(team, "name") else "", g(f, "signature")))
+
+    if pro:
+        blocks += heading
+        blocks.append(status)                                           # who has it, right under the title
+        rule()
+        blocks += summary
+        technical = [x for x in (flow, error) if x]
+        if technical or table:
+            rule()
+        for number, block in enumerate(technical):
+            if number:
+                rule()
+            blocks.append(block)
+        if table:
+            if technical:
+                rule()
+            blocks.extend(table)
+    elif look.on("status_last"):
+        blocks += heading
+        if error:
+            rule()
+            blocks.append(error)                                        # the error itself, outside the cards
+        if table and records_up:
+            rule()
+            blocks.extend(table)                                        # the failed records, right under the error
+        if flow:
+            rule()
+            blocks.append(flow)
+        rule()
+        blocks += summary                                               # What happened / Impact / What to do next, the buttons
+        rule()
+        blocks.append(status)                                           # then who has it, with Take it
+        if table and not records_up:
+            rule()
+            blocks.extend(table)
+    else:
+        blocks += heading
+        if error:
+            rule()
+            blocks.append(error)                                        # the error itself, outside the cards
+        if table and records_up:
+            rule()
+            blocks.extend(table)                                        # the failed records, right under the error
+        if flow:
+            rule()
+            blocks.append(flow)
+        rule()
+        blocks.append(status)                                           # Take it
+        rule()
+        blocks += summary
+        if table and not records_up:
+            blocks.extend(table)
+    if look.on("footer"):
+        blocks.append(footer)
     return blocks, slack_text(f, cfg)
 
 
@@ -2264,6 +3123,16 @@ def click_flow(inp, cfg, result, warnings, now, deadline):
         return
     result["action"] = name
 
+    # Someone not on the Who may reprocess list: say so with a pop-up and an Okay button. This comes before the user lookup and the
+    # error log read on purpose: the pop-up's trigger_id expires ~3 seconds after the click and those calls are slow.
+    if name == "reprocess" and not_allowed_to_reprocess(cfg, click["user_id"]):
+        who = {"id": click["user_id"], "name": click["user_name"] or click["user_id"], "email": "", "note": ""}
+        early = Run(cfg, click, {"master": "", "recipe_id": "", "job_id": "", "recipe_name": "", "environment": "",
+                                 "priority": "", "signature": "", "table": ""}, who, now, result, warnings, deadline)
+        result.update({"refused": "not allowed", "result": NO_REPROCESS_RIGHT, "handled": True, "ok": True, "user_name": who["name"]})
+        early.popup("Reprocess", NO_REPROCESS_RIGHT)
+        return
+
     job = job_context(click)
     if job.get("table"):
         cfg["data_table_id"] = job["table"]
@@ -2291,10 +3160,14 @@ def click_flow(inp, cfg, result, warnings, now, deadline):
 
 def detect_mode(inp, cfg):
     forced = text_of(inp.get("mode")).strip().lower()
-    if forced in ("post", "click"):
+    if forced in ("post", "click", "genie"):
         return forced
+    if text_of(inp.get("genie_response")).strip() or text_of(inp.get("genie_error")).strip():
+        return "genie"                                        # the second call of Diagnose with AI: the genie has answered
     if text_of(inp.get("payload")).strip() or text_of(inp.get("action_id")).strip():
         return "click"
+    if text_of(inp.get("genie_context")).strip():
+        return "genie"
     if cfg["slack_channel_id"] or text_of(inp.get("alert_json")).strip():
         return "post"
     return ""
@@ -2320,6 +3193,9 @@ def main(input):
         result["mode"] = detect_mode(inp, cfg)
         if result["mode"] == "click":
             click_flow(inp, cfg, result, warnings, now, deadline)
+        elif result["mode"] == "genie":
+            genie_flow(inp, cfg, result, warnings, now, deadline)
+            result["ok"] = not result["error"]
         elif result["mode"] == "post":
             if not cfg["slack_channel_id"]:
                 result["error"] = "slack_channel_id is required to post"

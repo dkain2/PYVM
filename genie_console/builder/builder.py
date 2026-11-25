@@ -108,6 +108,11 @@ STATE
     base's id and name (put there by the kb step, before Integra starts).
 
 DESIGN NOTES
+    * env (dev | prod, blank = dev) picks which genie_console table is read and written:
+      DEV_TABLE_ID or PROD_TABLE_ID (same columns in both; see resolve_table_id). Blank is the
+      table this step has always used, so an existing recipe needs no change -- a production
+      recipe must set env = prod explicitly. table_id, if set, overrides env entirely (e.g. for
+      a one-off sandbox copy).
     * Column UUIDs appear exactly once, in COLUMNS. None = not in the table yet.
     * Personas are data (PERSONAS); add one by adding an entry.
     * Asset lists are stored as compact JSON [{"id":..,"name":..}] so the master
@@ -133,6 +138,10 @@ OPTIONAL INPUTS FOR THE LOOK (add them to the function recipe's input schema; bl
                                       Slack refusing a look falls back to the next plainer one and
                                       says why in warnings. Persona carousel: refused -> dropdown.
     "No skills" is offered on the details step and again when the skills are listed to pick from.
+    analyst_skill_always   on | off, blank = off   on: the shared analyst skill is attached to
+                                      every genie even when "No skills" was picked (that then
+                                      means no project-specific lookup skills, not literally none).
+                                      off: the old behaviour.
 
 Input and output schemas: genie_console_input_schema.json /
 genie_console_output_schema.json
@@ -151,11 +160,40 @@ from datetime import datetime, timezone
 # Endpoints
 # --------------------------------------------------------------------------
 
-TABLE_ID = "6d53d2dd-c00d-4130-aa1c-b0cbfdcc484c"            # genie_console
-TABLE_QUERY_URL = "https://data-tables.workato.com/api/v1/tables/{}/query".format(TABLE_ID)
-TABLE_RECORDS_URL = "https://data-tables.workato.com/api/v1/tables/{}/records".format(TABLE_ID)
-TABLE_RECORD_URL = TABLE_RECORDS_URL + "/{}"
-TABLE_SCHEMA_URL = "https://www.workato.com/api/data_tables/{}".format(TABLE_ID)
+# Same genie_console table, two copies: every column's field_id is identical between them (checked
+# against dev_data_table.json / production_data_table.json), only the table itself differs.
+DEV_TABLE_ID = "6d53d2dd-c00d-4130-aa1c-b0cbfdcc484c"        # genie_console, dev
+PROD_TABLE_ID = "0f600474-b13e-46d8-b9c2-6429483ea212"       # genie_console, production
+DEFAULT_TABLE_ID = DEV_TABLE_ID      # Table() / resolve_columns()'s own default when table_id
+                                     # is left out entirely (not through resolve_table_id)
+ENV_MODES = ("dev", "prod")
+ENV_DEFAULT = "dev"                 # blank env = dev: the table this step has always used
+
+TABLE_QUERY_URL = "https://data-tables.workato.com/api/v1/tables/{}/query"      # + table_id
+TABLE_RECORDS_URL = "https://data-tables.workato.com/api/v1/tables/{}/records"  # + table_id
+TABLE_RECORD_URL = TABLE_RECORDS_URL + "/{}"                 # + table_id, record_id
+TABLE_SCHEMA_URL = "https://www.workato.com/api/data_tables/{}"                 # + table_id
+
+
+def env_mode(value):
+    """"dev" or "prod": the `env` input, blank = ENV_DEFAULT. "production" is accepted as a
+    synonym for "prod", since that is how the table is labelled in Workato."""
+    value = str(value or "").strip().lower()
+    if value == "production":
+        value = "prod"
+    return value if value in ENV_MODES else ENV_DEFAULT
+
+
+def resolve_table_id(input):
+    """The genie_console table this call reads and writes. An explicit table_id input always
+    wins (e.g. to point at a one-off sandbox copy); otherwise env (dev | prod, blank = dev) picks
+    DEV_TABLE_ID or PROD_TABLE_ID. Blank env and blank table_id is DEV_TABLE_ID, the table this
+    step has always used, so an existing recipe needs no change -- a production recipe must set
+    env = prod (or pass PROD_TABLE_ID as table_id) explicitly."""
+    explicit = str(input.get("table_id") or "").strip()
+    if explicit:
+        return explicit
+    return PROD_TABLE_ID if env_mode(input.get("env")) == "prod" else DEV_TABLE_ID
 
 WORKATO_API = "https://www.workato.com/api"
 PROJECTS_URL = WORKATO_API + "/projects?page={}&per_page=100"
@@ -179,6 +217,17 @@ CONNECTIONS_URL = WORKATO_API + "/connections?page={}&per_page=100"
 FOLDERS_URL = WORKATO_API + "/folders"                 # ...nor a create-folder tool
 RECIPE_URL = WORKATO_API + "/recipes/{}?exclude_code=yes"   # + &version_no=N for an older version
 GENIE_FOLDER_NAME = "Genie - {}"                       # where Integra puts a genie + its skills
+# What forge_folder_id means. inside (blank = inside): it is the PARENT, and each genie gets its own
+# "Genie - <name>" folder in it (made once, reused on a retry), with the genie, its skills and its
+# knowledge base in that. shared: the old behaviour, forge_folder_id is the one folder every genie is
+# built in, nothing is created and its running recipes are not stopped.
+FOLDER_MODES = ("inside", "shared")
+FOLDER_MODE_DEFAULT = "inside"
+
+
+def folder_mode(value):
+    value = str(value or "").strip().lower()
+    return value if value in FOLDER_MODES else FOLDER_MODE_DEFAULT
 # The shared skill every genie gets: hands recipe / job / table questions to the
 # master genie (which has AIRO MCP). Its handle comes in as analyst_skill_handle.
 ANALYST_SKILL_NAME = "Workato · Ask integration analyst"
@@ -371,6 +420,12 @@ MANAGE_KB_ADD = MANAGE_KB_DEFAULT == "on"
 LIFECYCLE_MODES = ("on", "off")
 LIFECYCLE_DEFAULT = "on"
 MANAGE_LIFECYCLE = LIFECYCLE_DEFAULT == "on"
+# The `analyst_skill_always` input (on | off, blank = ANALYST_SKILL_ALWAYS_DEFAULT): on attaches the
+# shared analyst skill to every genie Integra builds even when the person picked "No skills" on the
+# details step -- "No skills" then means no project-specific lookup skills, not literally none. Off
+# is the old behaviour ("No skills" means none, the shared skill included).
+ANALYST_SKILL_ALWAYS_MODES = ("on", "off")
+ANALYST_SKILL_ALWAYS_DEFAULT = "off"
 MANAGE_VIEWER = ""
 # Not buttons: the daily sync recipe asks for the genies to visit, then once per genie.
 ACTION_KB_SYNC_LIST = "kb_sync_list"    # -> sync_keys: [{record_key}], the genies that have a knowledge base
@@ -494,13 +549,13 @@ def to_column(value):
 # Data table
 # --------------------------------------------------------------------------
 
-def resolve_columns(token, warnings):
+def resolve_columns(token, warnings, table_id=DEFAULT_TABLE_ID):
     """Fill in any COLUMNS entry left as None from the table's live schema, by
     column name -- so a column added to the table works without a code change."""
     missing = [name for name, uuid in COLUMNS.items() if not uuid]
     if not missing or not token:
         return
-    body, error = _request(TABLE_SCHEMA_URL, _workato_headers(token))
+    body, error = _request(TABLE_SCHEMA_URL.format(table_id), _workato_headers(token))
     if error:
         warnings.append("table schema: " + error)
         return
@@ -514,15 +569,19 @@ def resolve_columns(token, warnings):
 class Table(object):
     """genie_console data table access, by column name rather than UUID."""
 
-    def __init__(self, token, dry_run=False):
+    def __init__(self, token, dry_run=False, table_id=None):
         self.headers = _workato_headers(token)
         self.dry_run = dry_run
         self.errors = []
         self.written = []
+        table_id = table_id or DEFAULT_TABLE_ID
+        self.query_url = TABLE_QUERY_URL.format(table_id)
+        self.records_url = TABLE_RECORDS_URL.format(table_id)
+        self.record_url = TABLE_RECORD_URL.format(table_id, "{}")   # one "{}" left, for record_id
 
     def find(self, record_key):
         """(row, error). row is None when there is no such record."""
-        body, error = _request(TABLE_QUERY_URL, self.headers,
+        body, error = _request(self.query_url, self.headers,
                                {"where": {"record_key": {"$eq": record_key}},
                                 "limit": 1}, "POST")
         if error:
@@ -534,7 +593,7 @@ class Table(object):
 
     def search(self, where, limit=100):
         """(rows, error): every row matching `where`, keyed by column name."""
-        body, error = _request(TABLE_QUERY_URL, self.headers,
+        body, error = _request(self.query_url, self.headers,
                                {"where": where, "limit": limit}, "POST")
         if error:
             return [], "table.query " + error
@@ -564,10 +623,10 @@ class Table(object):
             if not record_id:
                 self.errors.append("row has no $record_id")
                 return False
-            _body, error = _request(TABLE_RECORD_URL.format(record_id), self.headers,
+            _body, error = _request(self.record_url.format(record_id), self.headers,
                                     {"document": self._document(fields)}, "PUT")
         else:
-            _body, error = _request(TABLE_RECORDS_URL, self.headers,
+            _body, error = _request(self.records_url, self.headers,
                                     {"document": self._document(fields)}, "POST")
         if error:
             self.errors.append("table.save " + error)
@@ -583,7 +642,7 @@ class Table(object):
         if not record_id:
             self.errors.append("row has no $record_id")
             return False
-        _body, error = _request(TABLE_RECORD_URL.format(record_id), self.headers, None, "DELETE")
+        _body, error = _request(self.record_url.format(record_id), self.headers, None, "DELETE")
         if error:
             self.errors.append("table.delete " + error)
             return False
@@ -3056,6 +3115,12 @@ def lifecycle_mode(value):
     return value if value in LIFECYCLE_MODES else LIFECYCLE_DEFAULT
 
 
+def analyst_skill_always_mode(value):
+    """"on" or "off": the `analyst_skill_always` input, blank = ANALYST_SKILL_ALWAYS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in ANALYST_SKILL_ALWAYS_MODES else ANALYST_SKILL_ALWAYS_DEFAULT
+
+
 def kb_add_refusal(ctx, row):
     """Why a knowledge base can't be added to this genie now, "" when it can."""
     if not MANAGE_KB_ADD:
@@ -3821,10 +3886,11 @@ class Context(object):
         self.dry_run = dry_run
         self.workato_token = input.get("workato_api_token") or ""
         self.master_genie = (input.get("master_genie_handle") or "").strip()
-        self.table = Table(self.workato_token, dry_run)
+        self.table_id = resolve_table_id(input)
+        self.table = Table(self.workato_token, dry_run, self.table_id)
         self.slack = Slack(input.get("slack_bot_token") or "", dry_run)
         self.warnings = []
-        resolve_columns(self.workato_token, self.warnings)
+        resolve_columns(self.workato_token, self.warnings, self.table_id)
         self.click = click
         self.key = click["key"]
         self.result = result
@@ -4196,7 +4262,8 @@ class Context(object):
             # No skills asked for on the details step: nothing to plan, go to the genie.
             state.update({"job": JOB_GENIE, "plan": [], "next": 0})
         state["folder_id"] = state.get("folder_id") or self.genie_folder(row)
-        shared = bool(str(self.input.get("forge_folder_id") or "").strip())
+        shared = bool(str(self.input.get("forge_folder_id") or "").strip()) \
+            and folder_mode(self.input.get("folder_mode")) == "shared"
         if not state.get("add_to") and not shared:
             # (Not when forge_folder_id names a shared folder, the genie console folder: it also
             # holds the console's own recipes and other genies' skills, and stopping "every running
@@ -4220,11 +4287,13 @@ class Context(object):
     def next_integra_job(self, row, state, card_ts):
         shared = []
         handle = str(self.input.get("analyst_skill_handle") or "").strip()
-        if skill_mode(state) == SKILLS_NONE and not state.get("add_to"):
-            pass                # "No skills" means none, the shared analyst skill included
-        elif handle.startswith("skl-"):
+        no_skills = skill_mode(state) == SKILLS_NONE and not state.get("add_to")
+        always = analyst_skill_always_mode(self.input.get("analyst_skill_always")) == "on"
+        want_shared = always or not no_skills   # "No skills" skips the shared analyst skill
+                                                # too, unless `always` is on
+        if want_shared and handle.startswith("skl-"):
             shared.append({"handle": handle, "name": ANALYST_SKILL_NAME})
-        else:
+        elif want_shared:
             self.warnings.append("analyst_skill_handle is empty: the new genie can look up "
                                  "records but can't ask about recipes, jobs or tables")
         job, spec, attach, notes = state.get("job"), None, [], ""
@@ -4259,21 +4328,24 @@ class Context(object):
         """The folder Integra builds in: "Genie - <name>" inside the first chosen
         project (forge_folder_id overrides it)."""
         override = str(self.input.get("forge_folder_id") or "").strip()
-        if override:
+        if override and folder_mode(self.input.get("folder_mode")) == "shared":
             self.result["genie_folder_id"] = override
             return override
         projects = _load_list(row.get("workato_projects"))
-        if not projects or not projects[0].get("folder_id"):
+        if override:
+            parent, parent_name = override, "the folder " + override
+        elif projects and projects[0].get("folder_id"):
+            parent, parent_name = projects[0]["folder_id"], projects[0].get("name")
+        else:
             raise StepError("No project folder to build the genie in. Pick a project again.")
         name = GENIE_FOLDER_NAME.format(row.get("genie_name"))
         if self.dry_run:
             folder_id = "dry-run-folder"
         else:
-            folder_id, error = ensure_folder(self.workato_token, projects[0]["folder_id"], name)
+            folder_id, error = ensure_folder(self.workato_token, parent, name)
             if error:
                 raise StepError("Could not create the folder '{}' in {}: {}. The API client "
-                                "needs the Folders privilege.".format(
-                                    name, projects[0].get("name"), error))
+                                "needs the Folders privilege.".format(name, parent_name, error))
         self.result["genie_folder_id"] = str(folder_id)
         return folder_id
 

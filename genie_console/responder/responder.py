@@ -35,6 +35,8 @@ HOW A MESSAGE IS MATCHED (ask)
     4. Inside a thread the genie is already answering, a follow-up needs no
        keyword (FOLLOWUP_WITHOUT_KEYWORD).
     5. The keyword is cut out; what is left is the question.
+    6. A message that is only the keyword (the hello card) also saves the thread as a
+       conversation, so the replies in it need no keyword (thread_start input).
 
 CONVERSATIONS
     Stored in the genie_console table as their own rows:
@@ -43,6 +45,11 @@ CONVERSATIONS
         id          = the genie's conversation_id
         invoke_keyword / genie_name / persona: which genie the thread belongs to
         setup_thread_ts = the thread, creator_id = who started it
+    Input `env` (dev | prod, blank = dev) picks which genie_console table is read and written
+    (same columns in both; see resolve_table_id). Blank is the table this step has always used,
+    so an existing recipe needs no change -- a production recipe must set env = prod explicitly.
+    Input `table_id`, if set, overrides env entirely (e.g. for a one-off sandbox copy). Either
+    way, must agree with the builder's env / table_id for the same genie.
 
 THE ANSWER CARD (reply)
     Everything is an attachment with a calm colour per persona. The genie's
@@ -198,12 +205,42 @@ from datetime import datetime, timezone
 # Endpoints and limits
 # --------------------------------------------------------------------------
 
-TABLE_ID = "6d53d2dd-c00d-4130-aa1c-b0cbfdcc484c"            # genie_console
-TABLE_QUERY_URL = "https://data-tables.workato.com/api/v1/tables/{}/query".format(TABLE_ID)
-TABLE_RECORDS_URL = "https://data-tables.workato.com/api/v1/tables/{}/records".format(TABLE_ID)
-TABLE_RECORD_URL = TABLE_RECORDS_URL + "/{}"
+# Same genie_console table, two copies: every column's field_id is identical between them (checked
+# against dev_data_table.json / production_data_table.json), only the table itself differs.
+DEV_TABLE_ID = "6d53d2dd-c00d-4130-aa1c-b0cbfdcc484c"        # genie_console, dev
+PROD_TABLE_ID = "0f600474-b13e-46d8-b9c2-6429483ea212"       # genie_console, production
+DEFAULT_TABLE_ID = DEV_TABLE_ID      # Table()'s own default when table_id is left out entirely
+                                     # (not through resolve_table_id)
+ENV_MODES = ("dev", "prod")
+ENV_DEFAULT = "dev"                 # blank env = dev: the table this step has always used
+
+TABLE_QUERY_URL = "https://data-tables.workato.com/api/v1/tables/{}/query"      # + table_id
+TABLE_RECORDS_URL = "https://data-tables.workato.com/api/v1/tables/{}/records"  # + table_id
+TABLE_RECORD_URL = TABLE_RECORDS_URL + "/{}"                 # + table_id, record_id
 SLACK_API = "https://slack.com/api/"
 HTTP_TIMEOUT = 30
+
+
+def env_mode(value):
+    """"dev" or "prod": the `env` input, blank = ENV_DEFAULT. "production" is accepted as a
+    synonym for "prod", since that is how the table is labelled in Workato."""
+    value = str(value or "").strip().lower()
+    if value == "production":
+        value = "prod"
+    return value if value in ENV_MODES else ENV_DEFAULT
+
+
+def resolve_table_id(input):
+    """The genie_console table this call reads and writes. An explicit table_id input always
+    wins (e.g. to point at a one-off sandbox copy); otherwise env (dev | prod, blank = dev) picks
+    DEV_TABLE_ID or PROD_TABLE_ID. Blank env and blank table_id is DEV_TABLE_ID, the table this
+    step has always used, so an existing recipe needs no change -- a production recipe must set
+    env = prod (or pass PROD_TABLE_ID as table_id) explicitly. Must agree with the builder's env /
+    table_id for the same genie, or the two steps read and write different tables."""
+    explicit = str(input.get("table_id") or "").strip()
+    if explicit:
+        return explicit
+    return PROD_TABLE_ID if env_mode(input.get("env")) == "prod" else DEV_TABLE_ID
 
 SECTION_LIMIT = 2900             # Slack rejects section text over 3,000 characters
 MAX_SECTIONS = 40                # an attachment holds at most 50 blocks
@@ -232,6 +269,7 @@ FEEDBACK_VALUES = ("positive", "negative")
 # The `look` input (new / old, blank = LOOK_DEFAULT) picks one per call, so you can flip back
 # without redeploying. If Slack rejects the new look, the old look is sent instead.
 LOOK_DEFAULT = "new"
+FLAT_MAX_BLOCKS = 50             # Slack: blocks in one message
 MARKDOWN_TOTAL = 11000           # Slack: markdown blocks hold 12,000 characters per message in all
 HEADER_LIMIT = 150               # Slack: a header's text is at most 150 characters
 HEADER_RE = re.compile(r"^\s*#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\n|$)")
@@ -351,14 +389,18 @@ def _request(url, headers, payload=None, method="GET"):
 # --------------------------------------------------------------------------
 
 class Table(object):
-    def __init__(self, token, dry_run=False):
+    def __init__(self, token, dry_run=False, table_id=None):
         self.headers = {"Authorization": "Bearer {}".format(token),
                         "Content-Type": "application/json"}
         self.dry_run = dry_run
+        table_id = table_id or DEFAULT_TABLE_ID
+        self.query_url = TABLE_QUERY_URL.format(table_id)
+        self.records_url = TABLE_RECORDS_URL.format(table_id)
+        self.record_url = TABLE_RECORD_URL.format(table_id, "{}")   # one "{}" left, for record_id
 
     def query(self, where, limit=200):
         """(rows, error). Rows are keyed by column name, with $record_id."""
-        body, error = _request(TABLE_QUERY_URL, self.headers,
+        body, error = _request(self.query_url, self.headers,
                                {"where": where, "limit": limit}, "POST")
         if error:
             return [], "table.query " + error
@@ -372,10 +414,10 @@ class Table(object):
             return None
         document = {"$" + COLUMNS[k]: v for k, v in fields.items() if COLUMNS.get(k)}
         if row and row.get("$record_id"):
-            _body, error = _request(TABLE_RECORD_URL.format(row["$record_id"]),
+            _body, error = _request(self.record_url.format(row["$record_id"]),
                                     self.headers, {"document": document}, "PUT")
         else:
-            _body, error = _request(TABLE_RECORDS_URL, self.headers,
+            _body, error = _request(self.records_url, self.headers,
                                     {"document": document}, "POST")
         return ("table.save " + error) if error else None
 
@@ -465,6 +507,12 @@ class Slack(object):
         """Replaces the whole message: text and blocks cleared, attachments set."""
         return bool(self._call("chat.update", {"channel": channel, "ts": ts, "text": "",
                                                "blocks": [], "attachments": attachments}))
+
+    def update_blocks(self, channel, ts, blocks):
+        """Replaces the whole message with top-level blocks (no card): text and any
+        attachment cleared."""
+        return bool(self._call("chat.update", {"channel": channel, "ts": ts, "text": "",
+                                               "blocks": blocks, "attachments": []}))
 
     def post_blocks(self, channel, thread_ts, blocks):
         """A message of blocks only, with no `text`: the message trigger sees an empty text, so
@@ -1332,16 +1380,15 @@ def _body_blocks(answer, markdown, bold=False):
     return body, cut, size
 
 
-def answer_attachments_new(genie_name, persona, answer, asked_by="", feedback=True,
-                           first=True, last=True, bold=False):
-    """The answer card, new look: byline, header (the answer's own title), markdown blocks,
-    native table, dividers, footer, feedback buttons. An answer too long for markdown blocks
-    (Slack allows 12,000 characters of them per message) keeps the old section body.
-    first / last: which message of a split answer this is (see split_tables).
-    bold: the bold a genie writes the Slack way (*text*) is shown bold, not italic."""
+def _answer_blocks_new(genie_name, persona, answer, asked_by="", feedback=True,
+                       first=True, last=True, bold=False):
+    """(blocks, long): the new look's answer blocks, and whether the answer is too long for
+    markdown blocks (Slack allows 12,000 characters of them per message), in which case the
+    body is sections, or was cut, or has more blocks than one message holds."""
     title, rest = _split_title(answer) if first else ("", answer)
     body, cut, size = _body_blocks(rest, markdown=True, bold=bold)
-    if size > MARKDOWN_TOTAL:
+    long = size > MARKDOWN_TOTAL
+    if long:
         body, cut, size = _body_blocks(rest, markdown=False)
     blocks = [_context(_who(genie_name, persona))] if first else []
     if title:
@@ -1357,8 +1404,29 @@ def answer_attachments_new(genie_name, persona, answer, asked_by="", feedback=Tr
         blocks.append(_context(footer))
         if feedback and FEEDBACK_BUTTONS:
             blocks.append(feedback_block())
+    return blocks, long or cut or len(blocks) > FLAT_MAX_BLOCKS
+
+
+def answer_attachments_new(genie_name, persona, answer, asked_by="", feedback=True,
+                           first=True, last=True, bold=False):
+    """The answer card, new look: byline, header (the answer's own title), markdown blocks,
+    native table, dividers, footer, feedback buttons. An answer too long for markdown blocks
+    keeps the old section body.
+    first / last: which message of a split answer this is (see split_tables).
+    bold: the bold a genie writes the Slack way (*text*) is shown bold, not italic."""
+    blocks, _long = _answer_blocks_new(genie_name, persona, answer, asked_by, feedback,
+                                       first, last, bold)
     return [{"color": PERSONA_COLORS.get(persona, COLOR_DEFAULT),
              "fallback": (answer or "")[:150], "blocks": blocks}]
+
+
+def answer_blocks_flat(genie_name, persona, answer, asked_by="", feedback=True,
+                       first=True, last=True, bold=False):
+    """The same answer as top-level blocks: no card, so no coloured bar. None when the answer
+    is too long for that (see _answer_blocks_new): it then goes out as the card."""
+    blocks, long = _answer_blocks_new(genie_name, persona, answer, asked_by, feedback,
+                                      first, last, bold)
+    return None if long else blocks
 
 
 def build_answer(look, genie_name, persona, answer, asked_by="", feedback=True,
@@ -1520,6 +1588,62 @@ def offers_note_mode(value):
     """"on" or "off": the `offers_note` input, blank = OFFERS_NOTE_DEFAULT."""
     value = str(value or "").strip().lower()
     return value if value in OFFERS_NOTE_MODES else OFFERS_NOTE_DEFAULT
+
+
+# A message that is only the keyword posts the hello card but never calls the genie, so no
+# conversation id exists and the reply step has nothing to save: the thread was unknown, and a
+# follow-up without the keyword was skipped. With thread_start = on the ask step saves the
+# thread itself (id blank until the genie answers). off = the old behaviour: nothing is saved.
+# The `thread_start` input = on | off, blank = on.
+THREAD_START_MODES = ("on", "off")
+THREAD_START_DEFAULT = "on"
+
+
+def thread_start_mode(value):
+    """"on" or "off": the `thread_start` input, blank = THREAD_START_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in THREAD_START_MODES else THREAD_START_DEFAULT
+
+
+# The new look's answer goes out as plain top-level blocks (no card, so no coloured bar down its
+# side); an answer too long for that (see _answer_blocks_new) still goes out as the card, and
+# so does one Slack rejects as blocks. The `answer_layout` input = blocks | card, blank = blocks;
+# card sends every answer as the card, as before. Errors and the old look are always cards.
+ANSWER_LAYOUT_MODES = ("blocks", "card")
+ANSWER_LAYOUT_DEFAULT = "blocks"
+
+
+def answer_layout_mode(value):
+    """"blocks" or "card": the `answer_layout` input, blank = ANSWER_LAYOUT_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in ANSWER_LAYOUT_MODES else ANSWER_LAYOUT_DEFAULT
+
+
+def remember_thread(table, input, result):
+    """Saves the thread a bare keyword started as a conversation row (id blank). Nothing is
+    overwritten: a thread that already has a row keeps it."""
+    channel, thread = result["channel"], result["reply_thread_ts"]
+    if not channel or not thread:
+        result["warnings"].append("thread not saved: channel or thread empty")
+        return
+    key = conversation_key(channel, thread)
+    result["conversation_key"] = key
+    found, error = table.query({"record_key": {"$eq": key}}, limit=1)
+    if error:
+        result["warnings"].append(error)
+        return
+    if found:
+        return
+    error = table.save(None, {
+        "record_type": CONVERSATION_TYPE, "record_key": key, "id": "", "status": STATUS_ACTIVE,
+        "channel": channel, "setup_thread_ts": thread, "invoke_keyword": result["keyword"],
+        "genie_name": result["genie_name"], "persona": result["persona"],
+        "creator_id": str(input.get("user_id") or ""),
+        "created_at": now_iso(), "updated_at": now_iso()})
+    if error:
+        result["warnings"].append(error)
+    else:
+        result["conversation_saved"] = True
 
 
 # What the answer should look like in Slack. A single *asterisk* is italics in markdown, so the
@@ -1755,7 +1879,9 @@ def ask(input, table, slack, result):
     asker = slack.user(str(input.get("user_id") or "").strip()) if question else None
     result.update({
         "matched": True,
-        "is_followup": bool(same_genie),
+        # A thread saved by a bare keyword has no genie conversation yet (id blank): that
+        # first question starts one, so it is not a follow-up.
+        "is_followup": bool(same_genie and (conversation.get("id") or "")),
         "conversation_id": (conversation.get("id") or "") if same_genie else "",
         "keyword": keyword,
         "record_key": row.get("record_key") or "",
@@ -1781,6 +1907,8 @@ def ask(input, table, slack, result):
     if not question:
         # Only the keyword was sent: say hello instead of asking the genie nothing.
         post_hello(slack, result, projects, look_of(input.get("look")))
+        if thread_start_mode(input.get("thread_start")) == "on":
+            remember_thread(table, input, result)
         return
 
     result["call_genie"] = True
@@ -2080,15 +2208,26 @@ def reply(input, table, slack, result):
     # one table block per message). A failed answer or an empty one is one error card.
     chunks = split_tables(answer) if answered else [None]
 
-    def build(look, index, feedback):
+    def build(look, index, feedback, flat=False):
         if not answered:
             return error_attachments(genie_name, persona, genie_error)
+        if flat:                    # {"blocks": ...} = a message of blocks; else the card
+            blocks = answer_blocks_flat(genie_name, persona, chunks[index], asker_id,
+                                        feedback=feedback, first=index == 0,
+                                        last=index == len(chunks) - 1, bold=bold)
+            if blocks:
+                return {"blocks": blocks}
         return build_answer(look, genie_name, persona, chunks[index], asker_id, feedback=feedback,
                             first=index == 0, last=index == len(chunks) - 1, bold=bold)
 
     def deliver(cards, index):
         """The first message edits the thinking message into the answer (a fresh post when
         there is none); the others are posted after it in the thread."""
+        if isinstance(cards, dict):
+            if index == 0 and thinking_ts and slack.update_blocks(channel, thinking_ts,
+                                                                  cards["blocks"]):
+                return thinking_ts
+            return slack.post_blocks(channel, thread_ts, cards["blocks"])
         if index == 0 and thinking_ts and slack.update(channel, thinking_ts, cards):
             return thinking_ts
         return slack.post(channel, thread_ts, cards)
@@ -2098,17 +2237,20 @@ def reply(input, table, slack, result):
     # build the same card as one already sent is skipped. Once a step worked, the next message
     # starts from it.
     look = look_of(input.get("look"))
-    steps = [(look, wants_feedback)]
+    flat = look == "new" and answer_layout_mode(input.get("answer_layout")) == "blocks"
+    steps = [(look, wants_feedback, flat)]
+    if flat:
+        steps.append((look, wants_feedback, False))         # the card, if blocks are rejected
     if look == "new":
-        steps.append(("old", wants_feedback))
-    steps.append(("old", False))
+        steps.append(("old", wants_feedback, False))
+    steps.append(("old", False, False))
     posted_ts, all_cards, begin = [], [], 0
     for index in range(len(chunks)):
         errors_before = len(slack.errors)
         sent, ts = [], ""
         for number in range(begin, len(steps)):
-            step_look, feedback = steps[number]
-            cards = build(step_look, index, feedback)
+            step_look, feedback, step_flat = steps[number]
+            cards = build(step_look, index, feedback, step_flat)
             if cards in sent:
                 continue
             if sent:
@@ -2116,6 +2258,8 @@ def reply(input, table, slack, result):
                 del slack.errors[errors_before:]
                 result["warnings"].append("answer card rejected by Slack: retried with {}{}".format(
                     " and ".join(([] if step_look == look else ["the old look"])
+                                 + (["the card"] if flat and step_look == look and not step_flat
+                                    else [])
                                  + ([] if feedback or not wants_feedback else ["no feedback buttons"])),
                     " ({})".format(reason) if reason else ""))
             sent.append(cards)
@@ -2132,7 +2276,9 @@ def reply(input, table, slack, result):
         posted_ts.append(ts)
     result["message_ts"] = posted_ts[0] if posted_ts else ""
     result["posted"] = bool(posted_ts)
-    result["answer_sections"] = len([b for cards in all_cards for b in cards[0]["blocks"]
+    result["answer_sections"] = len([b for cards in all_cards
+                                     for b in (cards["blocks"] if isinstance(cards, dict)
+                                               else cards[0]["blocks"])
                                      if b["type"] not in ("context", "context_actions")])
 
     # Owners are brought in once per thread (a blocked refusal always goes to them).
@@ -2333,7 +2479,7 @@ def main(input):
     if not token and not dry_run:
         result["error"] = "workato_api_token is empty"
         return result
-    table = Table(token, dry_run)
+    table = Table(token, dry_run, resolve_table_id(input))
     slack = Slack(input.get("slack_bot_token") or "", dry_run)
     try:
         if action == "reply":
