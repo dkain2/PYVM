@@ -1447,11 +1447,20 @@ class World(object):
                     return False
         return True
 
+    @staticmethod
+    def _fields(where):
+        """The query as the game's fields: the table is asked in its own column names."""
+        if isinstance(where, dict):
+            return {(k if k.startswith("$") else t.FIELD_OF.get(k, k)): World._fields(v) for k, v in where.items()}
+        if isinstance(where, list):
+            return [World._fields(v) for v in where]
+        return where
+
     def _table(self, url, payload, method):
         names = list(t.COLUMNS)
         if url.endswith("/query"):
-            rows = [r for r in self.rows.values() if self._match(r, payload.get("where") or {})]
-            return {"schema": [[{"name": n} for n in names + ["$record_id"]]],
+            rows = [r for r in self.rows.values() if self._match(r, self._fields(payload.get("where") or {}))]
+            return {"schema": [[{"name": t.COLUMN_NAME.get(n, n)} for n in names + ["$record_id"]]],
                     "data": [[[r.get(n) for n in names + ["$record_id"]]] for r in rows]}, None
         by_uuid = {uuid: name for name, uuid in t.COLUMNS.items()}
         document = {by_uuid[key[1:]]: value for key, value in payload["document"].items()}
@@ -3911,6 +3920,80 @@ class TestGames(unittest.TestCase):
 class TestGamesByPayload(TestGames):
     """Every game above again, with each press sent as one `payload` and nothing else mapped but the tokens."""
     via = "payload"
+
+
+class TestDataTableChoice(unittest.TestCase):
+    """The game keeps its rows in DiceUp (its own column names), and goes back to the old table on `data_table`=legacy."""
+
+    def setUp(self):
+        self.sent = []
+        self._real = t._send_json
+        t._send_json = lambda url, headers, payload=None, method="POST", raw_ok=False: (
+            self.sent.append((url, method, payload)) or ({"record_id": "rec1"}, None))
+
+    def tearDown(self):
+        t._send_json = self._real
+
+    def test_default_is_diceup_and_query_uses_its_column_names(self):
+        table = t.Table("tok", env="dev")
+        table.query({"$and": [{"row_type": {"$eq": t.GAME_ROW}}, {"id": {"$eq": "g1"}}, {"group_id": {"$eq": "U1"}},
+                              {"day": {"$eq": "x"}}, {"slack_channel_id": {"$eq": "C1"}}]})
+        url, _method, payload = self.sent[0]
+        self.assertIn("caf5f954-e916-4992-81ed-7c49e3181958", url)
+        self.assertEqual(payload["where"], {"$and": [{"row_type": {"$eq": "tambola_game"}}, {"game_id": {"$eq": "g1"}},
+                                                     {"slack_user_id": {"$eq": "U1"}}, {"day_key": {"$eq": "x"}},
+                                                     {"slack_channel_id": {"$eq": "C1"}}]})
+
+    def test_env_picks_the_workspaces_table(self):
+        for env, want in (("dev", "caf5f954-e916-4992-81ed-7c49e3181958"), (" DEV ", "caf5f954-e916-4992-81ed-7c49e3181958"),
+                          ("prod", "a9305e93-50f6-4da3-9db7-ad968aceebb2"), ("", "a9305e93-50f6-4da3-9db7-ad968aceebb2"),
+                          (None, "a9305e93-50f6-4da3-9db7-ad968aceebb2"), ("staging", "a9305e93-50f6-4da3-9db7-ad968aceebb2")):
+            self.sent[:] = []
+            t.Table("tok", env=env).query({"id": {"$eq": "g"}})
+            self.assertIn(want, self.sent[0][0], env)
+
+    def test_rows_come_back_under_the_games_field_names(self):
+        table = t.Table("tok")
+        body = {"schema": [[{"name": "game_id"}, {"name": "slack_user_id"}, {"name": "sub_type"}, {"name": "$record_id"}]],
+                "data": [[["g1", "U1", "all", "rec9"]]]}
+        self.assertEqual(table._decode(body), [{"id": "g1", "group_id": "U1", "grant_type": "all", "$record_id": "rec9"}])
+
+    def test_a_new_row_says_it_is_tambola_and_an_update_does_not(self):
+        table = t.Table("tok")
+        table.create({"record_key": "k", "row_type": t.GAME_ROW, "id": "g1"})
+        document = self.sent[0][2]["document"]
+        self.assertEqual(document["$" + t.TABLES["diceup"]["fields"]["record_type"][1]], "tambola")
+        table.update("rec1", {"status": "running"})
+        self.assertNotIn("$" + t.TABLES["diceup"]["fields"]["record_type"][1], self.sent[1][2]["document"])
+        self.assertEqual(table.errors, [])
+
+    def test_legacy_is_the_old_table_unchanged(self):
+        table = t.Table("tok", "legacy", "dev")
+        table.query({"$and": [{"id": {"$eq": "g1"}}, {"day": {"$eq": "x"}}]})
+        url, _method, payload = self.sent[0]
+        self.assertIn("0b863cb1-4712-416b-a9d5-7bf7f2f9b059", url)
+        self.assertEqual(payload["where"], {"$and": [{"id": {"$eq": "g1"}}, {"day": {"$eq": "x"}}]})
+        table.create({"record_key": "k", "id": "g1"})
+        self.assertEqual(set(self.sent[1][2]["document"]), {"$81f48f77-2849-428a-b84d-1f11ff301b83",
+                                                             "$3edd5f8c-137d-46fd-966e-b067f2772838"})
+        self.assertEqual(table.errors, [])
+
+    def test_an_unknown_word_means_the_default(self):
+        self.assertIs(t.table_named("nonsense"), t.TABLES["diceup"])
+        self.assertIs(t.table_named(None), t.TABLES["diceup"])
+        self.assertIs(t.table_named(" Legacy "), t.TABLES["legacy"])
+
+
+    def test_my_ticket_button_is_left_off_when_the_organizer_plays_alone(self):
+        g = t.new_game("tb_C_1", "C", "UHOST", "Tambola", t.game_config({}), False)
+        g.update(status=t.RUNNING, seed=7, host_name="Host", roster=["UHOST"])
+
+        def has_button(game):
+            return any(b.get("action_id") == t.ACTION_PREFIX + "getticket"
+                       for block in t.board_blocks(game) + t.review_blocks(game, t.review_stats(game, None))
+                       for b in block.get("elements", []) if block.get("type") == "actions")
+        self.assertFalse(has_button(g))
+        self.assertTrue(has_button(dict(g, roster=["UHOST", "UOTHER"])))
 
 
 if __name__ == "__main__":

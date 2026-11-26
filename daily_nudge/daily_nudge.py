@@ -18,8 +18,9 @@ Two kinds of nudge, picked by the activity:
                the exact command to log it -- `iplanked 60` -- so nobody has to remember
                the keyword. The triggers are Spotter's own (see LOG_COMMANDS).
     game       imemory, iadd, isub or imultiple. The post ends with two BUTTONS instead of
-               a command: Play today's daily and Play a game. They use the same action ids
-               as the game steps (imemory_try / imemory_play, imath_try / imath_play), so
+               a command: Play today's daily and Play a game. They carry the game steps' own
+               values, and action ids the click recipes already let through (imath_try /
+               imath_play; for iMemory imemory_daily / imemory_start, see KNOWN_ID_FOR), so
                the existing button trigger and recipe handle the click, from anyone.
 
 Every nudge, of either kind, also ends with a "Take a break" section: a one-line suggestion
@@ -287,15 +288,22 @@ DEFAULT_ACTIVITIES = list(CORE_ACTIVITIES) + list(GAMES) + [
     k for k in ENABLED_EXTRAS if k in ACTIVITIES and k not in CORE_ACTIVITIES]
 
 
-# The click recipe for the memory games lets through only the action ids the memory step
-# itself posts (imemory_start, imemory_try, imemory_match_start, ...), unlike imath's, which
-# listens for anything starting `imath_`. `imemory_play` and `imemory_play_img` are ids the
-# step never posts, so a click on them never reached it. The step reads the VALUE, never the
-# id, so the nudge sends the same values under ids the recipe already accepts.
+# The click recipe for the memory games ("imemory - button click", recipe 82869158) lets
+# through only a fixed list of action ids: imemory_yes, imemory_no, imemory_start,
+# imemory_again, imemory_daily, imemory_speed_*, imemory_match_start, imemory_match_again and
+# imemory_match_t0..t19. Anything else never reaches the step (no job at all), unlike imath's
+# recipe, which listens for anything starting `imath_`, and ibreath's, which takes any id
+# containing `ibreath_`. `imemory_play`, `imemory_play_img` and `imemory_try` are NOT on the
+# list, so those buttons did nothing. The step reads the VALUE, never the id, so the nudge
+# sends the same values under ids that are on the list:
+#     imemory_play      -> imemory_start    (iMemory,       value anyone|0|play)
+#     imemory_play_img  -> imemory_again    (iMemoryImage,  value img|anyone|0|play)
+#     imemory_try       -> imemory_daily    (a game nudge's "Play today's daily", value ...|try)
 # The `button_ids` input picks: "known" (default) uses those ids, "old" the previous ones.
 BUTTON_IDS_MODES = ("known", "old")
 BUTTON_IDS_DEFAULT = "known"
-KNOWN_ID_FOR = {"imemory_play": "imemory_start", "imemory_play_img": "imemory_try"}
+KNOWN_ID_FOR = {"imemory_play": "imemory_start", "imemory_play_img": "imemory_again",
+                "imemory_try": "imemory_daily"}
 
 
 def button_ids_mode(value):

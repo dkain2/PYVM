@@ -1,0 +1,225 @@
+[
+  {
+    "control_type": "text",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bot token. Scopes: chat:write (the line posted in the channel when a game is started); channels:join is optional (to join a public channel by itself). views.publish needs no scope of its own."
+  },
+  {
+    "control_type": "text",
+    "label": "Workato api token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Workato Data Tables API token. Only READS the DiceUp table: this step writes nothing. Without it the page still shows the games, with empty stats."
+  },
+  {
+    "control_type": "text",
+    "label": "Environment",
+    "name": "env",
+    "type": "string",
+    "optional": true,
+    "hint": "Which workspace's DiceUp table to read: dev or prod. Map it from the recipe's environment property. Anything other than dev (blank too) means prod, so production needs nothing set."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[home] The person who opened the home tab: event.user of app_home_opened. Their own stats (Your DiceUp, achievements, journeys) are about this person. [click] Read from payload when blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Tab",
+    "name": "tab",
+    "type": "string",
+    "optional": true,
+    "hint": "[home] event.tab of app_home_opened: home or messages. messages is skipped (nothing is published)."
+  },
+  {
+    "control_type": "text",
+    "label": "Private metadata",
+    "name": "private_metadata",
+    "type": "string",
+    "optional": true,
+    "hint": "[home] event.view.private_metadata (optional): keeps the period chosen and the last channel used. [click] Read from payload when blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Payload",
+    "name": "payload",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The whole block_actions interaction as JSON text (in formula mode, the trigger's object .to_json). With it nothing else but the tokens and env is needed. Its presence (or action_id's) makes this call a click."
+  },
+  {
+    "control_type": "text",
+    "label": "Action ID",
+    "name": "action_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].action_id, when mapping field by field. Every DiceUp home action id starts with diceup_home_ (filter the click recipe on that)."
+  },
+  {
+    "control_type": "text",
+    "label": "Value",
+    "name": "value",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].value, when mapping field by field (the game's key on a Start button)."
+  },
+  {
+    "control_type": "text",
+    "label": "Selected channel",
+    "name": "selected_channel",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The channel chosen in the home tab's picker, when mapping field by field (view.state.values ... selected_conversation). Read from payload when blank."
+  },
+  {
+    "control_type": "text",
+    "label": "Selected period",
+    "name": "selected_period",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] actions[0].selected_option.value of the period dropdown, when mapping field by field."
+  },
+  {
+    "control_type": "select",
+    "label": "Default period",
+    "name": "period",
+    "type": "string",
+    "optional": true,
+    "hint": "The period the stats open on when the view has none yet: 7, 30, 90 or all (default all).",
+    "pick_list": [
+      [
+        "All time (default)",
+        "all"
+      ],
+      [
+        "Last 7 days",
+        "7"
+      ],
+      [
+        "Last 30 days",
+        "30"
+      ],
+      [
+        "Last 90 days",
+        "90"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "label": "Default period",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "period",
+      "type": "string",
+      "optional": true,
+      "hint": "The period the stats open on when the view has none yet: 7, 30, 90 or all (default all)."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Features",
+    "name": "features",
+    "type": "string",
+    "optional": true,
+    "hint": "Which Slack blocks to use: headers, cards, tiles, charts, datatables, tables, rich, panels, adaptive. Blank = all but adaptive. -name takes one away, +name adds one, none = the plain view. A feature Slack refuses is taken out by itself."
+  },
+  {
+    "control_type": "integer",
+    "label": "Top N",
+    "name": "top_n",
+    "type": "integer",
+    "optional": true,
+    "hint": "Players on each game's winners board, 1 to 25. Default 10.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Games JSON",
+    "name": "games_json",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional JSON list to change or add games, matched on key (= record_type), e.g. [{\"key\": \"trivia\", \"name\": \"Trivia\", \"emoji\": \":brain:\", \"tagline\": \"Quick-fire questions\", \"word\": \"itrivia\", \"coming_soon\": true}]. {\"key\": \"tambola\", \"enabled\": false} hides one. A game's own journeys can be set here too."
+  },
+  {
+    "control_type": "select",
+    "label": "Announce start",
+    "name": "announce_start",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] yes (default): Start posts a short line in the chosen channel (and joins a public channel it is not in). no: nothing is posted and nothing is checked.",
+    "pick_list": [
+      [
+        "Yes (default)",
+        "yes"
+      ],
+      [
+        "No",
+        "no"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "label": "Announce start",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "announce_start",
+      "type": "string",
+      "optional": true,
+      "hint": "[click] yes (default): Start posts a short line in the chosen channel (and joins a public channel it is not in). no: nothing is posted and nothing is checked."
+    }
+  },
+  {
+    "control_type": "integer",
+    "label": "Max pages",
+    "name": "max_pages",
+    "type": "integer",
+    "optional": true,
+    "hint": "Most pages of 200 rows read from the table. Default 50 (10,000 rows); past that the page says the stats are partial.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Time budget",
+    "name": "time_budget",
+    "type": "integer",
+    "optional": true,
+    "hint": "Seconds the step may spend, 10 to 85. Default 60. Reading stops early enough to publish.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "select",
+    "label": "Preview",
+    "name": "preview",
+    "type": "string",
+    "optional": true,
+    "hint": "yes: publish nothing and post nothing; the view comes back in view_json (paste its blocks into Block Kit Builder).",
+    "pick_list": [
+      [
+        "No (default)",
+        "no"
+      ],
+      [
+        "Yes",
+        "yes"
+      ]
+    ],
+    "toggle_hint": "Select from list",
+    "toggle_field": {
+      "label": "Preview",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "preview",
+      "type": "string",
+      "optional": true,
+      "hint": "yes: publish nothing and post nothing; the view comes back in view_json (paste its blocks into Block Kit Builder)."
+    }
+  }
+]

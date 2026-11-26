@@ -1,0 +1,577 @@
+{
+            "id": "a9305e93-50f6-4da3-9db7-ad968aceebb2",
+            "numeric_id": 191277,
+            "name": "DiceUp",
+            "schema": [
+                {
+                    "type": "string",
+                    "name": "row_type",
+                    "optional": false,
+                    "field_id": "734ab0f2-f718-4d58-81b7-3539738554fa",
+                    "hint": "Kind of row within a game: player, game, round, config, event, ticket, leaderboard, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "record_type",
+                    "optional": false,
+                    "field_id": "7812bb45-889b-4d57-8ce1-2e47bfc199d8",
+                    "hint": "Which game owns the row: tambola, trivia, bingo, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "record_key",
+                    "optional": true,
+                    "field_id": "dca6a279-fa0e-4521-be5f-9f0f80438b8d",
+                    "hint": "Unique key, e.g. <record_type>:<row_type>:<id>",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "game_id",
+                    "optional": true,
+                    "field_id": "e081cbb6-42cb-4717-b304-1cde3afafffa",
+                    "hint": "Game/session id that groups rows together",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "game_name",
+                    "optional": true,
+                    "field_id": "ea6d2fe6-c55f-4f39-8ee9-eace8f817fb1",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "parent_key",
+                    "optional": true,
+                    "field_id": "cc19a4d0-c6e1-4ca9-be4e-c2d42ff002e5",
+                    "hint": "record_key of the parent row (player -> game, round -> game)",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "season_key",
+                    "optional": true,
+                    "field_id": "29a278de-791b-472b-84ec-ce793d2db59b",
+                    "hint": "Season or campaign, e.g. 2026-Q4",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "week_key",
+                    "optional": true,
+                    "field_id": "df063752-3df7-484e-b268-d6749231ab5b",
+                    "hint": "ISO week, e.g. 2026-W48",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "day_key",
+                    "optional": true,
+                    "field_id": "998b0674-d5c2-430d-b16d-deff7e1e7ca0",
+                    "hint": "YYYY-MM-DD",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "slack_user_id",
+                    "optional": true,
+                    "field_id": "ccbe5cff-97c3-48e8-8df2-27bf088ae016",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "slack_user_name",
+                    "optional": true,
+                    "field_id": "9ec9a9ba-12f6-49cc-a299-96d761c81f1e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "email",
+                    "optional": true,
+                    "field_id": "39ea5381-34a0-49fe-943d-2c6818b7a9e1",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "host_user_id",
+                    "optional": true,
+                    "field_id": "d3e3353f-762e-4424-b006-7e91ad8c7de0",
+                    "hint": "Slack user who started or hosts the game",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "winner_user_id",
+                    "optional": true,
+                    "field_id": "7afcc2df-5bde-4b04-8038-053b277d7fe2",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "slack_channel_id",
+                    "optional": true,
+                    "field_id": "b821d6fd-c34a-41f4-8159-9be43bfa4ff6",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "slack_thread_ts",
+                    "optional": true,
+                    "field_id": "b11d6203-441d-4119-bebd-f579031c218c",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "slack_message_ts",
+                    "optional": true,
+                    "field_id": "7c8a4fe6-ee2a-4649-bfef-aa4a9abcc21f",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "last_processed_ts",
+                    "optional": true,
+                    "field_id": "2bb629f7-141f-474a-8bbc-4bf9325b599f",
+                    "hint": "Last Slack ts handled, to avoid reprocessing",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "title",
+                    "optional": true,
+                    "field_id": "96b642cf-8762-45a2-88a7-c89c6eca59a2",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "description",
+                    "optional": true,
+                    "field_id": "4b9ffec4-0282-4ffa-9070-01c59b941e8a",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "content",
+                    "optional": true,
+                    "field_id": "6e302629-46cf-4470-bb74-afc88eb9cf1f",
+                    "hint": "Message text, question, prompt, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "status",
+                    "optional": true,
+                    "field_id": "a0bd0673-17a3-4c78-9a78-a391fc449879",
+                    "hint": "e.g. pending, active, paused, completed, cancelled",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "phase",
+                    "optional": true,
+                    "field_id": "8039f6f7-94ca-4094-879a-c5eb063971f5",
+                    "hint": "Stage inside a game, e.g. lobby, playing, finished",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "category",
+                    "optional": true,
+                    "field_id": "df9dc93b-ec4f-40ae-b808-112bad6cc118",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "sub_type",
+                    "optional": true,
+                    "field_id": "d0ebcf9f-e655-4cd3-904b-c1db8962ecde",
+                    "hint": "Variant of the row: game mode, prize key, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "source_ref",
+                    "optional": true,
+                    "field_id": "47660e40-4a2b-4792-807c-18abd7d9c01a",
+                    "hint": "Reference to the source: message ts, dedupe token, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "tier_name",
+                    "optional": true,
+                    "field_id": "1641f858-3175-4f2f-a28f-9ad0cd98e2fe",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "result",
+                    "optional": true,
+                    "field_id": "229a7209-46c4-433b-aaaf-afb927b01b31",
+                    "hint": "win, loss, draw, correct, wrong, etc.",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "round_number",
+                    "optional": true,
+                    "field_id": "7f1313b6-0e85-4e53-ad53-cc3106b85310",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "turn_number",
+                    "optional": true,
+                    "field_id": "41f009f7-c97e-4379-b972-d6847f806f61",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "score",
+                    "optional": true,
+                    "field_id": "dfd16b1e-8387-4350-854e-fa02e09353c0",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "points",
+                    "optional": true,
+                    "field_id": "fdfc8f23-3f90-45ca-9493-a086a21ecc54",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "best_score",
+                    "optional": true,
+                    "field_id": "ed825d81-142f-4777-ae9f-a237d2646de5",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "rank",
+                    "optional": true,
+                    "field_id": "528bc52e-f204-456b-ab19-713e2d6114e2",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "level",
+                    "optional": true,
+                    "field_id": "aa8d8999-7dcb-4777-8666-0ca345be6cba",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "plays_count",
+                    "optional": true,
+                    "field_id": "68c5ba87-09f7-4f60-8236-1613ef751163",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "wins_count",
+                    "optional": true,
+                    "field_id": "f49aaef8-b7dc-4da2-9088-f0ca2ce2616d",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "losses_count",
+                    "optional": true,
+                    "field_id": "c8a52685-2050-472d-a79e-3a9de7f6d5e4",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "participants_count",
+                    "optional": true,
+                    "field_id": "e20ca3e9-25c9-4610-ab43-da14b71c786a",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "current_streak",
+                    "optional": true,
+                    "field_id": "e8187dce-820e-4c09-91f0-50788488332d",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "longest_streak",
+                    "optional": true,
+                    "field_id": "31131c2d-fffb-4c2f-9a13-46019990cba6",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "freeze_credits",
+                    "optional": true,
+                    "field_id": "6aab5573-76be-459c-b09d-de9563ce439d",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "reaction_count",
+                    "optional": true,
+                    "field_id": "b5aae585-0c1b-4d4c-97c9-56caf2129429",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "week_count",
+                    "optional": true,
+                    "field_id": "1a7b6ae7-77f8-427f-9514-84a5f6357197",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "number",
+                    "name": "amount",
+                    "optional": true,
+                    "field_id": "58687d8a-59a1-4284-8db2-6fb71f7c10c4",
+                    "hint": "Prize, stake, or any decimal value",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "boolean",
+                    "name": "is_active",
+                    "optional": true,
+                    "field_id": "61e35ea5-9d8e-4967-ac6d-d8bed85e66d4",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "boolean",
+                    "name": "is_private",
+                    "optional": true,
+                    "field_id": "4dcc9e2a-c0a0-4755-ae75-933e374c2b4e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "boolean",
+                    "name": "leaderboard_optout",
+                    "optional": true,
+                    "field_id": "ddc9dbcc-43ac-462f-b3f3-fda62fec823c",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "tags",
+                    "optional": true,
+                    "field_id": "881339c0-926f-4891-8eec-249ba05b4eb9",
+                    "default_value": [],
+                    "metadata": {},
+                    "multivalue": true
+                },
+                {
+                    "type": "string",
+                    "name": "payload_json",
+                    "optional": true,
+                    "field_id": "7c7c9acd-b3e4-4e0d-a8ad-070d72581120",
+                    "hint": "Game-specific data as JSON: tickets, boards, called numbers, answers",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "state_json",
+                    "optional": true,
+                    "field_id": "9af0384f-476c-43c7-822c-ab0bdaeeabc3",
+                    "hint": "Resumable game state as JSON",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "str_1",
+                    "optional": true,
+                    "field_id": "5d6f539e-8992-45a3-b89b-304469969d1a",
+                    "hint": "Spare game-specific text",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "str_2",
+                    "optional": true,
+                    "field_id": "d7d3764f-f350-4214-bf63-faf4ba3b7894",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "str_3",
+                    "optional": true,
+                    "field_id": "e1e9e905-8a9d-4dcd-8bc1-ace45b726753",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "string",
+                    "name": "str_4",
+                    "optional": true,
+                    "field_id": "bca83c00-a6e2-43f3-93a7-a68e54755792",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "int_1",
+                    "optional": true,
+                    "field_id": "fe885576-75ef-4771-933e-7abccd39ac11",
+                    "hint": "Spare game-specific integer",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "int_2",
+                    "optional": true,
+                    "field_id": "0bab1219-4849-4860-a7b3-54358d9385f4",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "int_3",
+                    "optional": true,
+                    "field_id": "281188b7-d0b1-46b9-95d5-f7622e746542",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "integer",
+                    "name": "int_4",
+                    "optional": true,
+                    "field_id": "1e8e5dbe-802c-423f-9ed1-9c050b5b52ee",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "number",
+                    "name": "num_1",
+                    "optional": true,
+                    "field_id": "8c930f99-d0e2-4575-abc7-06ea761aaa03",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "boolean",
+                    "name": "bool_1",
+                    "optional": true,
+                    "field_id": "7cc5d43e-5099-4111-95a0-cd491b43348a",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date",
+                    "name": "date_1",
+                    "optional": true,
+                    "field_id": "b236eec3-5bf7-4102-acf5-1528cd39508f",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "created_at",
+                    "optional": true,
+                    "field_id": "a2c6acbc-2a1f-4048-9a53-18590118a826",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "updated_at",
+                    "optional": true,
+                    "field_id": "309f480a-dfe2-4dea-9ce0-443a2644c81a",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "started_at",
+                    "optional": true,
+                    "field_id": "8b000475-b120-4a7f-b941-c7503aa2519b",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "ended_at",
+                    "optional": true,
+                    "field_id": "331c1900-2338-4b92-8323-c92ed8cdde46",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "expires_at",
+                    "optional": true,
+                    "field_id": "27277a51-9003-4261-819a-935c3c9d428e",
+                    "metadata": {},
+                    "multivalue": false
+                },
+                {
+                    "type": "date_time",
+                    "name": "last_played_at",
+                    "optional": true,
+                    "field_id": "d66597a3-be38-47b3-a8ee-b6199ef752b7",
+                    "metadata": {},
+                    "multivalue": false
+                }
+            ],
+            "project_id": 18737840,
+            "folder_id": 36479233,
+            "created_at": "2026-11-25T22:14:10.540-08:00",
+            "updated_at": "2026-11-25T22:14:10.659-08:00"
+        }

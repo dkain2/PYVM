@@ -203,23 +203,35 @@ class TestValues(unittest.TestCase):
 class TestIBreathPlay(unittest.TestCase):
     """The ibreath click the nudge's button sends opens the presser's own card."""
 
-    def click(self, value, clicker="U2"):
+    def click(self, value, clicker="U2", **extra):
         calls = []
         real = ibreath.open_card
         ibreath.open_card = lambda *a, **k: calls.append((a, k))
         try:
-            result = {"user_id": clicker, "channel": "C1", "thread_ts": "111.1"}
-            ibreath.handle_click({"action_value": value, "action_ts": "9.9"}, result, None, "tok")
+            # As the click recipe sends it: message_ts is the click's action_ts, so the
+            # result's thread_ts falls back to it ("9.9"), which is not a message.
+            result = {"user_id": clicker, "channel": "C1", "thread_ts": "9.9"}
+            data = {"action_value": value, "action_ts": "9.9"}
+            data.update(extra)
+            ibreath.handle_click(data, result, None, "tok")
         finally:
             ibreath.open_card = real
         return result, calls
 
     def test_anyone_can_open_a_card(self):
-        result, calls = self.click("play|anyone|0")
+        result, calls = self.click("play|anyone|0", source_ts="111.1")
         self.assertEqual(len(calls), 1)
         args = calls[0][0]
-        self.assertEqual(args[4], "111.1", "in the thread of the nudge")
+        self.assertEqual(args[4], "111.1", "in the thread of the nudge, a real message")
         self.assertEqual(args[5], "play:9.9")
+
+    def test_the_card_never_goes_in_a_thread_of_the_click_time(self):
+        _, calls = self.click("play|anyone|0", source_ts="111.1")
+        self.assertNotEqual(calls[0][0][4], "9.9")
+
+    def test_without_a_source_ts_the_old_thread_is_used(self):
+        _, calls = self.click("play|anyone|0")
+        self.assertEqual(calls[0][0][4], "9.9")
 
     def test_another_persons_start_is_still_refused(self):
         sent = []
@@ -253,24 +265,51 @@ class TestSpotter(unittest.TestCase):
 
 
 class TestClickIds(unittest.TestCase):
-    """The memory buttons must carry action ids the memory click recipe lets through: the ones
-    the memory step posts itself. Their values are unchanged, so the step reads them as before."""
+    """The memory buttons must carry action ids the memory click recipe lets through. That is
+    a fixed list (trigger condition of "imemory - button click", recipe 82869158), NOT every id
+    the memory step posts: imemory_try, imemory_play and imemory_play_img are not on it. Values
+    are unchanged, so the step reads them as before."""
 
-    POSTED_BY_IMEMORY = {"imemory_start", "imemory_yes", "imemory_no", "imemory_again",
-                         "imemory_daily", "imemory_try", "imemory_match_start"}
+    ALLOWED_BY_RECIPE = ({"imemory_yes", "imemory_no", "imemory_start", "imemory_again",
+                          "imemory_daily", "imemory_speed_yes", "imemory_speed_no",
+                          "imemory_speed_start", "imemory_match_start", "imemory_match_again"}
+                         | {"imemory_match_t{}".format(i) for i in range(20)})
 
     def memory_ids(self, **extra):
         _, blocks = nudge("plank", **extra)
         row = next(b for b in blocks if b.get("block_id") == "nudge_break_memory")
         return {e["value"]: e["action_id"] for e in row["elements"]}
 
-    def test_default_memory_buttons_use_ids_the_step_posts(self):
+    def test_default_memory_buttons_use_ids_the_recipe_lets_through(self):
         ids = self.memory_ids()
         self.assertEqual(ids["anyone|0|play"], "imemory_start")
-        self.assertEqual(ids["img|anyone|0|play"], "imemory_try")
+        self.assertEqual(ids["img|anyone|0|play"], "imemory_again")
         self.assertEqual(ids["imatch|anyone|0|join"], "imemory_match_start")
         for key in ("anyone|0|play", "img|anyone|0|play", "imatch|anyone|0|join"):
-            self.assertIn(ids[key], self.POSTED_BY_IMEMORY)
+            self.assertIn(ids[key], self.ALLOWED_BY_RECIPE)
+
+    def test_every_action_id_is_lowercase_in_every_mode(self):
+        """The recipes compare ids as written: `imemory_again` passes, `iMemory_again` would not.
+        A capital M appears only in the visible labels (iMemory, iMemoryImage), never in an id."""
+        for activity in list(dn.ACTIVITIES) + ["not_a_known_activity"]:
+            for extra in ({}, {"button_ids": "old"}):
+                _, blocks = nudge(activity, **extra)
+                for block in blocks:
+                    if block["type"] == "actions":
+                        for e in block["elements"]:
+                            self.assertEqual(e["action_id"], e["action_id"].lower(), (activity, extra))
+
+    def test_no_default_button_uses_an_id_the_recipe_drops(self):
+        for activity in ("plank", "imemory", "iadd"):
+            _, blocks = nudge(activity)
+            for block in blocks:
+                if block["type"] != "actions":
+                    continue
+                for e in block["elements"]:
+                    if e["action_id"].startswith("imemory_"):
+                        self.assertIn(e["action_id"], self.ALLOWED_BY_RECIPE, activity)
+                    else:
+                        self.assertRegex(e["action_id"], r"^(imath_|ibreath_)", activity)
 
     def test_values_are_unchanged_by_the_new_ids(self):
         self.assertEqual(set(self.memory_ids()),
@@ -296,7 +335,9 @@ class TestClickIds(unittest.TestCase):
     def test_imemory_game_nudge_play_button(self):
         _, blocks = nudge("imemory")
         self.assertEqual([e["action_id"] for e in blocks[2]["elements"]],
-                         ["imemory_try", "imemory_start"])
+                         ["imemory_daily", "imemory_start"])
+        self.assertEqual([e["value"] for e in blocks[2]["elements"]],
+                         ["anyone|0|try", "anyone|0|play"])
         _, blocks = nudge("imemory", button_ids="old")
         self.assertEqual([e["action_id"] for e in blocks[2]["elements"]],
                          ["imemory_try", "imemory_play"])

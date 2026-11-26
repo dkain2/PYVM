@@ -8,6 +8,32 @@
     "hint": "Workato Data Tables API token. Needed on a press of a real game (never of a test game), and on the typed-word recipe so that typing the word again can find the game the person already runs or plays in. Without it on the typed recipe the word always opens the setup card."
   },
   {
+    "control_type": "select",
+    "label": "Data table",
+    "name": "data_table",
+    "type": "string",
+    "optional": true,
+    "pick_list": [
+      [
+        "DiceUp (default)",
+        "diceup"
+      ],
+      [
+        "Old table (workato_governance_unified)",
+        "legacy"
+      ]
+    ],
+    "hint": "Which data table holds the game rows. Leave empty for DiceUp; legacy goes back to the old table."
+  },
+  {
+    "control_type": "text",
+    "label": "Environment",
+    "name": "env",
+    "type": "string",
+    "optional": true,
+    "hint": "Which workspace's DiceUp table to use: dev or prod. Map it from the recipe's environment property. Anything other than dev (blank too) means prod, so production needs nothing set."
+  },
+  {
     "control_type": "text",
     "label": "Slack bot token",
     "name": "slack_bot_token",

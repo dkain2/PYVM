@@ -67,7 +67,7 @@ CLICK  (payload, or action_id with value / user_id / channel / message_ts)
                                      who, when and the new job id. Refused, with a private message to the person who clicked, when
                                      the job was reprocessed less than `cooldown_minutes` ago (a double click, or someone else
                                      just did it) or when it has been reprocessed `max_reprocess` times already. A person who is
-                                     not in `allowed_user_ids` gets a pop-up instead (a Slack modal, opened with the click's
+                                     not on the team (TEAM_USER_IDS) or in `allowed_user_ids` for that channel gets a pop-up instead (a Slack modal, opened with the click's
                                      trigger_id): "Sorry, you do not have privilege to reprocess this job." and an Okay button.
                                      This is checked first of all, before any lookup, because the trigger_id lives ~3 seconds; if
                                      the pop-up cannot open, the same words go as a private message.
@@ -311,6 +311,40 @@ def call_timeout(cfg, deadline):
 # ------------------------------------------------------------------------------------------------ settings
 
 
+TEAM_USER_IDS = frozenset(["U029BCDA22K", "U038ZCDAY6P", "U05KF0K2NP4", "U05NQAA7NP6"])   # always may reprocess / resolve, in every channel
+
+
+def allowed_by_channel(raw):
+    """`allowed_user_ids` is text holding a JSON object {"<channel id>": "U1,U2" or ["U1", "U2"], ...}: the people allowed IN
+    ADDITION to TEAM_USER_IDS, per channel. The key "*" (or "all") means every channel. Text that is not a JSON object is
+    read as a plain list of user ids for every channel (the old way)."""
+    text = text_of(raw).strip()
+    if not text:
+        return {}
+    def ids(value):
+        if isinstance(value, (list, tuple)):
+            value = ",".join(text_of(v) for v in value)
+        return {u for u in re.split(r"[\s,;]+", text_of(value).upper()) if u}
+    try:
+        data = json.loads(text)
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        return {"*": ids(text)}
+    out = {}
+    for key, value in data.items():
+        key = text_of(key).strip().upper()
+        key = "*" if key in ("*", "ALL") else key
+        out.setdefault(key, set()).update(ids(value))
+    return out
+
+
+def may_act(cfg, user_id, channel):
+    user_id = text_of(user_id).upper()
+    extra = cfg["allowed"]
+    return user_id in TEAM_USER_IDS or user_id in extra.get("*", ()) or user_id in extra.get(text_of(channel).upper(), ())
+
+
 def settings(inp):
     def pick(name, default=""):
         value = inp.get(name)
@@ -322,7 +356,7 @@ def settings(inp):
         "data_table_id": text_of(pick("data_table_id", ERROR_TABLE_ID)).strip(),
         "workato_api_base": text_of(pick("workato_api_base", WORKATO_API)).strip().rstrip("/"),
         "data_tables_base": DATA_TABLES_API,
-        "allowed": {u for u in re.split(r"[\s,;]+", text_of(inp.get("allowed_user_ids")).upper()) if u},
+        "allowed": allowed_by_channel(inp.get("allowed_user_ids")),
         "cooldown_minutes": max(0, min(1440, to_int(inp.get("cooldown_minutes"), 10))),
         "max_reprocess": max(1, min(50, to_int(inp.get("max_reprocess"), 3))),
         "update_message": truthy(inp.get("update_message"), True),
@@ -1001,8 +1035,8 @@ def refuse(run, why, line):
 NO_REPROCESS_RIGHT = "Sorry, you do not have privilege to reprocess this job."
 
 
-def not_allowed_to_reprocess(cfg, user_id):
-    return bool(cfg["allowed"]) and user_id.upper() not in cfg["allowed"]
+def not_allowed_to_reprocess(cfg, user_id, channel=""):
+    return not may_act(cfg, user_id, channel)
 
 
 def do_reprocess(run):
@@ -1011,7 +1045,7 @@ def do_reprocess(run):
         return refuse(run, "no job", "This message does not say which job to reprocess.")
     if not cfg["workato_api_token"]:
         return refuse(run, "no workato_api_token", "Reprocess is not set up: the step has no Workato token.")
-    if not_allowed_to_reprocess(cfg, user["id"]):         # click_flow normally stops this earlier, with the pop-up
+    if not_allowed_to_reprocess(cfg, user["id"], run.click["channel"]):         # click_flow normally stops this earlier, with the pop-up
         result.update({"refused": "not allowed", "result": NO_REPROCESS_RIGHT, "handled": True})
         run.popup("Reprocess", NO_REPROCESS_RIGHT)
         return
@@ -1075,7 +1109,7 @@ def do_acknowledge(run):
 
 def do_resolve(run):
     cfg, user, now = run.cfg, run.user, run.now
-    if cfg["allowed"] and user["id"].upper() not in cfg["allowed"]:
+    if not may_act(cfg, user["id"], run.click["channel"]):
         return refuse(run, "not allowed", "You are not on the list of people who may resolve errors.")
     fields = common_fields(user, now, "Resolve", "resolved", run.stored)
     fields.update({TRACK_COLUMNS["resolved_by"]: user["name"], TRACK_COLUMNS["resolved_at"]: now.isoformat()})
@@ -3125,7 +3159,7 @@ def click_flow(inp, cfg, result, warnings, now, deadline):
 
     # Someone not on the Who may reprocess list: say so with a pop-up and an Okay button. This comes before the user lookup and the
     # error log read on purpose: the pop-up's trigger_id expires ~3 seconds after the click and those calls are slow.
-    if name == "reprocess" and not_allowed_to_reprocess(cfg, click["user_id"]):
+    if name == "reprocess" and not_allowed_to_reprocess(cfg, click["user_id"], click["channel"]):
         who = {"id": click["user_id"], "name": click["user_name"] or click["user_id"], "email": "", "note": ""}
         early = Run(cfg, click, {"master": "", "recipe_id": "", "job_id": "", "recipe_name": "", "environment": "",
                                  "priority": "", "signature": "", "table": ""}, who, now, result, warnings, deadline)

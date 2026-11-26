@@ -286,11 +286,11 @@
   },
   {
     "control_type": "text",
-    "label": "Who may reprocess",
+    "label": "Extra people who may reprocess (per channel, JSON)",
     "name": "allowed_user_ids",
     "type": "string",
     "optional": true,
-    "hint": "CLICK, optional. Slack user IDs, comma-separated, that may reprocess or resolve. Blank = anyone who can see the message."
+    "hint": "CLICK, optional. Text holding a JSON object of EXTRA people per channel, on top of the built-in team (always allowed): {\"C0123ABCD\": \"U111,U222\", \"C0456EFGH\": [\"U333\"]}. The key * = every channel. Plain \"U111,U222\" = those people in every channel. Blank = the team only."
   },
   {
     "control_type": "integer",

@@ -237,7 +237,15 @@ TWO PRESSES AT ONCE
     own, and only the press whose row is the earliest announces it, so one player's click handled twice (a double
     tap, a number tapped again, the click delivered twice) is announced once.
 
-THE ROWS  (workato_governance_unified; none of the types ends in _users, and none uses a person as `id`,
+THE TABLE  DiceUp, the generic table for every Slack game (input `data_table` = legacy goes back to the old
+    workato_governance_unified). Input `env` picks the workspace's table: dev for the dev one, anything else (blank
+    too) is prod, so a recipe deployed to production needs nothing mapped; the dev recipe sets env = dev. The rows below are described in the field names the code uses; DiceUp keeps them in
+    columns of its own: id = game_id, group_id = slack_user_id, member_name = slack_user_name, grant_type = sub_type,
+    day = day_key, the rest (record_key, row_type, status, last_processed_ts, source_ref, slack_channel_id, content)
+    under their own names. Every new row also gets record_type = tambola. The column UUIDs are the same in both
+    workspaces; only the table's id differs (TABLES).
+
+THE ROWS  (none of the types ends in _users, and none uses a person as `id`,
     which spotter reads in one unpaged query; EVERY row carries `slack_channel_id`, because the same step
     runs in several channels, and every lookup is scoped by it)
     tambola_game    one per game: id = game id (tb_<channel>_<message ts>), record_key tambola_game_<id>,
@@ -340,10 +348,9 @@ from datetime import datetime, timezone
 # Endpoints
 # --------------------------------------------------------------------------
 
-TABLE_ID = "0b863cb1-4712-416b-a9d5-7bf7f2f9b059"
-TABLE_QUERY_URL = "https://data-tables.workato.com/api/v1/tables/{}/query".format(TABLE_ID)
-TABLE_RECORDS_URL = "https://data-tables.workato.com/api/v1/tables/{}/records".format(TABLE_ID)
-TABLE_RECORD_URL = TABLE_RECORDS_URL + "/{}"
+DEFAULT_TABLE = "diceup"          # which data table the game uses; input `data_table` = legacy goes back to the old one
+DEFAULT_ENV = "prod"              # which workspace's table: input `env` = dev uses the dev one, anything else prod's
+ENVS = ("dev", "prod")
 
 SLACK_POST_URL = "https://slack.com/api/chat.postMessage"
 SLACK_UPDATE_URL = "https://slack.com/api/chat.update"
@@ -369,21 +376,70 @@ GAME_ROW = "tambola_game"
 PLAYER_ROW = "tambola_player"
 WIN_ROW = "tambola_win"
 
-COLUMNS = {
-    "record_key": "81f48f77-2849-428a-b84d-1f11ff301b83",
-    "row_type": "61b928b9-46b7-430c-a40f-873b187591e2",
-    "id": "3edd5f8c-137d-46fd-966e-b067f2772838",
-    "name": "aa7e6bf6-4cf7-4830-bade-38a1ccc710cd",
-    "group_id": "4c96f075-78db-41ac-bfc2-6ac195b8df2c",
-    "grant_type": "355e769f-0aa3-46be-bea3-5c2b3442f658",
-    "member_name": "bc214e7f-c007-4fd7-ac0e-6367b1e4098f",
-    "status": "863a9d40-87a7-49ff-ba40-32858e62cd48",
-    "last_processed_ts": "5761a90c-832e-4bf5-aaee-5d6a4d43f045",
-    "source_ref": "e530be4a-68dc-4e9a-ad1f-2dbb8af3abf1",
-    "slack_channel_id": "7101072d-867b-4104-a1e4-ef6611adaaa9",
-    "content": "3c42b96c-a909-423b-8545-f438366b5702",
-    "day": "5cfe9bc1-cc32-4a5b-9cc6-4f6682cb7a4b",
+# The game thinks in the field names below (the ones of the old table, workato_governance_unified). A table maps each
+# to the column it is really kept in and that column's UUID: `fields` {field: (column name, UUID)}. Only the
+# Table class below knows the difference, so the game's own code is the same for both tables.
+TABLES = {
+    # DiceUp: the generic table for every Slack game. One table in each workspace (`ids`); the columns have the same
+    # UUIDs in both (the deploy kept them: checked against the production table's definition).
+    "diceup": {
+        "ids": {"dev": "caf5f954-e916-4992-81ed-7c49e3181958", "prod": "a9305e93-50f6-4da3-9db7-ad968aceebb2"},
+        "record_type": "tambola",          # written on every new row (a required column of this table)
+        "fields": {
+            "record_key": ("record_key", "dca6a279-fa0e-4521-be5f-9f0f80438b8d"),
+            "row_type": ("row_type", "734ab0f2-f718-4d58-81b7-3539738554fa"),
+            "record_type": ("record_type", "7812bb45-889b-4d57-8ce1-2e47bfc199d8"),
+            "id": ("game_id", "e081cbb6-42cb-4717-b304-1cde3afafffa"),
+            "name": ("game_name", "ea6d2fe6-c55f-4f39-8ee9-eace8f817fb1"),
+            "group_id": ("slack_user_id", "ccbe5cff-97c3-48e8-8df2-27bf088ae016"),
+            "grant_type": ("sub_type", "d0ebcf9f-e655-4cd3-904b-c1db8962ecde"),
+            "member_name": ("slack_user_name", "9ec9a9ba-12f6-49cc-a299-96d761c81f1e"),
+            "status": ("status", "a0bd0673-17a3-4c78-9a78-a391fc449879"),
+            "last_processed_ts": ("last_processed_ts", "2bb629f7-141f-474a-8bbc-4bf9325b599f"),
+            "source_ref": ("source_ref", "47660e40-4a2b-4792-807c-18abd7d9c01a"),
+            "slack_channel_id": ("slack_channel_id", "b821d6fd-c34a-41f4-8159-9be43bfa4ff6"),
+            "content": ("content", "6e302629-46cf-4470-bb74-afc88eb9cf1f"),
+            "day": ("day_key", "998b0674-d5c2-430d-b16d-deff7e1e7ca0"),
+        },
+    },
+    # The old table, kept so the game can go back to it (input `data_table` = legacy).
+    "legacy": {
+        "ids": {"dev": "0b863cb1-4712-416b-a9d5-7bf7f2f9b059", "prod": "0b863cb1-4712-416b-a9d5-7bf7f2f9b059"},
+        "record_type": "",
+        "fields": {name: (name, uuid) for name, uuid in (
+            ("record_key", "81f48f77-2849-428a-b84d-1f11ff301b83"),
+            ("row_type", "61b928b9-46b7-430c-a40f-873b187591e2"),
+            ("id", "3edd5f8c-137d-46fd-966e-b067f2772838"),
+            ("name", "aa7e6bf6-4cf7-4830-bade-38a1ccc710cd"),
+            ("group_id", "4c96f075-78db-41ac-bfc2-6ac195b8df2c"),
+            ("grant_type", "355e769f-0aa3-46be-bea3-5c2b3442f658"),
+            ("member_name", "bc214e7f-c007-4fd7-ac0e-6367b1e4098f"),
+            ("status", "863a9d40-87a7-49ff-ba40-32858e62cd48"),
+            ("last_processed_ts", "5761a90c-832e-4bf5-aaee-5d6a4d43f045"),
+            ("source_ref", "e530be4a-68dc-4e9a-ad1f-2dbb8af3abf1"),
+            ("slack_channel_id", "7101072d-867b-4104-a1e4-ef6611adaaa9"),
+            ("content", "3c42b96c-a909-423b-8545-f438366b5702"),
+            ("day", "5cfe9bc1-cc32-4a5b-9cc6-4f6682cb7a4b"))},
+    },
 }
+
+
+def table_named(word):
+    """The table the word names; anything else is the default."""
+    return TABLES.get(str(word or "").strip().lower()) or TABLES[DEFAULT_TABLE]
+
+
+def env_named(word):
+    """dev or prod: `dev` is dev; anything else, blank included, is the default (prod)."""
+    word = str(word or "").strip().lower()
+    return word if word in ENVS else DEFAULT_ENV
+
+
+# Field -> UUID of the default table (the tests, and anything that wants the default, read this).
+COLUMNS = {field: uuid for field, (_column, uuid) in TABLES[DEFAULT_TABLE]["fields"].items()}
+# Field -> the column's name in the default table, and back.
+COLUMN_NAME = {field: column for field, (column, _uuid) in TABLES[DEFAULT_TABLE]["fields"].items()}
+FIELD_OF = {column: field for field, column in COLUMN_NAME.items()}
 
 LOOKUP_FAILED = object()          # a read that failed is not "no such row"
 SKIPPED = object()                # a task that was not started because time ran out
@@ -1683,10 +1739,14 @@ def board_foot(g, over=False):
 
 
 def ticket_button(g):
-    """My ticket, the one button on a game that is on: it gives whoever presses it their own ticket again, as a private
+    """My ticket, the one button on a game that is on (a list: empty when the organizer is the only player, whose card
+    is in their controls and who has nobody to share the board with; a button on a public message is the same for
+    everyone, so it cannot be hidden from the organizer alone while others play): it gives whoever presses it their own ticket again, as a private
     note under the board. A private note is dropped when Slack reloads, and this is how a player gets theirs back
     without typing in the channel."""
-    return _actions([_button(MY_TICKET_TEXT, ACTION_PREFIX + "getticket", value_for("getticket", g))])
+    if not any(user != g["host"] for user in g["roster"]):
+        return []
+    return [_actions([_button(MY_TICKET_TEXT, ACTION_PREFIX + "getticket", value_for("getticket", g))])]
 
 
 def board_blocks(g, over=""):
@@ -1717,7 +1777,7 @@ def board_blocks(g, over=""):
         blocks += [_section(row) for row in board_rows(called, g["cfg"]["cols"], numbers_of(g))]
     blocks += winners_blocks(g)
     if not over and g["status"] in LIVE:
-        blocks.append(ticket_button(g))
+        blocks += ticket_button(g)
     blocks.append(_context(board_foot(g, bool(over)) + ("  ·  " + TEST_NOTE if g["test"] else "")))
     return carry(blocks, g)
 
@@ -1831,7 +1891,7 @@ def review_blocks(g, stats):
         blocks.append(_context(REVIEW_SPREAD.format(spread="  ·  ".join(
             "{}-{}: {}".format(lo, hi, n) if lo != hi else "{}: {}".format(lo, n)
             for (lo, hi), n in zip(spread_buckets(ticket_size_of(g)), stats["spread"])))))
-    blocks.append(ticket_button(g))
+    blocks += ticket_button(g)
     return carry(blocks, g)
 
 
@@ -1976,8 +2036,15 @@ class Table(object):
     """Workato data table access, by column name rather than UUID. Every lookup is scoped to the game's
     channel, and every row written carries it."""
 
-    def __init__(self, token):
+    def __init__(self, token, data_table=None, env=None):
         self.headers = {"Authorization": "Bearer {}".format(token), "Content-Type": "application/json"}
+        spec = table_named(data_table)
+        self.record_type = spec["record_type"]
+        self.columns = spec["fields"]                              # field -> (column name, UUID)
+        self.field_of = {column: field for field, (column, _uuid) in self.columns.items()}
+        self.env = env_named(env)
+        base = "https://data-tables.workato.com/api/v1/tables/{}/".format(spec["ids"][self.env])
+        self.query_url, self.records_url = base + "query", base + "records"
         self.errors = []
         self.written = 0
         self.read_failed = False
@@ -1996,25 +2063,36 @@ class Table(object):
             if self._lock:
                 self._lock.release()
 
-    @staticmethod
-    def _decode(body):
-        """The query endpoint returns schema and data as arrays-of-arrays."""
-        columns = [f.get("name") for group in body.get("schema", []) for f in group]
+    def _decode(self, body):
+        """The query endpoint returns schema and data as arrays-of-arrays. Rows come back under the game's field
+        names (a column the game does not know keeps its own name)."""
+        columns = [self.field_of.get(f.get("name"), f.get("name")) for group in body.get("schema", []) for f in group]
         return [dict(zip(columns, [v for group in row for v in group])) for row in body.get("data", [])]
+
+    def _column(self, field):
+        return self.columns[field][0] if field in self.columns else field
+
+    def _where(self, where):
+        """A condition written in the game's field names, in the table's column names."""
+        if isinstance(where, dict):
+            return {(k if k in ("$and", "$or") else self._column(k)): self._where(v) for k, v in where.items()}
+        if isinstance(where, list):
+            return [self._where(v) for v in where]
+        return where
 
     def query(self, where, select=None, limit=200, every=False):
         """Matching rows. `every` follows continuation tokens to the last page. A failed read gives []
         with read_failed set: half a game would deal out numbers that are not true."""
-        payload = {"where": where, "limit": limit}
+        payload = {"where": self._where(where), "limit": limit}
         if select:
-            payload["select"] = select
+            payload["select"] = [self._column(f) for f in select]
         self.read_failed = False
         rows = []
         for _page in range(QUERY_MAX_PAGES):
-            body, error = _send_json(TABLE_QUERY_URL, self.headers, payload)
+            body, error = _send_json(self.query_url, self.headers, payload)
             if error:
                 _sleep(0.3)                                    # one retry: a blip is the usual cause
-                body, error = _send_json(TABLE_QUERY_URL, self.headers, payload)
+                body, error = _send_json(self.query_url, self.headers, payload)
             if error:
                 self._note(error="table.query " + error)
                 self.read_failed = True
@@ -2067,18 +2145,20 @@ class Table(object):
     def _document(self, fields):
         document = {}
         for name, value in fields.items():
-            uuid = COLUMNS.get(name)
-            if uuid is None:
+            column = self.columns.get(name)
+            if column is None:
                 self._note(error="write: unknown column " + name)
             elif value is not None:
-                document["$" + uuid] = value if isinstance(value, str) else str(value)
+                document["$" + column[1]] = value if isinstance(value, str) else str(value)
         return document
 
     def create(self, fields, find=None):
         """(ok, record_id). The create call does not reliably return the id, so `find` -- a zero-argument
         lookup of the new row -- is the fallback. record_id is "" only if both fail: written but not
         addressable, never "not written", for a retry would duplicate."""
-        body, error = _send_json(TABLE_RECORDS_URL, self.headers, {"document": self._document(fields)}, "POST")
+        if self.record_type and "record_type" not in fields:        # DiceUp holds every game: say whose row this is
+            fields = dict(fields, record_type=self.record_type)
+        body, error = _send_json(self.records_url, self.headers, {"document": self._document(fields)}, "POST")
         if error:
             self._note(error="table.create " + error)
             return False, ""
@@ -2099,7 +2179,7 @@ class Table(object):
         if not record_id:
             self._note(error="table.update without a $record_id")
             return False
-        _body, error = _send_json(TABLE_RECORD_URL.format(record_id), self.headers,
+        _body, error = _send_json("{}/{}".format(self.records_url, record_id), self.headers,
                                   {"document": self._document(fields)}, "PUT")
         if error:
             self._note(error="table.update " + error)
@@ -3983,7 +4063,8 @@ def main(input):
         "players": 0, "called": 0, "number": 0, "marked": 0, "prize": "", "finished": False,
         "dm_sent": 0, "dm_failed": [], "rows_written": 0, "preview_json": "",
     }
-    table = Table(input.get("workato_api_token") or "")
+    table = Table(input.get("workato_api_token") or "", input.get("data_table"),
+                  input.get("env"))
     try:
         if payload_problem:
             result["error"] = payload_problem

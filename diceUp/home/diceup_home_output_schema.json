@@ -1,0 +1,258 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Ok",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when the home tab was published (or the call needed nothing, like a skipped tab).",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Error",
+    "name": "error",
+    "type": "string",
+    "optional": true,
+    "hint": "What went wrong, when something did. Empty otherwise."
+  },
+  {
+    "control_type": "text",
+    "label": "Warnings",
+    "name": "warnings",
+    "type": "array",
+    "of": "string",
+    "optional": true,
+    "hint": "Things that did not stop the step: a feature Slack refused, a table read that failed, a bad games_json."
+  },
+  {
+    "control_type": "text",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true,
+    "hint": "home (app_home_opened) or click (a press on the home tab)."
+  },
+  {
+    "control_type": "text",
+    "label": "Action",
+    "name": "action",
+    "type": "string",
+    "optional": true,
+    "hint": "open, start, period, refresh, channel or unknown."
+  },
+  {
+    "control_type": "text",
+    "label": "Skipped",
+    "name": "skipped",
+    "type": "string",
+    "optional": true,
+    "hint": "Why nothing was done, when nothing was: the Messages tab, a channel picked, another app's press."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "The person the page was published for."
+  },
+  {
+    "control_type": "text",
+    "label": "Environment",
+    "name": "env",
+    "type": "string",
+    "optional": true,
+    "hint": "dev or prod: the DiceUp table read."
+  },
+  {
+    "control_type": "text",
+    "label": "Period",
+    "name": "period",
+    "type": "string",
+    "optional": true,
+    "hint": "The period the stats show: 7, 30, 90 or all."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Published",
+    "name": "published",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when views.publish succeeded.",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Look used",
+    "name": "look_used",
+    "type": "string",
+    "optional": true,
+    "hint": "The features the published page kept (plain = none), after any Slack refused."
+  },
+  {
+    "control_type": "integer",
+    "label": "Blocks",
+    "name": "blocks",
+    "type": "integer",
+    "optional": true,
+    "hint": "Top-level blocks in the page (Slack allows 100).",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "View JSON",
+    "name": "view_json",
+    "type": "string",
+    "optional": true,
+    "hint": "The view as published (or previewed): {type, private_metadata, blocks}."
+  },
+  {
+    "control_type": "integer",
+    "label": "Rows read",
+    "name": "rows_read",
+    "type": "integer",
+    "optional": true,
+    "hint": "Rows read from the DiceUp table.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Partial",
+    "name": "partial",
+    "type": "boolean",
+    "optional": true,
+    "hint": "True when max_pages or the time budget stopped the read: the stats cover only the rows read.",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Games shown",
+    "name": "games_shown",
+    "type": "integer",
+    "optional": true,
+    "hint": "Games on the page (coming soon included).",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Notice",
+    "name": "notice",
+    "type": "string",
+    "optional": true,
+    "hint": "The line put at the top of the page after a press (game on its way, pick a channel, invite the app)."
+  },
+  {
+    "control_type": "text",
+    "label": "Start game",
+    "name": "start_game",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] Set when Start handed a game off: its key (tambola). The recipe's IF on this runs that game's step."
+  },
+  {
+    "control_type": "text",
+    "label": "Start text",
+    "name": "start_text",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The word to pass as `text` to the game's step (itambola)."
+  },
+  {
+    "control_type": "text",
+    "label": "Start channel",
+    "name": "start_channel",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The channel to pass as `channel` to the game's step."
+  },
+  {
+    "control_type": "text",
+    "label": "Start user ID",
+    "name": "start_user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] The person to pass as `user_id` to the game's step (they become the organizer)."
+  },
+  {
+    "control_type": "text",
+    "label": "Start message ts",
+    "name": "start_message_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] ts of the line posted in the channel, to pass as `message_ts` (leave thread_ts blank). Empty when announce_start = no."
+  },
+  {
+    "control_type": "text",
+    "label": "Start permalink",
+    "name": "start_permalink",
+    "type": "string",
+    "optional": true,
+    "hint": "[click] Link to that line (the Open channel button)."
+  },
+  {
+    "control_type": "integer",
+    "label": "Your games",
+    "name": "your_games",
+    "type": "integer",
+    "optional": true,
+    "hint": "The viewer's games played, every game, all time.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Your prizes",
+    "name": "your_prizes",
+    "type": "integer",
+    "optional": true,
+    "hint": "The viewer's prizes won, every game, all time.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Your grand prizes",
+    "name": "your_grand_prizes",
+    "type": "integer",
+    "optional": true,
+    "hint": "The viewer's grand prizes (Full Houses in tambola), all time.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Your hosted",
+    "name": "your_hosted",
+    "type": "integer",
+    "optional": true,
+    "hint": "Games the viewer organized, all time.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "integer",
+    "label": "Your badges",
+    "name": "your_badges",
+    "type": "integer",
+    "optional": true,
+    "hint": "Achievements the viewer has earned.",
+    "parse_output": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Your stats JSON",
+    "name": "your_stats_json",
+    "type": "string",
+    "optional": true,
+    "hint": "The viewer's stats as JSON: total, badges, and per game {games, prizes, grand, hosted, rank, of}."
+  },
+  {
+    "control_type": "integer",
+    "label": "Elapsed ms",
+    "name": "elapsed_ms",
+    "type": "integer",
+    "optional": true,
+    "hint": "How long the step took.",
+    "parse_output": "integer_conversion"
+  }
+]

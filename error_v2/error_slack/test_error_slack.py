@@ -43,6 +43,9 @@ sys.path.insert(0, HERE)
 
 import error_slack as ec  # noqa: E402
 
+STRANGER = "U0STRANGER9"                                                    # not on the team, not on any list
+ec.TEAM_USER_IDS = frozenset(ec.TEAM_USER_IDS | {"U0ADA0001"})          # the tests' usual clicker is on the team
+
 NOW = "2026-11-20T15:41:00-08:00"
 MASTER, RECIPE = "j-TestJob1-abcdef-CD", "70000001"
 CHANNEL, TS = "C0123ABCD", "1700000000.000100"
@@ -421,11 +424,27 @@ class TestReprocess(Patched):
         out, world = self.click(world=World(stored=stored_row(**{"Reprocess Count": 3})), max_reprocess=5)
         self.assertTrue(out["reprocess_enqueued"])
 
-    def test_only_the_listed_people_may_reprocess(self):
-        out, world = self.click(allowed_user_ids="U0GRACE02, U0OTHER03")
+    def test_the_team_may_always_reprocess_and_others_only_when_listed(self):
+        out, world = self.click(payload(user=STRANGER))
         self.assertEqual((out["refused"], world.repeats), ("not allowed", []))
-        out, world = self.click(allowed_user_ids="u0ada0001")
+        out, world = self.click(payload(user=STRANGER), allowed_user_ids="u0stranger9")             # old plain list: every channel
         self.assertTrue(out["reprocess_enqueued"])
+        out, world = self.click(payload(user="U029BCDA22K"), allowed_user_ids="U0GRACE02")
+        self.assertTrue(out["reprocess_enqueued"])
+        for team in ("U029BCDA22K", "U038ZCDAY6P", "U05KF0K2NP4", "U05NQAA7NP6"):
+            self.assertIn(team, ec.TEAM_USER_IDS)
+
+    def test_allowed_user_ids_is_a_json_object_per_channel(self):
+        channel = payload()["channel"]["id"]
+        other = '{"CELSEWHERE": "%s", "%s": ["U0GRACE02", "U0OTHER03"]}' % (STRANGER, channel)
+        out, world = self.click(payload(user=STRANGER), allowed_user_ids=other)                    # listed for another channel only
+        self.assertEqual(out["refused"], "not allowed")
+        out, world = self.click(payload(user="U0GRACE02"), allowed_user_ids=other)
+        self.assertTrue(out["reprocess_enqueued"])
+        out, world = self.click(payload(user=STRANGER), allowed_user_ids='{"*": "%s"}' % STRANGER)
+        self.assertTrue(out["reprocess_enqueued"])
+        out, world = self.click(payload(user=STRANGER), allowed_user_ids="{not json")               # unreadable: read as a plain list
+        self.assertEqual(out["refused"], "not allowed")
 
     def popup_payload(self, user="U0ADA0001"):
         pl = payload(user=user)
@@ -433,7 +452,7 @@ class TestReprocess(Patched):
         return pl
 
     def test_someone_not_allowed_gets_a_popup_with_an_okay_button(self):
-        out, world = self.click(self.popup_payload(), allowed_user_ids="U0GRACE02, U0OTHER03")
+        out, world = self.click(self.popup_payload(STRANGER), allowed_user_ids="U0GRACE02, U0OTHER03")
         self.assertEqual((out["refused"], out["ok"], world.repeats), ("not allowed", True, []))
         opened = world.slack_calls("views.open")
         self.assertEqual(len(opened), 1)
@@ -446,17 +465,17 @@ class TestReprocess(Patched):
         self.assertEqual(world.slack_calls("chat.update"), [])                  # the alert is left alone, the buttons stay
 
     def test_the_popup_is_opened_before_any_slow_lookup(self):
-        out, world = self.click(self.popup_payload(), allowed_user_ids="U0GRACE02")
+        out, world = self.click(self.popup_payload(STRANGER), allowed_user_ids="U0GRACE02")
         urls = [c[1] for c in world.calls]
         self.assertTrue(urls[0].endswith("views.open"), urls)
         self.assertFalse([u for u in urls if "users.info" in u or "data-tables" in u])
         self.assertEqual(world.writes, [])                                      # a refusal writes nothing to the error log
 
     def test_without_a_trigger_id_or_when_the_popup_fails_it_is_a_private_message(self):
-        out, world = self.click(allowed_user_ids="U0GRACE02")                  # no trigger_id in this payload
+        out, world = self.click(payload(user=STRANGER), allowed_user_ids="U0GRACE02")   # no trigger_id in this payload
         self.assertEqual(world.slack_calls("views.open"), [])
         self.assertEqual(world.slack_calls("chat.postEphemeral")[0]["text"], "Sorry, you do not have privilege to reprocess this job.")
-        out, world = self.click(self.popup_payload(), world=World(stored=stored_row(), slack_fail={"views.open"}),
+        out, world = self.click(self.popup_payload(STRANGER), world=World(stored=stored_row(), slack_fail={"views.open"}),
                                 allowed_user_ids="U0GRACE02")
         self.assertEqual(len(world.slack_calls("chat.postEphemeral")), 1)
         self.assertEqual((out["refused"], out["ok"]), ("not allowed", True))
@@ -677,7 +696,7 @@ class TestOtherActions(Patched):
         self.assertIn("✅ *Resolved*", update["blocks"][1]["elements"][0]["text"])
 
     def test_resolve_follows_the_allowed_list(self):
-        out, world = self.click(payload(action_id=ec.ACT_RESOLVE), allowed_user_ids="U0GRACE02")
+        out, world = self.click(payload(action_id=ec.ACT_RESOLVE, user=STRANGER), allowed_user_ids="U0GRACE02")
         self.assertEqual((out["refused"], world.writes), ("not allowed", []))
 
     def test_assign(self):
@@ -867,7 +886,7 @@ class TestNeverFails(Patched):
     def test_a_click_with_nothing_but_the_action(self):
         out, world = self.click({"actions": [{"action_id": ec.ACT_REPROCESS}]}, world=World())
         self.assertTrue(out["ok"])
-        self.assertEqual((out["refused"], world.repeats), ("no job", []))
+        self.assertEqual((out["refused"], world.repeats), ("not allowed", []))
 
     def test_every_service_down(self):
         class Down(object):

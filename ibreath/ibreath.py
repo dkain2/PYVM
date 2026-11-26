@@ -96,7 +96,8 @@ BUTTONS (tell the Slack trigger to listen for action_id starting `ibreath_`)
     ibreath_end       End        value  end|<user>|<run id>
     ibreath_again     Again      value  again|<user>|<run id>
     ibreath_play      Play       value  play|anyone|0   (on the daily nudge; ANYONE may press
-                                 it, and the presser's own card opens as a reply in a thread)
+                                 it, and the presser's own card opens as a reply in a thread
+                                 under the nudge, found by source_ts = the nudge's message ts)
     The dropdowns' block_id equals their action_id, so the current choices are at
     state.values.ibreath_pattern.ibreath_pattern.selected_option.value and
     state.values.ibreath_minutes.ibreath_minutes.selected_option.value -- map them to
@@ -1726,7 +1727,11 @@ def handle_click(input, result, table, token):
     source_ts = str(input.get("source_ts") or "").strip()
     if kind == "play" and owner == "anyone":
         # The daily nudge's button: the same as typing `iboxbreath`, for whoever pressed it.
-        open_card(input, result, table, token, result["thread_ts"],
+        # The card goes in a thread under the NUDGE (source_ts, the message that holds the
+        # button). result["thread_ts"] is no use here: a post has no thread yet, so it falls
+        # back to message_ts, which the click recipe maps to action_ts -- the moment of the
+        # click, not a message -- and Slack accepts a reply to it without ever showing it.
+        open_card(input, result, table, token, source_ts or result["thread_ts"],
                   "play:" + str(input.get("action_ts") or source_ts))
         return
     if owner != clicker:
