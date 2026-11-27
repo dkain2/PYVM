@@ -261,7 +261,7 @@
     "details": {
       "real_name": "answer_layout"
     },
-    "hint": "Optional. blocks (the default) or card. blocks: the new look's answer is posted as plain message blocks, with no coloured bar down its side, so it reads like a normal reply. An answer too long for that, or one Slack rejects, is posted as the card instead. card: every answer is the card, as before. Errors and the old look are always cards. Needed on the reply call."
+    "hint": "Optional. blocks (the default) or card. blocks: the new look's answer is posted as plain message blocks, with no coloured bar down its side, so it reads like a normal reply. An answer too long for that, or one Slack rejects, is posted as the card instead. card: every answer is the card, as before. The old look always uses cards. Needed on the reply call."
   },
   {
     "control_type": "text",
@@ -297,7 +297,7 @@
     "details": {
       "real_name": "keyword"
     },
-    "hint": "reply: ask's keyword output. Saved on the conversation row, so a bare follow-up finds the right genie; also used, if escalated, to find the project owners to tag."
+    "hint": "Reply uses the ask step's keyword to save the conversation and find project owners. On ask, you may map a keyword that the trigger already recognizes. If that keyword appears in the message while the genie registry is unavailable, the responder can still post a maintenance reply."
   },
   {
     "control_type": "text",
@@ -345,7 +345,7 @@
     "details": {
       "real_name": "genie_response"
     },
-    "hint": "reply: \"Assign task to genie\"'s answer text."
+    "hint": "reply: \"Assign task to genie\"'s full answer text, including any slack-chart code blocks for native Slack charts."
   },
   {
     "control_type": "text",
@@ -357,7 +357,7 @@
     "details": {
       "real_name": "genie_error"
     },
-    "hint": "reply: \"Assign task to genie\"'s own error, if it failed. Any text here is shown as a red error card and escalated to the project owners, whatever genie_response says."
+    "hint": "Map the error message from the Workato On error branch for \"Assign task to genie\". Call the responder with action = reply and the normal ask outputs, including channel, reply_thread_ts and thinking_ts. The responder posts a maintenance message in the thread and sends the redacted error to the developer by DM."
   },
   {
     "control_type": "text",

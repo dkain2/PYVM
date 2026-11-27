@@ -1,29 +1,4 @@
 {
- "error": [
-  {
-   "blocks": [
-    {
-     "elements": [
-      {
-       "text": "*SNAP*  \u00b7  Support",
-       "type": "mrkdwn"
-      }
-     ],
-     "type": "context"
-    },
-    {
-     "expand": true,
-     "text": {
-      "text": "Sorry, I couldn't answer that one. Please try again in a minute, or ask the IT Integrations team.\n```boom```",
-      "type": "mrkdwn"
-     },
-     "type": "section"
-    }
-   ],
-   "color": "#C48B8B",
-   "fallback": "SNAP could not answer"
-  }
- ],
  "hello": [
   {
    "blocks": [

@@ -12,6 +12,7 @@ import re
 import sys
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import responder as r                                          # noqa: E402
@@ -275,10 +276,11 @@ class ReplyFallback(unittest.TestCase):
 
     def test_a_rejected_table_is_never_swapped_for_a_text_table(self):
         slack, result = self.run_reply({"table"})
-        self.assertFalse(result["posted"])
+        self.assertTrue(result["maintenance_posted"])
         self.assertTrue(slack.errors)                       # Slack's refusal is reported
-        self.assertEqual(slack.sent, [])
-        self.assertFalse(any("\u250c" in json.dumps(p) for _m, p in slack.sent))
+        (method, payload), = slack.sent
+        self.assertEqual((method, payload["ts"]), ("chat.update", "1.1"))
+        self.assertEqual(payload["attachments"][0]["fallback"], r.MAINTENANCE_TEXT)
 
     def test_rejected_feedback_buttons_are_dropped(self):
         slack, result = self.run_reply({"context_actions"}, answer="Just text")
@@ -288,9 +290,11 @@ class ReplyFallback(unittest.TestCase):
         blocks = slack.sent[0][1]["attachments"][0]["blocks"]
         self.assertFalse(any(b["type"] == "context_actions" for b in blocks))
 
-    def test_everything_rejected_keeps_the_last_error(self):
+    def test_rejected_blocks_fall_back_to_a_plain_maintenance_reply(self):
         slack, result = self.run_reply({"table", "context_actions", "section", "context"})
-        self.assertFalse(result["posted"])
+        self.assertTrue(result["maintenance_posted"])
+        self.assertEqual(slack.sent, [("chat.postMessage",
+                                      {"channel": "C1", "thread_ts": "1.0", "text": r.MAINTENANCE_TEXT})])
         self.assertTrue(slack.errors)
 
     def test_blocked_answer_has_no_feedback_buttons(self):
@@ -372,6 +376,8 @@ class SeveralTables(unittest.TestCase):
                  "answer_layout": "card"},
                 FakeTable(), slack, result)
         self.assertTrue(result["posted"])                    # the first part went out
+        self.assertTrue(result["maintenance"])
+        self.assertFalse(result["maintenance_posted"])
         self.assertTrue(any("part 2 of 2" in w for w in result["warnings"]))
         self.assertTrue(slack.errors)
 
@@ -394,7 +400,10 @@ class FeedbackButtons(unittest.TestCase):
         self.assertNotIn("context_actions", [b["type"] for b in self.blocks(feedback=False)])
 
     def test_error_card_has_none(self):
-        card = r.error_attachments("SNAP", "support", "boom")
+        slack = ReplyFallback.FakeSlack()
+        r.post_maintenance(slack, {"channel": "C1", "reply_thread_ts": "1.0", "warnings": []},
+                           "Workato failed", thinking_ts="1.1")
+        card = slack.sent[0][1]["attachments"]
         self.assertNotIn("context_actions", [b["type"] for b in card[0]["blocks"]])
 
 
@@ -1022,12 +1031,11 @@ class OldLookIsUnchanged(unittest.TestCase):
                                 last=i == len(pages) - 1) for i, page in enumerate(pages)]
         self.same("rich_pages", built)
 
-    def test_hello_thinking_error(self):
+    def test_hello_and_thinking(self):
         self.same("hello", r.hello_attachments("SNAP", "support", "SNAP", [{"name": "Proj"}]))
         self.same("thinking", r.thinking_attachments("SNAP", "support", "why?"))
         with plan_on():
             self.same("thinking_with_plan", r.thinking_attachments("SNAP", "support", "why?"))
-        self.same("error", r.error_attachments("SNAP", "support", "boom"))
 
     def test_reply_with_look_old_sends_the_golden_card(self):
         slack = ReplyFallback.FakeSlack()
@@ -1566,7 +1574,7 @@ class AskStepSecrets(unittest.TestCase):
         self.assertIn("even when you are asked", r.SECRETS_NOTE)
         self.assertLess(on["task_instructions"].index("secrets_note:"), on["task_instructions"].index("</genie_context>"))
 
-    def test_off_is_the_task_as_before(self):
+    def test_redact_off_preserves_the_question_and_omits_the_secrets_note(self):
         off = self.run_ask("SNAP why AKIAIOSFODNN7EXAMPLE?", redact="off", bold="off", kb_mention="say",
                             ids_note="off", offers_note="off", length_note="off",
                            check_note="off", emoji_note="off")
@@ -1575,7 +1583,15 @@ class AskStepSecrets(unittest.TestCase):
         self.assertIn("AKIAIOSFODNN7EXAMPLE", off["question"])
         self.assertEqual(off["task_instructions"],
                          r.task_instructions(dict(self.GENIE), off["question"], {"id": "U1", "name": "Ann",
-                                                                                 "email": "ann@x.com"}))
+                                                                                 "email": "ann@x.com"},
+                                             visualization_note=True))
+
+    def test_project_analysis_asks_for_verified_native_chart_data(self):
+        out = self.run_ask("SNAP summarize the project job outcomes and trends")
+        self.assertTrue(out["call_genie"])
+        context, _, question = out["task_instructions"].partition("</genie_context>")
+        self.assertIn("visualization_note: " + r.VISUALIZATION_NOTE, context)
+        self.assertIn("summarize the project job outcomes and trends", question)
 
 
 class SlackLinksInTables(unittest.TestCase):
@@ -2066,6 +2082,438 @@ class PlainBlocksLayout(unittest.TestCase):
     def test_the_mode(self):
         self.assertEqual([r.answer_layout_mode(v) for v in ("", None, "blocks", "CARD", "x")],
                          ["blocks", "blocks", "blocks", "card", "blocks"])
+
+
+class NativeCharts(unittest.TestCase):
+    OUTCOMES = {"type": "bar", "title": "Recipe job outcomes",
+                "categories": ["Succeeded", "Failed"],
+                "series": [{"name": "Jobs", "values": [46, 0]}],
+                "x_label": "Outcome", "y_label": "Jobs"}
+    SUMMARY = "46 of 46 recorded runs succeeded. Zero failed."
+
+    class RecordingSlack(r.Slack):
+        def __init__(self, reject=()):
+            super().__init__("mock")
+            self.reject = set(reject)
+            self.calls = []
+
+        def _get(self, method, params):
+            return {"ok": True}
+
+        def _call(self, method, payload):
+            self.last = payload
+            blocks = payload.get("blocks") or [block for a in payload.get("attachments", [])
+                                              for block in a["blocks"]]
+            self.calls.append((method, blocks))
+            if self.reject.intersection(types(blocks)):
+                self.errors.append("slack.{}: invalid_blocks".format(method))
+                return None
+            return {"ok": True, "ts": "1.2"}
+
+    @staticmethod
+    def fence(spec):
+        return "\n```slack-chart\n" + json.dumps(spec) + "\n```\n"
+
+    def run_reply(self, answer, reject=(), **inputs):
+        slack, table = self.RecordingSlack(reject), FakeTable()
+        with patch.object(r, "Slack", return_value=slack), patch.object(r, "Table", return_value=table):
+            out = r.main(dict({"action": "reply", "dry_run": "true", "channel": "C1",
+                               "reply_thread_ts": "1.0", "thinking_ts": "1.1", "keyword": "SNAP",
+                               "genie_name": "SNAP", "persona": "support", "user_id": "U1",
+                               "conversation_id": "conv-123", "genie_response": answer}, **inputs))
+        self.assertTrue(out["ok"], out["error"])
+        return out, slack.calls
+
+    def test_job_outcomes_render_bar_with_zero_and_pie_with_one_slice(self):
+        answer = self.SUMMARY + self.fence(self.OUTCOMES) + self.fence(dict(self.OUTCOMES, type="pie"))
+        out, ((method, blocks),) = self.run_reply(answer)
+        self.assertEqual(method, "chat.update")
+        self.assertEqual(out["message_ts"], "1.1")
+        self.assertTrue(out["conversation_saved"])
+        self.assertEqual(types(blocks),
+                         ["context", "markdown", "data_visualization", "data_visualization",
+                          "context", "context_actions"])
+        bar, pie = (block["chart"] for block in blocks[2:4])
+        self.assertEqual(bar, {
+            "type": "bar", "series": [{"name": "Jobs", "data": [
+                {"label": "Succeeded", "value": 46}, {"label": "Failed", "value": 0}]}],
+            "axis_config": {"categories": ["Succeeded", "Failed"], "x_label": "Outcome", "y_label": "Jobs"},
+        })
+        self.assertEqual(pie, {"type": "pie", "segments": [{"label": "Succeeded", "value": 46}]})
+        self.assertEqual(blocks[1]["text"], self.SUMMARY)
+        self.assertNotIn("slack-chart", out["slack_payload_json"])
+
+    def test_line_and_area_keep_series_aligned_and_allow_signed_decimals(self):
+        spec = dict(self.OUTCOMES, categories=["Nov 23", "Nov 24"],
+                    series=[{"name": "Delay change", "values": [-1.5, 2]},
+                            {"name": "Retry change", "values": [1, 0]}])
+        for kind in ("line", "area"):
+            with self.subTest(kind=kind):
+                chart = r.chart_block(dict(spec, type=kind), str)["chart"]
+                self.assertEqual(chart["type"], kind)
+                self.assertEqual(chart["axis_config"]["categories"], spec["categories"])
+                self.assertEqual(len(chart["series"]), len(spec["series"]))
+                for data, item in zip(chart["series"], spec["series"]):
+                    self.assertEqual([point["label"] for point in data["data"]], spec["categories"])
+                    self.assertEqual([point["value"] for point in data["data"]], item["values"])
+
+    def test_invalid_chart_inputs_are_rejected(self):
+        for change in (
+            {"type": "scatter"}, {"type": {}}, {"title": "x" * 51}, {"categories": ["A", " A "]},
+            {"categories": ["A"] * 21}, {"categories": ["A", "X" * 21]},
+            {"series": self.OUTCOMES["series"] * 2}, {"series": self.OUTCOMES["series"] * 13},
+            {"series": [{"name": "Jobs", "values": [46]}]},
+            {"series": [{"name": "Jobs", "values": ["46", 0]}]},
+            {"series": [{"name": "Jobs", "values": [True, 0]}]},
+            {"series": [{"name": "Jobs", "values": [float("nan"), 0]}]},
+            {"series": [{"name": "Jobs", "values": [float("inf"), 0]}]},
+            {"series": [{"name": "Jobs", "values": [2**53, 0]}]},
+            {"type": "pie", "series": [{"name": "Jobs", "values": [46, -1]}]},
+            {"type": "pie", "series": [{"name": "Jobs", "values": [0, 0]}]},
+            {"type": "pie", "series": [{"name": "Jobs", "values": [1e308, 1e308]}]},
+        ):
+            with self.subTest(change=change):
+                self.assertIsNone(r.chart_block(dict(self.OUTCOMES, **change), str))
+
+    def test_chart_limits_and_invalid_fences_preserve_prose_and_code(self):
+        example = "````markdown\n```slack-chart\nthis is an example\n```\n````"
+        extra = dict(self.OUTCOMES, title="Third chart")
+        answer = (example + "\n\n" + self.SUMMARY + "\n```slack-chart\n{bad json}\n```\n"
+                  + self.fence(self.OUTCOMES) + self.fence(dict(self.OUTCOMES, type="pie"))
+                  + self.fence(extra) + "\n```slack-chart\n{unfinished")
+        prose, charts = r.extract_charts(answer.replace("\n", "\r\n"), str)
+        self.assertEqual(prose, (example + "\n\n" + self.SUMMARY).replace("\n", "\r\n"))
+        self.assertEqual([block["chart"]["type"] for block in charts], ["bar", "pie"])
+
+    def test_malformed_chart_leaves_a_normal_reply(self):
+        answer = self.SUMMARY + "\n```slack-chart\n{bad json}\n```\n\nSee the recipe."
+        out, ((_, blocks),) = self.run_reply(answer)
+        self.assertFalse(out["needs_human"])
+        self.assertEqual(types(blocks), ["context", "markdown", "context", "context_actions"])
+        self.assertIn("See the recipe.", blocks[1]["text"])
+        self.assertNotIn("bad json", out["slack_payload_json"])
+
+    def test_slack_rejection_retries_the_same_edit_with_text_table_and_feedback(self):
+        out, calls = self.run_reply(self.SUMMARY + "\n\n" + NARROW_TABLE + self.fence(self.OUTCOMES),
+                                    reject={"data_visualization"})
+        self.assertEqual([method for method, _ in calls], ["chat.update", "chat.update"])
+        self.assertIn("data_visualization", types(calls[0][1]))
+        self.assertEqual(types(calls[1][1]), ["context", "markdown", "table", "context", "context_actions"])
+        self.assertTrue(out["posted"])
+        self.assertEqual(out["message_ts"], "1.1")
+        self.assertIn("native charts rejected by Slack", " ".join(out["warnings"]))
+
+    def test_a_chart_only_reply_has_readable_data_even_without_the_chart(self):
+        out, calls = self.run_reply(self.fence(self.OUTCOMES), reject={"data_visualization"}, thinking_ts="")
+        self.assertEqual([method for method, _ in calls], ["chat.postMessage", "chat.postMessage"])
+        self.assertFalse(out["needs_human"])
+        self.assertIn("Succeeded: 46, Failed: 0", out["slack_payload_json"])
+
+    def test_chart_is_last_with_paginated_tables_in_each_layout(self):
+        answer = (self.SUMMARY + "\n\n" + _big_table(r.NATIVE_TABLE_ROWS + 10)
+                  + self.fence(self.OUTCOMES))
+        for look, layout in (("new", "blocks"), ("new", "card"), ("old", "card")):
+            with self.subTest(look=look, layout=layout):
+                out, calls = self.run_reply(answer, look=look, answer_layout=layout)
+                self.assertEqual([method for method, _ in calls], ["chat.update", "chat.postMessage"])
+                self.assertEqual([types(blocks).count("table") for _, blocks in calls], [1, 1])
+                self.assertNotIn("data_visualization", types(calls[0][1]))
+                self.assertEqual(types(calls[1][1])[-3:], ["data_visualization", "context", "context_actions"])
+                self.assertEqual(bool(json.loads(out["slack_payload_json"]).get("attachments")), layout == "card")
+
+    def test_full_message_preserves_all_answer_blocks_and_feedback(self):
+        summary = "\n\n---\n\n".join("Metric {}".format(i) for i in range(24))
+        _, ((_, blocks),) = self.run_reply(summary + self.fence(self.OUTCOMES))
+        self.assertEqual(len(blocks), r.FLAT_MAX_BLOCKS)
+        self.assertEqual(types(blocks).count("markdown"), 24)
+        self.assertEqual(types(blocks)[-1], "context_actions")
+        self.assertNotIn("data_visualization", types(blocks))
+
+    def test_secret_is_redacted_from_json_escaped_chart_fields(self):
+        token = "private-é-token"
+        spec = dict(self.OUTCOMES, title=token, categories=[token, "Failed"], x_label=token,
+                    series=[{"name": token, "values": [46, 0]}])
+        out, ((_, blocks),) = self.run_reply(self.SUMMARY + self.fence(spec), workato_api_token=token)
+        chart = blocks[2]
+        self.assertEqual(chart["title"], r.REDACTED)
+        self.assertEqual(chart["chart"]["axis_config"]["categories"][0], r.REDACTED)
+        self.assertEqual(chart["chart"]["axis_config"]["x_label"], r.REDACTED)
+        self.assertEqual(chart["chart"]["series"][0]["name"], r.REDACTED)
+        self.assertEqual(out["redacted_count"], 4)
+
+    def test_escalations_and_errors_never_send_chart_data(self):
+        for answer, args in (
+            ("[[BLOCKED]]", {}), ("I can't help with that here.", {}),
+            ("[[NEEDS_HUMAN]]", {}), ("I don't have enough information.", {}),
+            (self.SUMMARY, {"genie_error": "failed"}),
+        ):
+            with self.subTest(answer=answer, args=args):
+                out, calls = self.run_reply(answer + self.fence(self.OUTCOMES), **args)
+                self.assertTrue(out["needs_human"])
+                self.assertFalse(any("data_visualization" in types(blocks) for _, blocks in calls))
+
+
+class MaintenanceAlerts(unittest.TestCase):
+    ACTIVE = {"record_key": "SNAP:C1", "record_type": r.GENIE_TYPE, "status": r.STATUS_ACTIVE,
+              "channel": "C1", "invoke_keyword": "SNAP", "genie_name": "Snap",
+              "persona": "support", "id": "gin-1"}
+    PAUSED = dict(ACTIVE, status=r.STATUS_PAUSED)
+
+    class Registry(FakeTable):
+        def __init__(self, rows=(), registry_error="", save_error=""):
+            super().__init__(rows)
+            self.registry_error = registry_error
+            self.save_error = save_error
+            self.queries = []
+
+        def query(self, where, limit=200):
+            self.queries.append(where)
+            if "$and" not in where:
+                return super().query(where, limit)
+            if self.registry_error:
+                return [], self.registry_error
+            filters = {key: value for clause in where["$and"] for key, value in clause.items()}
+            status_filter = filters["status"]
+            statuses = status_filter.get("$in") or [status_filter.get("$eq")]
+            rows = [row for row in self.rows if row.get("record_type") == filters["record_type"]["$eq"]
+                    and row.get("channel") == filters["channel"]["$eq"]
+                    and row.get("status") in statuses]
+            return rows[:limit], None
+
+        def save(self, row, fields):
+            return self.save_error or super().save(row, fields)
+
+    class SlackAPI:
+        def __init__(self, reject_updates=False, reject_thread=False, reject_dm=False, reject_blocks=()):
+            self.reject_updates = reject_updates
+            self.reject_thread = reject_thread
+            self.reject_dm = reject_dm
+            self.reject_blocks = set(reject_blocks)
+            self.calls = []
+
+        def __call__(self, url, headers, payload=None, method="GET"):
+            api = url.split("/")[-1].split("?")[0]
+            self.calls.append((api, payload))
+            if api == "auth.test":
+                return {"ok": True, "user_id": "UAPP1"}, None
+            if api == "chat.getPermalink":
+                return {"ok": True, "permalink": "https://example.slack.com/archives/C1/p10"}, None
+            if api == "users.info":
+                return {"ok": True, "user": {"name": "Test user"}}, None
+            if api == "chat.update" and self.reject_updates:
+                return {"ok": False, "error": "cant_update_message"}, None
+            if payload["channel"] == r.DEVELOPER_SLACK_ID and self.reject_dm:
+                return {"ok": False, "error": "channel_not_found"}, None
+            if payload["channel"] == "C1" and self.reject_thread:
+                return {"ok": False, "error": "not_in_channel"}, None
+            blocks = payload.get("blocks") or [b for a in payload.get("attachments", []) for b in a["blocks"]]
+            if self.reject_blocks.intersection(types(blocks)):
+                return {"ok": False, "error": "invalid_blocks"}, None
+            return {"ok": True, "ts": "1.2"}, None
+
+        def messages_to(self, channel):
+            return [(api, p) for api, p in self.calls if p and p.get("channel") == channel]
+
+    def run_main(self, table=None, slack=None, **extra):
+        table = table or self.Registry()
+        slack = slack or self.SlackAPI()
+        inputs = dict({"action": "ask", "env": "prod", "channel": "C1", "message_ts": "1.0",
+                       "user_id": "U9", "workato_api_token": "fixture-workato-token",
+                       "slack_bot_token": "fixture-slack-token"}, **extra)
+        with patch.object(r, "Table", return_value=table), patch.object(r, "_request", side_effect=slack):
+            return r.main(inputs), slack
+
+    def assert_notice(self, out, slack, thread_ts="1.0"):
+        self.assertTrue(out["maintenance"])
+        self.assertTrue(out["maintenance_posted"])
+        self.assertTrue(out["developer_notified"])
+        self.assertFalse(out["call_genie"])
+        posted = slack.messages_to("C1")[-1][1]
+        self.assertEqual(posted["text"], r.MAINTENANCE_TEXT)
+        self.assertEqual(posted["thread_ts"], thread_ts)
+        (method, payload), = slack.messages_to("U038ZCDAY6P")
+        self.assertEqual(method, "chat.postMessage")
+        self.assertNotIn("thread_ts", payload)
+        self.assertIn("prod", payload["text"])
+        self.assertIn("Open the Slack thread", payload["text"])
+        return payload["text"]
+
+    def test_paused_genie_gets_a_thread_notice_and_a_private_alert(self):
+        table = self.Registry([self.PAUSED])
+        out, slack = self.run_main(table, text="snap, why did the job fail?")
+        dm = self.assert_notice(out, slack)
+        self.assertIn("SNAP", dm)
+        self.assertIn("paused", dm)
+        self.assertEqual(out["genies_in_channel"], 0)
+        self.assertEqual(table.saved, [])
+        self.assertEqual(json.loads(out["slack_payload_json"])["channel"], "C1")
+
+    def test_missing_genie_handle_stops_the_task_before_the_workato_action(self):
+        out, slack = self.run_main(self.Registry([dict(self.ACTIVE, id=" ")]), text="SNAP job history?")
+        self.assertIn("missing its Workato handle", self.assert_notice(out, slack))
+
+    def test_active_keyword_still_takes_priority_over_a_paused_one(self):
+        active = dict(self.ACTIVE, invoke_keyword="ROCKET", id="gin-2")
+        out, slack = self.run_main(self.Registry([self.PAUSED, active]), text="SNAP is down. ROCKET why?")
+        self.assertTrue(out["call_genie"])
+        self.assertEqual(out["genie_handle"], "gin-2")
+        self.assertFalse(out["maintenance"])
+        self.assertEqual(slack.messages_to(r.DEVELOPER_SLACK_ID), [])
+
+    def test_known_followup_to_a_missing_genie_does_not_route_to_another_active_genie(self):
+        conversation = {"record_key": "conv:C1:1.0", "invoke_keyword": "SNAP", "genie_name": "Snap"}
+        active = dict(self.ACTIVE, invoke_keyword="ROCKET", id="gin-2")
+        for rows in ([conversation, active], [conversation, active, self.PAUSED]):
+            with self.subTest(rows=rows):
+                out, slack = self.run_main(self.Registry(rows), thread_ts="1.0",
+                                           message_ts="1.9", text="Can you check this job?")
+                self.assertTrue(out["conversation_found"])
+                self.assertIn("Snap", self.assert_notice(out, slack))
+
+    def test_mapped_keyword_or_bot_mention_works_during_a_registry_outage(self):
+        table = self.Registry(registry_error="table.query HTTP 503")
+        for extra in ({"text": "SNAP show the jobs", "keyword": "SNAP"},
+                      {"text": "<@UAPP1> show the jobs"}):
+            with self.subTest(extra=extra):
+                out, slack = self.run_main(table, **extra)
+                self.assertFalse(out["ok"])
+                self.assertIn("HTTP 503", self.assert_notice(out, slack))
+
+    def test_unrelated_slack_messages_get_no_public_reply(self):
+        out, slack = self.run_main(self.Registry([self.PAUSED]), text="Discuss the snapshot <@UOTHER>.")
+        self.assertFalse(out["maintenance"])
+        self.assertEqual(slack.messages_to("C1"), [])
+        self.assertEqual(slack.messages_to(r.DEVELOPER_SLACK_ID), [])
+        out, slack = self.run_main(self.Registry(registry_error="HTTP 503"), text="Good morning")
+        self.assertFalse(out["maintenance"])
+        self.assertEqual(slack.messages_to("C1"), [])
+        self.assertTrue(out["developer_notified"])
+
+    def test_app_mention_in_a_channel_with_no_genies_gets_a_notice(self):
+        out, slack = self.run_main(text="<@UAPP1> is the genie online?")
+        self.assertIn("No active genie", self.assert_notice(out, slack))
+
+    def test_bot_events_and_the_maintenance_notice_cannot_trigger_more_notices(self):
+        table = self.Registry([self.PAUSED])
+        for extra in ({"text": "SNAP is busy", "bot_id": "BOT123"}, {"text": r.MAINTENANCE_TEXT},
+                      {"text": r.DEVELOPER_ALERT_PREFIX + " (prod / ask)\nGenie SNAP"}):
+            with self.subTest(extra=extra):
+                out, slack = self.run_main(table, workato_api_token="", **extra)
+                self.assertFalse(out["maintenance"])
+                self.assertEqual(slack.calls, [])
+        self.assertEqual(table.queries, [])
+
+    def test_missing_workato_token_can_still_send_both_slack_messages(self):
+        out, slack = self.run_main(workato_api_token="", keyword="SNAP", text="SNAP show the jobs")
+        self.assertFalse(out["ok"])
+        self.assertIn("workato_api_token is empty", self.assert_notice(out, slack))
+
+    def test_workato_failure_replaces_thinking_and_keeps_details_in_the_redacted_dm(self):
+        token = "abc.def.ghi-123456"
+        table = self.Registry([OwnerOnePerThread.GENIE])
+        out, slack = self.run_main(table, action="reply", genie_name="Snap", keyword="SNAP",
+                                   thinking_ts="1.1", genie_error="HTTP 503. Authorization: Bearer " + token,
+                                   genie_response="Partial result", conversation_id="conv-unusable",
+                                   question="Describe the private job data", redact="off")
+        self.assertTrue(out["maintenance_posted"])
+        self.assertTrue(out["developer_notified"])
+        self.assertEqual(out["message_ts"], "1.1")
+        self.assertEqual(out["escalation_reason"], "error")
+        (method, payload), = slack.messages_to("C1")
+        self.assertEqual((method, payload["ts"]), ("chat.update", "1.1"))
+        self.assertEqual(payload["attachments"][0]["fallback"], r.MAINTENANCE_TEXT)
+        self.assertNotIn("HTTP 503", json.dumps(payload))
+        (_, dm), = slack.messages_to("U038ZCDAY6P")
+        for value in ("HTTP 503", "[REDACTED]", "prod", "Snap"):
+            self.assertIn(value, dm["text"])
+        self.assertNotIn(token, dm["text"])
+        self.assertNotIn("private job data", dm["text"])
+        self.assertEqual(slack.messages_to("U111"), [])
+        self.assertEqual(table.saved, [])
+
+    def test_workato_error_branch_can_send_the_diagnostic_with_only_a_slack_token(self):
+        out, slack = self.run_main(action="reply", workato_api_token="", genie_error="Genie stopped")
+        self.assertIn("Genie stopped", self.assert_notice(out, slack))
+
+    def test_empty_result_gets_a_plain_maintenance_reply(self):
+        out, slack = self.run_main(action="reply", genie_response="  ")
+        self.assertIn("empty answer", self.assert_notice(out, slack))
+
+    def test_rejected_edit_falls_back_to_a_thread_reply_and_still_alerts(self):
+        slack = self.SlackAPI(reject_updates=True)
+        out, slack = self.run_main(slack=slack, action="reply", thinking_ts="1.1", genie_error="genie offline")
+        dm = self.assert_notice(out, slack)
+        self.assertEqual([method for method, _ in slack.messages_to("C1")], ["chat.update", "chat.postMessage"])
+        self.assertIn("cant_update_message", dm)
+
+    def test_developer_is_notified_even_if_slack_rejects_the_channel_reply(self):
+        out, slack = self.run_main(slack=self.SlackAPI(reject_thread=True), action="reply",
+                                   genie_error="genie offline")
+        self.assertTrue(out["maintenance"])
+        self.assertFalse(out["maintenance_posted"])
+        self.assertTrue(out["developer_notified"])
+        (_, dm), = slack.messages_to("U038ZCDAY6P")
+        self.assertIn("Maintenance reply could not be sent", dm["text"])
+        self.assertIn("not_in_channel", dm["text"])
+
+    def test_failed_developer_dm_is_reported_without_affecting_the_thread_reply(self):
+        out, slack = self.run_main(slack=self.SlackAPI(reject_dm=True), action="reply", genie_error="timeout")
+        self.assertTrue(out["maintenance_posted"])
+        self.assertFalse(out["developer_notified"])
+        self.assertIn("developer alert could not be delivered", out["warnings"])
+        self.assertEqual(len(slack.messages_to(r.DEVELOPER_SLACK_ID)), 1)
+
+    def test_answer_and_feedback_stay_intact_when_the_conversation_save_fails(self):
+        table = self.Registry(save_error="table.save HTTP 503")
+        out, slack = self.run_main(table, action="reply", genie_response="46 successful jobs.",
+                                   thinking_ts="1.1", conversation_id="conv-1", keyword="SNAP")
+        self.assertTrue(out["posted"])
+        self.assertFalse(out["maintenance"])
+        self.assertTrue(out["developer_notified"])
+        self.assertFalse(out["conversation_saved"])
+        (_, answer), = slack.messages_to("C1")
+        self.assertIn("context_actions", types(answer["blocks"]))
+        (_, dm), = slack.messages_to(r.DEVELOPER_SLACK_ID)
+        self.assertIn("could not save the conversation", dm["text"])
+
+    def test_recovered_chart_rejection_alerts_without_replacing_the_answer_with_maintenance(self):
+        response = NativeCharts.SUMMARY + NativeCharts.fence(NativeCharts.OUTCOMES)
+        out, slack = self.run_main(slack=self.SlackAPI(reject_blocks={"data_visualization"}), action="reply",
+                                   genie_response=response, thinking_ts="1.1",
+                                   conversation_id="conv-1", keyword="SNAP")
+        self.assertTrue(out["posted"])
+        self.assertFalse(out["maintenance"])
+        self.assertTrue(out["developer_notified"])
+        self.assertIn(NativeCharts.SUMMARY, out["slack_payload_json"])
+        (_, dm), = slack.messages_to(r.DEVELOPER_SLACK_ID)
+        self.assertIn("native charts rejected by Slack", dm["text"])
+
+    def test_feedback_backend_error_alerts_without_posting_to_the_channel(self):
+        out, slack = self.run_main(self.Registry(save_error="table.save HTTP 500"), action="feedback",
+                                   payload=json.dumps(BLOCK_ACTIONS))
+        self.assertFalse(out["feedback_saved"])
+        self.assertTrue(out["developer_notified"])
+        self.assertEqual(slack.messages_to("C1"), [])
+        (_, dm), = slack.messages_to(r.DEVELOPER_SLACK_ID)
+        self.assertIn("table.save HTTP 500", dm["text"])
+
+    def test_question_without_data_still_goes_to_the_project_owner(self):
+        out, slack = self.run_main(self.Registry([OwnerOnePerThread.GENIE]), action="reply",
+                                   genie_response="I couldn't find the mapping. [[NEEDS_HUMAN]]",
+                                   keyword="SNAP", genie_name="Snap", conversation_id="conv-1")
+        self.assertTrue(out["posted"])
+        self.assertFalse(out["maintenance"])
+        self.assertEqual(out["escalated_to"], ["<@U111>"])
+        self.assertEqual(len(slack.messages_to("U111")), 1)
+        self.assertEqual(slack.messages_to(r.DEVELOPER_SLACK_ID), [])
+
+    def test_dry_run_simulates_the_notice_without_sending_a_dm(self):
+        out, slack = self.run_main(self.Registry([self.PAUSED]), text="SNAP", dry_run="true")
+        self.assertTrue(out["maintenance"])
+        self.assertTrue(out["maintenance_posted"])
+        self.assertEqual(out["message_ts"], "dry-run")
+        self.assertFalse(out["developer_notified"])
+        self.assertEqual(slack.calls, [])
 
 
 if __name__ == "__main__":

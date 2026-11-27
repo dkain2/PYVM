@@ -999,8 +999,8 @@ check("resolve_table_id: env=prod is PROD_TABLE_ID",
 check("resolve_table_id: table_id overrides env",
       builder.resolve_table_id({"env": "prod", "table_id": "other-table-id"}) == "other-table-id")
 
-# A paused genie must not answer: the responder only reads status = active.
-check("responder asks only for status active (so a paused genie is silent)",
+# The responder can recognize paused genies for maintenance notices.
+check("responder distinguishes active genies from paused genies",
       '{"status": {"$eq": STATUS_ACTIVE}}' in open(os.path.join(HERE, "..", "responder", "responder.py")).read())
 
 # main(): the viewer comes from the click, the switch from the input.

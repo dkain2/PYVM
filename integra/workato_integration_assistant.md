@@ -12,7 +12,7 @@ channel: the Slack channel ID
 genie_purpose: what the team says this genie is for (optional)
 asker_slack_id / asker_name / asker_email: who is asking (optional)
 knowledge_base: {name, about, use_when} (optional)
-*_note lines: tone_note, format_note, ids_note, offers_note, secrets_note, escalation_note, asker_note, knowledge_base_note (each optional)
+*_note lines: tone_note, format_note, visualization_note, ids_note, offers_note, secrets_note, escalation_note, asker_note, knowledge_base_note (each optional)
 projects: [{"id", "folder_id", "name"}]   (the projects you cover)
 recipes: [{"id", "name"}]
 lookup_tables: [{"id", "name"}]

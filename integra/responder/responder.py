@@ -27,8 +27,8 @@ ONE PYTHON STEP, TWO CALLS PER QUESTION (plus one when someone rates the answer)
 HOW A MESSAGE IS MATCHED (ask)
     1. Messages from bots, edits and deletes are skipped -- a genie's own reply
        that mentions its keyword must never trigger it again.
-    2. One query: every row with status = active in THIS channel. Keywords are
-       per channel, and a draft or cancelled setup can never answer.
+    2. Look up active and paused genies in THIS channel. Only active genies
+       answer. A paused genie can still be recognized for a maintenance reply.
     3. Each keyword is matched as a whole word, case-insensitive: "SNAP why..."
        matches, "snapshot" and "genieconfig" do not. When several keywords
        appear, the one that comes first wins.
@@ -67,6 +67,28 @@ THE ANSWER CARD (reply)
     instead of losing rows. Input `long_tables` = continue | cut, blank = continue; cut is the
     old behaviour (one table, one message, trimmed with a "cut short" note and the rest dropped).
 
+NATIVE CHARTS (ask and reply)
+    The genie can add up to two ```slack-chart JSON blocks to a written answer about
+    project metrics, job outcomes, trends, or comparisons. Python turns the verified
+    shape into native Slack bar, pie, line or area blocks and adds them above the final
+    footer. If Slack rejects the charts, the reply is retried with the written answer.
+    The existing genie_response field carries both the prose and the chart data.
+    slack_block_kit/data_visualization.json contains sample Slack message payloads.
+
+MAINTENANCE AND DEVELOPER ALERTS
+    A request for a paused, missing or failing genie gets a short maintenance reply
+    in its Slack thread. The reply replaces the thinking message when there is one.
+    The developer gets a separate DM with the environment, thread and redacted error
+    details. Errors that leave the answer usable, such as a failed conversation save,
+    only send the developer alert. An unrecognized keyword in ordinary channel traffic
+    is ignored. If the registry cannot identify the genie, a mapped keyword or a direct
+    mention of the app establishes who the message is for.
+    In Workato, call the ordinary reply step only when "Assign task to genie" succeeds.
+    In its On error branch, call action = "reply" with genie_error and the ask outputs,
+    including channel, reply_thread_ts and thinking_ts. A successful action that
+    produces an empty answer also triggers maintenance.
+    Outputs: maintenance, maintenance_posted, developer_notified.
+
 THE LOOK (input `look` = new | old, blank = LOOK_DEFAULT)
     new: the answer's own first heading becomes a header block, the body is Slack markdown
          blocks (real headings, quotes, nested lists, code with its language), every table
@@ -104,16 +126,14 @@ WHEN THE GENIE CAN'T ANSWER
     [[NEEDS_HUMAN: <project name>]]). reply() removes the marker from the card and then
     posts a plain message in the thread that tags the project owner(s) stored on the
     genie's row (workato_projects[].owner.mention): "can you help?". Python does the
-    tagging, not the model, so the tag is exactly the stored Slack mention. The same
-    message is posted when the genie itself failed or sent nothing back. Each owner also
+    tagging, not the model, so the tag is exactly the stored Slack mention. Each owner also
     gets a direct message from the app with the same facts and a link to the thread
     (owner_dm_text), so they hear about it even if they aren't watching the channel.
     The genie often forgets the marker and just says "I don't have that information", so
     reply() also reads a short answer for that kind of wording (UNANSWERED_PHRASES, the first
     UNANSWERED_CHARS characters of an answer under UNANSWERED_MAX_LENGTH): input
-    `detect_unanswered` = auto | marker, blank = auto; marker is the old behaviour (only the
-    marker, a failure or an empty answer count). The reason is in output escalation_reason
-    (marker | wording | error).
+    `detect_unanswered` = auto | marker, blank = auto; marker requires an explicit
+    escalation marker. The reason is in output escalation_reason (marker | wording | error).
     The owners are brought in ONCE per thread: the first time the genie can't answer, a
     marker row (record_type owner_ping, record_key ping:<channel>:<thread_ts>) is saved,
     and a later unanswered question in the same thread posts no tag and sends no DM
@@ -230,6 +250,7 @@ import urllib.parse
 import urllib.request
 from collections import Counter
 from datetime import datetime, timezone
+from html import escape
 
 # --------------------------------------------------------------------------
 # Endpoints and limits
@@ -326,6 +347,10 @@ FOLDER_RECIPES_URL = WORKATO_API + "/recipes?folder_id={}&page={}&per_page=100"
 OWNER_LIST_PAGES = 5                  # pages of 100 recipes read to find the newest
 FEEDBACK_TYPE = "genie_feedback"
 STATUS_ACTIVE = "active"
+STATUS_PAUSED = "paused"
+MAINTENANCE_TEXT = "We're under maintenance. Please try again in a few minutes."
+DEVELOPER_SLACK_ID = "U038ZCDAY6P"
+DEVELOPER_ALERT_PREFIX = ":warning: *Integra responder issue*"
 
 # Slack message subtypes that are never a question to answer.
 IGNORED_SUBTYPES = {"bot_message", "message_changed", "message_deleted",
@@ -497,9 +522,14 @@ class Slack(object):
         if error:
             self.errors.append("slack.{} {}".format(method, error))
             return None
+        if not isinstance(body, dict):
+            self.errors.append("slack.{}: unexpected response".format(method))
+            return None
         if not body.get("ok"):
             # invalid_blocks comes with the reason (which block, which field) in response_metadata.
-            why = "; ".join(str(m) for m in (body.get("response_metadata") or {}).get("messages", [])[:3])
+            metadata = body.get("response_metadata")
+            messages = metadata.get("messages") if isinstance(metadata, dict) else None
+            why = "; ".join(str(m) for m in messages[:3]) if isinstance(messages, list) else ""
             self.errors.append("slack.{}: {}{}".format(method, body.get("error"),
                                                        " ({})".format(why[:300]) if why else ""))
             return None
@@ -518,6 +548,9 @@ class Slack(object):
                                self.headers)
         if error:
             self.errors.append("slack.{} {}".format(method, error))
+            return None
+        if not isinstance(body, dict):
+            self.errors.append("slack.{}: unexpected response".format(method))
             return None
         if not body.get("ok"):
             self.errors.append("slack.{}: {}".format(method, body.get("error")))
@@ -562,6 +595,10 @@ class Slack(object):
         """A direct message from the app to a user (chat.postMessage with the user's ID as
         the channel opens the app's DM with them). True when it was sent."""
         return bool(self._call("chat.postMessage", {"channel": user_id, "text": text}))
+
+    def bot_user_id(self):
+        """The Slack user ID of the bot behind this token."""
+        return (self._call("auth.test", {}) or {}).get("user_id") or ""
 
     def permalink(self, channel, message_ts):
         """The link to one message ("" when Slack won't give it)."""
@@ -1264,6 +1301,127 @@ def split_sections(text, limit=SECTION_LIMIT):
 
 
 # --------------------------------------------------------------------------
+# Native Slack charts
+# --------------------------------------------------------------------------
+
+CHARTS_PER_MESSAGE = 2
+CHART_SERIES_LIMIT = 12
+CHART_CATEGORY_LIMIT = 20
+CHART_LABEL_LIMIT = 20
+CHART_TITLE_LIMIT = 50
+CHART_JSON_LIMIT = 12000
+CHART_LANGUAGE = "slack-chart"
+MARKDOWN_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)$")
+
+
+def chart_block(spec, scrub):
+    """Build a Block Kit chart from the genie's data. Invalid or incomplete data is omitted."""
+    if not isinstance(spec, dict):
+        return None
+    kind = spec.get("type")
+    if kind not in ("bar", "line", "area", "pie"):
+        return None
+
+    def label(value, limit):
+        clean = scrub(value).strip() if isinstance(value, str) else ""
+        return clean if 0 < len(clean) <= limit and clean.isprintable() else ""
+
+    def numeric(value):
+        # Slack clients use JavaScript numbers. Reject precision loss for integer counts.
+        return ((type(value) is int and abs(value) <= 2**53 - 1)
+                or (type(value) is float and math.isfinite(value)))
+
+    title = label(spec.get("title"), CHART_TITLE_LIMIT)
+    categories, series = spec.get("categories"), spec.get("series")
+    if not title or not isinstance(categories, list) or not 1 <= len(categories) <= CHART_CATEGORY_LIMIT:
+        return None
+    if not isinstance(series, list) or not 1 <= len(series) <= CHART_SERIES_LIMIT:
+        return None
+    categories = [label(category, CHART_LABEL_LIMIT) for category in categories]
+    if "" in categories or len(set(categories)) != len(categories):
+        return None
+
+    names, points = set(), []
+    for item in series:
+        if not isinstance(item, dict):
+            return None
+        name, values = label(item.get("name"), CHART_LABEL_LIMIT), item.get("values")
+        if not name or name in names or not isinstance(values, list) or len(values) != len(categories):
+            return None
+        if not all(numeric(value) for value in values):
+            return None
+        names.add(name)
+        points.append({"name": name, "data": [{"label": category, "value": value}
+                                            for category, value in zip(categories, values)]})
+
+    if kind == "pie":
+        # A zero-count category has no slice. Signed values are unsuitable for a pie.
+        if len(points) != 1 or any(point["value"] < 0 for point in points[0]["data"]):
+            return None
+        segments = [point for point in points[0]["data"] if point["value"] > 0]
+        if not 1 <= len(segments) <= CHART_SERIES_LIMIT or not math.isfinite(sum(p["value"] for p in segments)):
+            return None
+        chart = {"type": kind, "segments": segments}
+    else:
+        axes = {"categories": categories}
+        for key in ("x_label", "y_label"):
+            axis = label(spec.get(key), CHART_TITLE_LIMIT)
+            if axis:
+                axes[key] = axis
+        chart = {"type": kind, "series": points, "axis_config": axes}
+    return {"type": "data_visualization", "title": title, "chart": chart}
+
+
+def extract_charts(answer, scrub):
+    """Remove reserved chart fences while leaving ordinary code and prose in place."""
+    if CHART_LANGUAGE not in answer.lower():
+        return answer, []
+    prose, charts, source = [], [], []
+    fence, is_chart = "", False
+    for line in answer.splitlines(keepends=True):
+        match = MARKDOWN_FENCE.match(line.rstrip("\r\n"))
+        if match:
+            marks, info = match.group(1), match.group(2).strip()
+            if not fence:
+                fence, is_chart = marks, info.lower() == CHART_LANGUAGE
+                if is_chart:
+                    prose.append("\n")
+                    continue
+            elif marks.startswith(fence) and not info:
+                if is_chart:
+                    raw = "".join(source)
+                    if len(charts) < CHARTS_PER_MESSAGE and len(raw) <= CHART_JSON_LIMIT:
+                        try:
+                            block = chart_block(json.loads(raw), scrub)
+                        except (ValueError, RecursionError):
+                            block = None
+                        if block:
+                            charts.append(block)
+                    source.clear()
+                    fence, is_chart = "", False
+                    continue
+                fence = ""
+        (source if is_chart else prose).append(line)
+    return "".join(prose).strip(), charts
+
+
+def chart_summary(charts):
+    """Readable data for a valid chart-only result, including if Slack rejects the chart."""
+    paragraphs = []
+    for block in charts:
+        chart = block["chart"]
+        series = chart.get("series") or [{"name": "", "data": chart["segments"]}]
+        lines = []
+        for item in series:
+            data = ", ".join("{}: {}".format(escape(point["label"], quote=False), point["value"])
+                             for point in item["data"])
+            prefix = "{} — ".format(escape(item["name"], quote=False)) if item["name"] else ""
+            lines.append("- " + prefix + data)
+        paragraphs.append(escape(block["title"], quote=False) + "\n\n" + "\n".join(lines))
+    return "\n\n".join(paragraphs)
+
+
+# --------------------------------------------------------------------------
 # Attachments
 # --------------------------------------------------------------------------
 
@@ -1347,13 +1505,13 @@ def post_thinking(slack, result, question, look="old"):
         if ts:
             result["thinking_ts"] = ts
             return
-        del slack.errors[errors_before:]
-        result["warnings"].append("thinking line rejected by Slack: posted the old thinking card")
+        record_retry(slack, result, errors_before,
+                     "thinking line rejected by Slack: retrying with the old thinking card")
     ts = slack.post(result["channel"], result["reply_thread_ts"],
                     thinking_attachments(name, persona, question))
     if not ts and SHOW_PLAN:
-        del slack.errors[errors_before:]
-        result["warnings"].append("plan block rejected by Slack: posted the plain thinking message")
+        record_retry(slack, result, errors_before,
+                     "plan block rejected by Slack: retrying with the plain thinking card")
         ts = slack.post(result["channel"], result["reply_thread_ts"],
                         thinking_attachments(name, persona, plan=False))
     result["thinking_ts"] = ts
@@ -1410,12 +1568,36 @@ def answer_attachments(genie_name, persona, answer, asked_by="", feedback=True,
              "fallback": (answer or "")[:150], "blocks": blocks}]
 
 
-def error_attachments(genie_name, persona, error):
-    return [{"color": COLOR_ERROR, "fallback": "{} could not answer".format(genie_name),
-             "blocks": [_context(_who(genie_name, persona)),
-                        _section("Sorry, I couldn't answer that one. Please try again in a "
-                                 "minute, or ask the IT Integrations team.\n"
-                                 "```{}```".format((error or "no answer came back")[:500]))]}]
+def record_issue(result, error):
+    """Include an operational error in the job output and the developer's alert."""
+    result["warnings"].append(error)
+    result.setdefault("_issues", []).append(error)
+
+
+def record_retry(slack, result, before, message):
+    errors = slack.errors[before:]
+    del slack.errors[before:]
+    record_issue(result, "{} ({})".format(message, errors[-1][:300]) if errors else message)
+
+
+def post_maintenance(slack, result, reason, thinking_ts=""):
+    """Replace the waiting message or post a plain reply in the original thread."""
+    record_issue(result, reason)
+    result.update(maintenance=True, call_genie=False)
+    channel, thread = result["channel"], result["reply_thread_ts"]
+    if not channel:
+        return
+    ts = ""
+    if thinking_ts:
+        cards = [{"color": COLOR_ERROR, "fallback": MAINTENANCE_TEXT,
+                  "blocks": [_section(MAINTENANCE_TEXT)]}]
+        if slack.update(channel, thinking_ts, cards):
+            ts = thinking_ts
+    if not ts and thread:
+        ts = slack.say(channel, thread, MAINTENANCE_TEXT)
+    result["maintenance_posted"] = bool(ts)
+    if ts and not result.get("posted"):
+        result.update(posted=True, message_ts=ts, answer_sections=1)
 
 
 # --- the new look ---------------------------------------------------------
@@ -1552,11 +1734,11 @@ def post_hello(slack, result, projects, look):
     channel, thread = result["channel"], result["reply_thread_ts"]
     if look == "new":
         errors_before = len(slack.errors)
-        if slack.post(channel, thread, hello_attachments_new(name, persona, keyword, projects)):
-            return
-        del slack.errors[errors_before:]
-        result["warnings"].append("hello card rejected by Slack: posted the old look")
-    slack.post(channel, thread, hello_attachments(name, persona, keyword, projects))
+        ts = slack.post(channel, thread, hello_attachments_new(name, persona, keyword, projects))
+        if ts:
+            return ts
+        record_retry(slack, result, errors_before, "hello card rejected by Slack: retrying with the old look")
+    return slack.post(channel, thread, hello_attachments(name, persona, keyword, projects))
 
 
 # --------------------------------------------------------------------------
@@ -1824,13 +2006,13 @@ def remember_thread(table, input, result):
     overwritten: a thread that already has a row keeps it."""
     channel, thread = result["channel"], result["reply_thread_ts"]
     if not channel or not thread:
-        result["warnings"].append("thread not saved: channel or thread empty")
+        record_issue(result, "thread not saved: channel or thread empty")
         return
     key = conversation_key(channel, thread)
     result["conversation_key"] = key
     found, error = table.query({"record_key": {"$eq": key}}, limit=1)
     if error:
-        result["warnings"].append(error)
+        record_issue(result, "could not look up the hello thread: " + error)
         return
     if found:
         return
@@ -1841,7 +2023,7 @@ def remember_thread(table, input, result):
         "creator_id": str(input.get("user_id") or ""),
         "created_at": now_iso(), "updated_at": now_iso()})
     if error:
-        result["warnings"].append(error)
+        record_issue(result, "could not save the hello thread: " + error)
     else:
         result["conversation_saved"] = True
 
@@ -1856,6 +2038,27 @@ FORMAT_NOTE = ("Format your answer in standard markdown. Use **double asterisks*
                "query or command) goes in `backticks`, never in bold. Keep bold to a few short phrases "
                "in an answer: never whole paragraphs, headings or every bullet. Write links as "
                "[name](https://...), never as <https://...|name>.")
+
+VISUALIZATION_NOTE = (
+    "For chart requests and project summaries, health reviews, or analyses with useful numeric "
+    "comparisons, include up to two native Slack charts. Respect requests for a text-only answer. "
+    "Use the read skills to verify the counts, time window, and project scope. Use consistent "
+    "filters across compared recipes. State the findings and any sampling or pagination limits "
+    "in ordinary prose so the answer stands on its own. "
+    "Use bar for comparisons such as jobs by status or recipe, pie for shares of a single total, "
+    "line for trends, and area for volume over time. Use the requested type if it fits the data. "
+    "Append each chart after the written answer in its own fenced code block with the language "
+    "slack-chart and one JSON object, for example "
+    '{"type":"bar","title":"Job outcomes","categories":["Succeeded","Failed"],'
+    '"series":[{"name":"Jobs","values":[46,0]}],"x_label":"Outcome","y_label":"Jobs"}. '
+    "The example is only a format reference. Use actual numbers and unique labels. Give each "
+    "series one numeric value for each category in the same order. The type is bar, line, area, "
+    "or pie. Use up to 20 categories and 12 series. For pie use one series and up to 12 positive "
+    "slices. Keep title and optional axis labels within 50 characters and category and series "
+    "labels within 20. Keep periods chronological. Use zero only for a verified zero. Omit charts "
+    "with insufficient data. Exclude credentials, personal data, raw records, and internal IDs "
+    "from the chart. Do not generate or link a chart image, file, or charting code."
+)
 
 
 # How a genie says "that's not something I can answer" without the marker. Each is matched
@@ -1962,7 +2165,8 @@ def knowledge_base_of(row):
 
 
 def task_instructions(row, question, asker=None, kb_note=True, secrets_note=False, format_note=False,
-                      kb_quiet=False, ids_note=False, offers_note=False, length_note=False, check_note=False, emoji_note=False):
+                      kb_quiet=False, ids_note=False, offers_note=False, length_note=False,
+                      check_note=False, emoji_note=False, visualization_note=False):
     """The task for the master genie, in the shape its job description expects. asker
     ({id, name, email}, from Slack) says who is asking, so a rule in the genie's knowledge
     base about a person can be applied. kb_note=True adds the genie's knowledge base and a note
@@ -1976,7 +2180,8 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
     (no closing offer of something none of its skills can do). length_note=True adds LENGTH_NOTE
     (no "Short answer:" label, natural length). check_note=True adds CHECK_NOTE (read the recipe
     or job fresh before answering, even in a follow-up). emoji_note=True adds EMOJI_NOTE (severity and
-    status marks at the standard places)."""
+    status marks at the standard places). visualization_note=True explains when to return
+    structured chart data alongside the written answer."""
     persona = row.get("persona") or ""
     lines = [
         "<genie_context>",
@@ -2014,6 +2219,8 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
         lines.append("check_note: " + CHECK_NOTE)
     if emoji_note:
         lines.append("emoji_note: " + EMOJI_NOTE)
+    if visualization_note:
+        lines.append("visualization_note: " + VISUALIZATION_NOTE)
     if secrets_note:
         lines.append("secrets_note: " + SECRETS_NOTE)
     lines.append("escalation_note: " + ESCALATE_NOTE)
@@ -2025,31 +2232,75 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
     return "\n".join(lines)
 
 
+def ask_skip_reason(input, channel):
+    text = str(input.get("text") or "").strip()
+    subtype = str(input.get("subtype") or "").strip()
+    if input.get("bot_id") or subtype in IGNORED_SUBTYPES:
+        return "bot message, edit or delete"
+    if not text or not channel:
+        return "no text or no channel"
+    if OWN_THINKING.match(text):
+        return "the app's own waiting message"
+    if text == MAINTENANCE_TEXT:
+        return "the app's own maintenance reply"
+    if text.startswith(DEVELOPER_ALERT_PREFIX):
+        return "the app's own developer alert"
+    return ""
+
+
+def mapped_ask_keyword(input, text):
+    """A fallback for ask triggers that already know which keyword they matched."""
+    keyword = str(input.get("keyword") or "").strip()
+    row, _ = find_keyword(text, [{"invoke_keyword": keyword}])
+    return keyword if row else ""
+
+
+def mentions_app(slack, text):
+    mentions = SLACK_MENTION.findall(text)
+    return bool(mentions and "<@{}>".format(slack.bot_user_id()) in mentions)
+
+
 def ask(input, table, slack, result):
     text = str(input.get("text") or "")
     channel = result["channel"]
     thread_ts = str(input.get("thread_ts") or "").strip()
-
-    subtype = str(input.get("subtype") or "").strip()
-    if input.get("bot_id") or subtype in IGNORED_SUBTYPES:
-        result["skipped"] = "bot message, edit or delete"
-        return
-    if not text.strip() or not channel:
-        result["skipped"] = "no text or no channel"
-        return
-    if OWN_THINKING.match(text):
-        result["skipped"] = "the app's own waiting message"
+    skipped = ask_skip_reason(input, channel)
+    if skipped:
+        result["skipped"] = skipped
         return
 
-    rows, error = table.query({"$and": [{"record_type": {"$eq": GENIE_TYPE}},
-                                        {"status": {"$eq": STATUS_ACTIVE}},
-                                        {"channel": {"$eq": channel}}]})
+    filters = [{"record_type": {"$eq": GENIE_TYPE}}, {"channel": {"$eq": channel}}]
+    registry, error = table.query({"$and": filters + [
+        {"status": {"$in": [STATUS_ACTIVE, STATUS_PAUSED]}}]})
     if error:
-        raise RuntimeError(error)
+        raise RuntimeError("could not read the channel's genie registry: " + error)
+    rows = [row for row in registry if row.get("status") == STATUS_ACTIVE]
+    paused = [row for row in registry if row.get("status") == STATUS_PAUSED]
+    if len(registry) == 200 and paused:
+        # Keep the existing active-genie lookup intact if paused rows fill the first page.
+        rows, error = table.query({"$and": filters + [{"status": {"$eq": STATUS_ACTIVE}}]})
+        if error:
+            raise RuntimeError("could not read the channel's active genies: " + error)
     result["genies_in_channel"] = len(rows)
-    if not rows:
-        result["skipped"] = "no active genie in this channel"
-        return
+
+    row, match = find_keyword(text, rows)
+    if row is None:
+        if len(registry) == 200:
+            found_paused, error = table.query({"$and": filters + [{"status": {"$eq": STATUS_PAUSED}}]})
+            if error:
+                record_issue(result, "could not read the channel's paused genies: " + error)
+            else:
+                paused = found_paused
+        row, match = find_keyword(text, paused)
+    if row:
+        result.update(matched=True, genie_name=row.get("genie_name") or "",
+                      keyword=row.get("invoke_keyword") or "")
+    else:
+        keyword = mapped_ask_keyword(input, text)
+        if keyword:
+            result.update(matched=True, keyword=keyword)
+            post_maintenance(slack, result, "No registered genie for the requested keyword.")
+            return
 
     # The thread's existing conversation, if a genie is already answering here.
     # Looked up by channel + thread, so it is found whether or not the
@@ -2059,22 +2310,42 @@ def ask(input, table, slack, result):
         result["conversation_key"] = conversation_key(channel, thread_ts)
         found, error = table.query({"record_key": {"$eq": result["conversation_key"]}}, limit=1)
         if error:
-            raise RuntimeError(error)
+            raise RuntimeError("could not read the thread's genie conversation: " + error)
         conversation = found[0] if found else None
     result["conversation_found"] = bool(conversation)
     conv_keyword = ((conversation or {}).get("invoke_keyword") or "").upper()
 
-    row, match = find_keyword(text, rows)
     if row is None and conversation and FOLLOWUP_WITHOUT_KEYWORD:
-        # No keyword: the genie that owns this thread answers. A conversation
-        # saved without its keyword belongs to the channel's only genie.
-        row = next((r for r in rows if (r.get("invoke_keyword") or "").upper() == conv_keyword),
-                   rows[0] if len(rows) == 1 else None)
+        if conv_keyword:
+            row = next((r for r in rows + paused
+                        if (r.get("invoke_keyword") or "").upper() == conv_keyword), None)
+        elif len(rows) == 1:
+            row = rows[0]
+        if row is None and (conv_keyword or not rows):
+            result.update(matched=True, keyword=conv_keyword,
+                          genie_name=conversation.get("genie_name") or "")
+            post_maintenance(slack, result, "The genie for this Slack thread is unavailable.")
+            return
     if row is None:
-        result["skipped"] = "no active genie keyword in this message"
+        if not rows and mentions_app(slack, text):
+            result["matched"] = True
+            post_maintenance(slack, result, "No active genie is registered in this channel.")
+        else:
+            result["skipped"] = ("no active genie keyword in this message" if rows
+                                 else "no active genie in this channel")
         return
 
     keyword = row.get("invoke_keyword") or ""
+    genie_handle = str(row.get("id") or "").strip()
+    result.update(matched=True, keyword=keyword, record_key=row.get("record_key") or "",
+                  genie_name=row.get("genie_name") or "", genie_handle=genie_handle,
+                  persona=row.get("persona") or "")
+    if row.get("status") == STATUS_PAUSED or not genie_handle:
+        reason = ("The requested genie is paused." if row.get("status") == STATUS_PAUSED
+                  else "The registered genie is missing its Workato handle.")
+        post_maintenance(slack, result, reason)
+        return
+
     # The thread's conversation continues unless the message names a different
     # genie than the one that has been answering here.
     same_genie = bool(conversation) and conv_keyword in ("", keyword.upper())
@@ -2087,16 +2358,10 @@ def ask(input, table, slack, result):
     # only says hello).
     asker = slack.user(str(input.get("user_id") or "").strip()) if question else None
     result.update({
-        "matched": True,
         # A thread saved by a bare keyword has no genie conversation yet (id blank): that
         # first question starts one, so it is not a follow-up.
         "is_followup": bool(same_genie and (conversation.get("id") or "")),
         "conversation_id": (conversation.get("id") or "") if same_genie else "",
-        "keyword": keyword,
-        "record_key": row.get("record_key") or "",
-        "genie_name": row.get("genie_name") or "",
-        "genie_handle": row.get("id") or "",
-        "persona": row.get("persona") or "",
         "system_prompt": row.get("system_prompt") or "",
         "question": question,
         "empty_question": not question,
@@ -2109,7 +2374,8 @@ def ask(input, table, slack, result):
             offers_note=offers_note_mode(input.get("offers_note")) == "on",
             length_note=length_note_mode(input.get("length_note")) == "on",
             check_note=check_note_mode(input.get("check_note")) == "on",
-            emoji_note=emoji_note_mode(input.get("emoji_note")) == "on"),
+            emoji_note=emoji_note_mode(input.get("emoji_note")) == "on",
+            visualization_note=bool(question)),
         "projects_json": json.dumps(projects),
         "recipes_json": json.dumps(_json_list(row.get("recipes"))),
         "lookup_tables_json": json.dumps(_json_list(row.get("lookup_tables"))),
@@ -2118,13 +2384,16 @@ def ask(input, table, slack, result):
 
     if not question:
         # Only the keyword was sent: say hello instead of asking the genie nothing.
-        post_hello(slack, result, projects, look_of(input.get("look")))
-        if thread_start_mode(input.get("thread_start")) == "on":
+        if not post_hello(slack, result, projects, look_of(input.get("look"))):
+            post_maintenance(slack, result, "Slack did not accept the genie's hello message.")
+        elif thread_start_mode(input.get("thread_start")) == "on":
             remember_thread(table, input, result)
         return
 
     result["call_genie"] = True
     post_thinking(slack, result, question, look_of(input.get("look")))
+    if not result["thinking_ts"]:
+        record_issue(result, "Slack did not accept the genie's thinking message.")
 
 
 # --------------------------------------------------------------------------
@@ -2409,33 +2678,45 @@ def reply(input, table, slack, result):
 
     # The genie says it can't answer with a marker; take it out of what people read.
     # The marker, or the refusal sentence on its own: models often leave the marker off.
-    blocked = bool(BLOCKED.search(answer)) or _plain(answer) == _plain(BLOCKED_ANSWER)
+    blocked_marker = BLOCKED.search(answer)
+    needs_human_marker = NEEDS_HUMAN.search(answer)
+    answer, charts = extract_charts(answer, scrub)
+    blocked = bool(blocked_marker) or _plain(answer) == _plain(BLOCKED_ANSWER)
     if blocked:                     # a knowledge base rule says not to answer this person
         answer = BLOCKED.sub("", answer).strip() or BLOCKED_ANSWER
-    marker = None if blocked else NEEDS_HUMAN.search(answer)
+    marker = None if blocked else needs_human_marker
     hint = (marker.group(1) or "").strip() if marker else ""
     if marker:
         answer = NEEDS_HUMAN.sub("", answer).strip() or "I couldn't find an answer to that one."
-    unanswered = (not blocked and not marker and not genie_error
+    if genie_error or not (answer or charts):
+        result.update(needs_human=True, escalation_reason="error")
+        reason = ("Assign task to genie failed: " + genie_error if genie_error
+                  else "Assign task to genie returned an empty answer.")
+        post_maintenance(slack, result, reason, thinking_ts)
+        return
+
+    unanswered = (not blocked and not marker
                   and unanswered_mode(input.get("detect_unanswered")) == "auto"
                   and looks_unanswered(answer))
-    escalate = blocked or bool(marker) or bool(genie_error) or not answer or unanswered
+    escalate = blocked or bool(marker) or unanswered
     result["needs_human"] = escalate
     result["escalation_reason"] = ("" if not escalate else "marker" if marker
                                    else "wording" if unanswered else "error")
     result["blocked"] = blocked
 
+    if escalate:
+        charts = []
+    elif not answer:
+        answer = chart_summary(charts)
+
     asker_id = str(input.get("user_id") or "").strip()
-    answered = bool(answer) and not genie_error
-    wants_feedback = FEEDBACK_BUTTONS and answered and not blocked   # a refusal needs no rating
+    wants_feedback = FEEDBACK_BUTTONS and not blocked   # a refusal needs no rating
 
     # An answer with several tables goes out as several messages, one table each (Slack allows
-    # one table block per message). A failed answer or an empty one is one error card.
-    chunks = split_tables(answer, input.get("long_tables")) if answered else [None]
+    # one table block per message).
+    chunks = split_tables(answer, input.get("long_tables"))
 
     def build(look, index, feedback, flat=False):
-        if not answered:
-            return error_attachments(genie_name, persona, genie_error)
         if flat:                    # {"blocks": ...} = a message of blocks; else the card
             blocks = answer_blocks_flat(genie_name, persona, chunks[index], asker_id,
                                         feedback=feedback, first=index == 0,
@@ -2445,17 +2726,46 @@ def reply(input, table, slack, result):
         return build_answer(look, genie_name, persona, chunks[index], asker_id, feedback=feedback,
                             first=index == 0, last=index == len(chunks) - 1, bold=bold)
 
-    def deliver(cards, index):
-        """The first message edits the thinking message into the answer (a fresh post when
-        there is none); the others are posted after it in the thread."""
+    def update(cards):
         if isinstance(cards, dict):
-            if index == 0 and thinking_ts and slack.update_blocks(channel, thinking_ts,
-                                                                  cards["blocks"]):
-                return thinking_ts
+            return thinking_ts if slack.update_blocks(channel, thinking_ts, cards["blocks"]) else ""
+        return thinking_ts if slack.update(channel, thinking_ts, cards) else ""
+
+    def post(cards):
+        if isinstance(cards, dict):
             return slack.post_blocks(channel, thread_ts, cards["blocks"])
-        if index == 0 and thinking_ts and slack.update(channel, thinking_ts, cards):
-            return thinking_ts
         return slack.post(channel, thread_ts, cards)
+
+    def deliver(cards, index):
+        """Edit the thinking message first. If a chart fails, retry the same message without it."""
+        senders = (update, post) if index == 0 and thinking_ts else (post,)
+        chart_cards = None
+        if charts and index == len(chunks) - 1:
+            flat = isinstance(cards, dict)
+            blocks = cards["blocks"] if flat else cards[0]["blocks"]
+            fitting = charts[:max(0, FLAT_MAX_BLOCKS - len(blocks))]
+            if fitting:
+                footer = len(blocks) - (2 if blocks[-1]["type"] == "context_actions" else 1)
+                with_charts = blocks[:footer] + fitting + blocks[footer:]
+                chart_cards = ({"blocks": with_charts} if flat
+                               else [dict(cards[0], blocks=with_charts)])
+        chart_error = ""
+        for send in senders:
+            if chart_cards:
+                before = len(slack.errors)
+                ts = send(chart_cards)
+                if ts:
+                    return ts, chart_cards
+                chart_error = (slack.errors[-1] if len(slack.errors) > before
+                               else "Slack did not accept the chart payload")
+                del slack.errors[before:]
+            ts = send(cards)
+            if ts:
+                if chart_error:
+                    record_issue(result, "native charts rejected by Slack: sent the written "
+                                 "answer ({})".format(chart_error[:300]))
+                return ts, cards
+        return "", cards
 
     # Each message: the card with every newer block first. If Slack rejects it, the same text
     # is sent again in the old look, then also without the feedback buttons. A step that would
@@ -2479,24 +2789,18 @@ def reply(input, table, slack, result):
             if cards in sent:
                 continue
             if sent:
-                reason = (slack.errors[-1] if slack.errors else "")[:300]
-                del slack.errors[errors_before:]
-                result["warnings"].append("answer card rejected by Slack: retried with {}{}".format(
-                    " and ".join(([] if step_look == look else ["the old look"])
-                                 + (["the card"] if flat and step_look == look and not step_flat
-                                    else [])
-                                 + ([] if feedback or not wants_feedback else ["no feedback buttons"])),
-                    " ({})".format(reason) if reason else ""))
+                changes = (([] if step_look == look else ["the old look"])
+                           + (["the card"] if flat and step_look == look and not step_flat else [])
+                           + ([] if feedback or not wants_feedback else ["no feedback buttons"]))
+                record_retry(slack, result, errors_before,
+                             "answer card rejected by Slack: retried with " + " and ".join(changes))
             sent.append(cards)
-            ts = deliver(cards, index)
+            ts, delivered_cards = deliver(cards, index)
             if ts:
                 begin = number
-                all_cards.append(cards)
+                all_cards.append(delivered_cards)
                 break
         if not ts:
-            if index:
-                result["warnings"].append("part {} of {} of the answer could not be posted".format(
-                    index + 1, len(chunks)))
             break
         posted_ts.append(ts)
     result["message_ts"] = posted_ts[0] if posted_ts else ""
@@ -2505,6 +2809,9 @@ def reply(input, table, slack, result):
                                      for b in (cards["blocks"] if isinstance(cards, dict)
                                                else cards[0]["blocks"])
                                      if b["type"] not in ("context", "context_actions")])
+    if len(posted_ts) < len(chunks):
+        post_maintenance(slack, result, "Slack could not post part {} of {} of the answer.".format(
+            len(posted_ts) + 1, len(chunks)), "" if posted_ts else thinking_ts)
 
     # Owners are brought in once per thread (a blocked refusal always goes to them).
     once = escalate and not blocked and owner_ping_mode(input.get("owner_ping")) == "once"
@@ -2513,7 +2820,7 @@ def reply(input, table, slack, result):
     if once:
         found, error = table.query({"record_key": {"$eq": ping_key}}, limit=1)
         if error:       # can't tell: bring them in rather than risk nobody hearing of it
-            result["warnings"].append(error)
+            record_issue(result, "could not check whether the owner was notified: " + error)
         already = bool(found)
     result["owner_already_notified"] = already
     if escalate and not already:
@@ -2547,7 +2854,7 @@ def reply(input, table, slack, result):
                 "channel": channel, "setup_thread_ts": thread_ts, "creator_id": asker_id,
                 "created_at": now_iso(), "updated_at": now_iso()})
             if error:       # the next unanswered question in this thread will tag them again
-                result["warnings"].append(error)
+                record_issue(result, "could not save the owner notification: " + error)
 
     # Remember the conversation against the thread. Each missing input is
     # reported: a silent skip here is a follow-up that forgets everything.
@@ -2556,17 +2863,17 @@ def reply(input, table, slack, result):
                                         ("channel", channel),
                                         ("reply_thread_ts", thread_ts)) if not value]
     if missing:
-        result["warnings"].append("conversation not saved: {} empty -- map the ask step's / "
-                                  "Assign task to genie's output".format(", ".join(missing)))
+        record_issue(result, "conversation not saved: {} empty -- map the ask step's / "
+                     "Assign task to genie's output".format(", ".join(missing)))
         return
     if not input.get("keyword"):
-        result["warnings"].append("keyword empty: map the ask step's keyword output, so the "
-                                  "thread is tied to its genie")
+        record_issue(result, "keyword empty: map the ask step's keyword output, so the "
+                     "thread is tied to its genie")
     key = conversation_key(channel, thread_ts)
     result["conversation_key"] = key
     found, error = table.query({"record_key": {"$eq": key}}, limit=1)
     if error:
-        result["warnings"].append(error)
+        record_issue(result, "could not look up the conversation to save it: " + error)
         return
     existing = found[0] if found else None
     fields = {"record_type": CONVERSATION_TYPE, "record_key": key, "id": conversation_id,
@@ -2581,7 +2888,7 @@ def reply(input, table, slack, result):
         fields.update({"creator_id": str(input.get("user_id") or ""), "created_at": now_iso()})
     error = table.save(existing, fields)
     if error:
-        result["warnings"].append(error)
+        record_issue(result, "could not save the conversation: " + error)
     else:
         result["conversation_saved"] = True
 
@@ -2650,7 +2957,7 @@ def feedback(fb, table, result):
     conversation, error = table.query({"record_key": {"$eq": conversation_key(channel, thread_ts)}},
                                       limit=1)
     if error:
-        result["warnings"].append(error)           # the rating is still saved, without the genie
+        record_issue(result, "could not look up the feedback's conversation: " + error)
     conversation = conversation[0] if conversation else {}
 
     fields = {"record_type": FEEDBACK_TYPE, "record_key": key, "id": message_ts,
@@ -2671,6 +2978,39 @@ def feedback(fb, table, result):
 # Entry point
 # --------------------------------------------------------------------------
 
+def notify_developer(input, slack, result, issues):
+    """Send one private diagnostic per invocation. Always redact credentials."""
+    scrub = make_scrubber(dict(input, redact="on"), result, count=False)
+
+    def field(value, limit):
+        return escape(_one_line(scrub(str(value or "")), limit).replace("`", "'"), quote=False)
+
+    env = {DEV_TABLE_ID: "dev", PROD_TABLE_ID: "prod"}.get(
+        resolve_table_id(input), env_mode(input.get("env")) + ", custom table")
+    lines = ["{} ({} / {})".format(DEVELOPER_ALERT_PREFIX, env, field(result["action"], 20))]
+    name = field(result["genie_name"] or input.get("genie_name"), 80)
+    keyword = field(result["keyword"] or input.get("keyword"), 50)
+    if name or keyword:
+        lines.append("Genie " + " / ".join(filter(None, (name, keyword))))
+    channel, thread = result["channel"], result["reply_thread_ts"]
+    if channel:
+        label = "<#{}>".format(channel) if re.fullmatch(r"[CDG][A-Z0-9]+", channel) else field(channel, 40)
+        lines.append("Slack channel " + label)
+    if thread:
+        lines.append("Thread timestamp `{}`".format(field(thread, 40)))
+    if channel and thread and result["posted"]:
+        link = slack.permalink(channel, thread)
+        if isinstance(link, str) and re.fullmatch(r"https://[A-Za-z0-9.-]+/[^<>|\s]+", link):
+            lines.append("<{}|Open the Slack thread>".format(link))
+    if result["maintenance"]:
+        lines.append("Maintenance reply sent" if result["maintenance_posted"] else "Maintenance reply could not be sent")
+    details = list(dict.fromkeys(field(issue, 400) for issue in issues if issue))
+    lines.extend("- `{}`".format(detail) for detail in details[:5])
+    result["developer_notified"] = slack.dm(DEVELOPER_SLACK_ID, "\n".join(lines))
+    if not result["developer_notified"]:
+        result["warnings"].append("developer alert could not be delivered")
+
+
 def main(input):
     """Args:
         input (dict): dictionary containing input field(s) supplied in the recipe step
@@ -2680,8 +3020,8 @@ def main(input):
     action = str(input.get("action") or "ask").strip().lower()
     fb = feedback_from_payload(input) if action == "feedback" else {}
     channel = str(input.get("channel") or fb.get("channel") or "").strip()
-    thread_ts = str(input.get("thread_ts") or "").strip()
-    message_ts = str(input.get("message_ts") or "").strip()
+    thread_ts = str(input.get("thread_ts") or fb.get("thread_ts") or "").strip()
+    message_ts = str(input.get("message_ts") or fb.get("message_ts") or "").strip()
     reply_thread = str(input.get("reply_thread_ts") or "").strip() or thread_ts or message_ts
     dry_run = str(input.get("dry_run") or "").lower() in ("true", "1", "yes")
 
@@ -2698,16 +3038,20 @@ def main(input):
               "needs_human": False, "blocked": False, "escalated_to": [], "dm_sent": [],
               "owner_already_notified": False, "escalation_reason": "",
               "feedback_saved": False, "feedback_value": "", "redacted_count": 0,
+              "maintenance": False, "maintenance_posted": False, "developer_notified": False,
               "slack_payload_json": ""}
 
     token = input.get("workato_api_token") or ""
-    if not token and not dry_run:
-        result["error"] = "workato_api_token is empty"
-        return result
     table = Table(token, dry_run, resolve_table_id(input))
     slack = Slack(input.get("slack_bot_token") or "", dry_run)
+    skip = ask_skip_reason(input, channel) if action == "ask" else ""
+    upstream_error = action == "reply" and str(input.get("genie_error") or "").strip()
     try:
-        if action == "reply":
+        if skip:
+            result["skipped"] = skip
+        elif not token and not (dry_run or upstream_error):
+            raise RuntimeError("workato_api_token is empty")
+        elif action == "reply":
             reply(input, table, slack, result)
         elif action == "ask":
             ask(input, table, slack, result)
@@ -2716,14 +3060,33 @@ def main(input):
         else:
             raise RuntimeError("action must be ask, reply or feedback, not {!r}".format(action))
         result["ok"] = True
-    except RuntimeError as exc:
-        result["error"] = str(exc)
+    except Exception as exc:
+        result["error"] = str(exc) if isinstance(exc, RuntimeError) else "{}: {}".format(type(exc).__name__, exc)
+        if action in ("ask", "reply") and not (result["posted"] or result["maintenance"]):
+            targeted = action == "reply" or result["matched"] or result["conversation_found"]
+            if not targeted:
+                text = str(input.get("text") or "")
+                keyword = mapped_ask_keyword(input, text)
+                targeted = bool(keyword or mentions_app(slack, text))
+                result.update(matched=targeted, keyword=keyword)
+            if targeted:
+                thinking = str(input.get("thinking_ts") or "").strip() if action == "reply" else ""
+                post_maintenance(slack, result, result["error"], thinking)
+
+    # Keep the message payload inspectable even when an alert sends a Slack DM afterward.
+    result["slack_payload_json"] = json.dumps(slack.last)
+    issues = result.pop("_issues", [])
+    if result["error"] and result["error"] not in issues:
+        issues.insert(0, result["error"])
+    if action != "ask" or result["matched"] or issues:
+        issues.extend(slack.errors)
+    if issues and not dry_run:
+        notify_developer(input, slack, result, issues)
     result["warnings"].extend(slack.errors)
     # The error and warnings quote what Slack and Workato said back: wiped like the answer.
     quiet = make_scrubber(input, result, count=False)
     result["error"] = quiet(result["error"])
     result["warnings"] = [quiet(str(warning)) for warning in result["warnings"]]
-    result["slack_payload_json"] = json.dumps(slack.last)
     return result
 
 
