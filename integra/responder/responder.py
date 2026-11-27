@@ -59,8 +59,13 @@ THE ANSWER CARD (reply)
     code block. Slack allows one table block per message, so an answer with several tables
     is sent as consecutive messages in the thread, one table each, in reading order (the
     first replaces the "thinking" message; the byline is on the first message, the footer
-    and feedback buttons on the last). A table over Slack's limits is cut to them, with a
-    note under it.
+    and feedback buttons on the last). A table over Slack's own per-block limits (columns,
+    characters) is still cut to them, with a note under it.
+    A table with more data rows than fit in one Slack table block (NATIVE_TABLE_ROWS - 1) is, by
+    default, broken into several pages first (the header row repeated, a short "Continued, rows
+    x-y of z" note before every page after the first), so it continues across more messages
+    instead of losing rows. Input `long_tables` = continue | cut, blank = continue; cut is the
+    old behaviour (one table, one message, trimmed with a "cut short" note and the rest dropped).
 
 THE LOOK (input `look` = new | old, blank = LOOK_DEFAULT)
     new: the answer's own first heading becomes a header block, the body is Slack markdown
@@ -172,6 +177,31 @@ NO OFFERS YOU CANNOT KEEP
     skills do, so OFFERS_NOTE (offers_note in the genie_context) tells it not to offer a lookup or
     action it has no skill for, and not to close with an offer at all. Input `offers_note` =
     on | off, blank = on; off sends no note (the old behaviour).
+
+NO "SHORT ANSWER:" LABEL
+    The genie's job description says "lead with the answer in one or two sentences" and "keep it
+    short", so every reply opened with a bold "Short answer:" and stayed thin, even for a rich
+    question. LENGTH_NOTE (length_note in the genie_context) wins over those lines: start with the
+    answer in your own words, no label, and give as much detail as the question needs. Input
+    `length_note` = on | off, blank = on; off sends no note (the old behaviour).
+
+CHECK BEFORE ANSWERING
+    Asked "do you see any bug in the sync recipes?" as a follow-up in a thread, the genie answered
+    from what it had said earlier, read nothing, and asked for a record ID. CHECK_NOTE (check_note
+    in the genie_context) tells it that a question about a recipe, job, table or mapping is always
+    answered from a fresh read with its skills, follow-up or not, and that a general question is
+    never answered by asking for an example first. Input `check_note` = on | off, blank = on; off
+    sends no note (the old behaviour).
+
+EMOJI MARKS
+    Nothing in this step ever added emojis: the genie wrote the severity marks itself, from the emoji
+    guide in its knowledge base, and only when it happened to read that guide. An answer built from
+    its analyst (a bug review) never did. EMOJI_NOTE (emoji_note in the genie_context) makes it
+    apply the guide every time, and gives it the marks to use otherwise: EMOJI_GUIDE (severity,
+    status, bug, fix, root cause, next step, pending, note, to-do...) and EMOJI_SYSTEMS (Workato,
+    Salesforce, NetSuite, Databricks, Jira...), taken from the workspace's own emoji list
+    (slack_emojis/emojis.json) plus standard Slack emojis.
+    Input `emoji_note` = on | off, blank = on; off sends no note (the old behaviour).
 
 BOLD IN THE ANSWER
     A genie answering in Slack writes bold the Slack way, *text*. The new look sends the answer
@@ -1074,15 +1104,80 @@ def to_mrkdwn(markdown, tables=None, keep_markdown=False, slack_bold=False):
 
 TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$")
 HEADING_LINE = re.compile(r"^\s{0,3}#{1,6}\s+\S")
+SEPARATOR_LINE = re.compile(r"^\s*\|?[\s:\-|]+\|?\s*$")
+
+# `long_tables` (continue | cut, blank = LONG_TABLES_DEFAULT): continue breaks a markdown table
+# of more than NATIVE_TABLE_ROWS - 1 data rows into several pages (the header row repeated, a
+# short note before every page after the first) before split_tables() cuts the answer into
+# messages, so each page gets its own message and nothing is lost. cut is the old behaviour: one
+# table, one message, trimmed to NATIVE_TABLE_ROWS / NATIVE_TABLE_CHARS by flush_table (see
+# to_mrkdwn), the rest of the rows dropped with a "cut short" note.
+LONG_TABLES_MODES = ("continue", "cut")
+LONG_TABLES_DEFAULT = "continue"
 
 
-def split_tables(markdown):
+def long_tables_mode(value):
+    """"continue" or "cut": the `long_tables` input, blank = LONG_TABLES_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in LONG_TABLES_MODES else LONG_TABLES_DEFAULT
+
+
+def _continued_note(page_start, cap, total):
+    # Ends with a literal ":" (not inside the italics) so split_tables()'s own intro() -- which
+    # looks for a line ending in ":" -- picks this up as this page's lead-in.
+    return "_Continued, rows {}\u2013{} of {}_:".format(
+        page_start + 1, min(page_start + cap, total), total)
+
+
+def _split_long_table_lines(lines):
+    """`lines`, with any table run of more than NATIVE_TABLE_ROWS - 1 data rows broken into
+    several runs of at most that many: the header (and separator) row repeated on each, and a
+    one-line note (picked up by split_tables()'s own intro() as this page's lead-in) before every
+    page after the first. A run that already fits is left exactly as it was."""
+    fenced, in_fence = [], False
+    for line in lines:
+        marks = line.strip().startswith("```")
+        fenced.append(in_fence or marks)
+        if marks:
+            in_fence = not in_fence
+    runs = []
+    for n, line in enumerate(lines):
+        if not fenced[n] and TABLE_ROW.match(line):
+            if runs and runs[-1][1] == n:
+                runs[-1][1] = n + 1
+            else:
+                runs.append([n, n + 1])
+    cap = NATIVE_TABLE_ROWS - 1            # data rows per Slack table block, see flush_table
+    out, position = [], 0
+    for start, end in runs:
+        out.extend(lines[position:start])
+        block = lines[start:end]
+        header_end = 2 if len(block) > 1 and SEPARATOR_LINE.match(block[1]) else 1
+        header, data = block[:header_end], block[header_end:]
+        if len(data) <= cap:
+            out.extend(block)
+        else:
+            for page_start in range(0, len(data), cap):
+                if page_start:
+                    out += ["", _continued_note(page_start, cap, len(data)), ""]
+                out.extend(header)
+                out.extend(data[page_start:page_start + cap])
+        position = end
+    out.extend(lines[position:])
+    return out
+
+
+def split_tables(markdown, long_tables=None):
     """The answer cut into pieces of at most one table each (Slack allows one table block per
     message), in reading order. Text between two tables stays with the first, except what
     introduces the second: a heading, or a line ending in a colon (with the heading above it),
     which goes with the table it introduces. An answer with no or one table comes back whole,
-    as a one-item list."""
+    as a one-item list. See `long_tables` (continue | cut, blank = LONG_TABLES_DEFAULT) above:
+    continue (the default) pre-splits an oversized table into pages first, so each becomes its
+    own piece here instead of being cut short in one."""
     lines = (markdown or "").replace("\r\n", "\n").split("\n")
+    if long_tables_mode(long_tables) == "continue":
+        lines = _split_long_table_lines(lines)
     fenced, in_fence = [], False
     for line in lines:                       # True for lines inside (or fencing) a code block
         marks = line.strip().startswith("```")
@@ -1268,8 +1363,7 @@ def hello_attachments(genie_name, persona, keyword, projects):
     names = ", ".join(p.get("name") or str(p.get("id")) for p in projects) or "this project"
     return [{"color": COLOR_HELLO, "fallback": "Ask {} a question".format(genie_name),
              "blocks": [_context(_who(genie_name, persona)),
-                        _section("Hi! Ask me anything about *{}*.\nFor example: `{} why did "
-                                 "quote Q-123 not sync to NetSuite?`".format(names, keyword))]}]
+                        _section("Hi! Ask me anything about *{}*.".format(names))]}]
 
 
 def has_table_block(attachments):
@@ -1448,8 +1542,7 @@ def hello_attachments_new(genie_name, persona, keyword, projects):
                  "title": {"type": "mrkdwn", "text": "*{}*".format(genie_name or "Genie")},
                  "subtitle": {"type": "mrkdwn", "text": PERSONA_LABELS.get(persona, persona or "")
                               or "Genie"},
-                 "body": {"type": "mrkdwn", "text": "Hi! Ask me anything about *{}*.\nFor example: "
-                          "`{} why did quote Q-123 not sync to NetSuite?`".format(names, keyword)},
+                 "body": {"type": "mrkdwn", "text": "Hi! Ask me anything about *{}*.".format(names)},
              }]}]
 
 
@@ -1513,7 +1606,9 @@ ESCALATE_NOTE = ("If you cannot answer this from your skills, your analyst skill
                  "project will be brought into the thread for you. Never guess an answer instead, "
                  "and do not tag anyone yourself.")
 
-NEEDS_HUMAN = re.compile(r"\[\[\s*NEEDS_HUMAN\s*(?::\s*([^\]]*?))?\s*\]\]", re.IGNORECASE)
+# The hint may hold brackets ("[Mega] - EDS to SFDC ... - SCH" is a real recipe name): it runs up to
+# the last "]]" of the marker, on one line, so a "]" inside it no longer stops the match.
+NEEDS_HUMAN = re.compile(r"\[\[\s*NEEDS_HUMAN\s*(?::\s*([^\n]*?))?\s*\]\](?!\])", re.IGNORECASE)
 BLOCKED = re.compile(r"\[\[\s*BLOCKED\s*\]\]", re.IGNORECASE)
 BLOCKED_ANSWER = "I can't help with that here."
 SLACK_MENTION = re.compile(r"<@[UW][A-Z0-9]{2,}>")
@@ -1588,6 +1683,111 @@ def offers_note_mode(value):
     """"on" or "off": the `offers_note` input, blank = OFFERS_NOTE_DEFAULT."""
     value = str(value or "").strip().lower()
     return value if value in OFFERS_NOTE_MODES else OFFERS_NOTE_DEFAULT
+
+
+# The genie's job description asks to "lead with the answer in one or two sentences" and to "keep it
+# short", and the model turned that into a bold "Short answer:" label on every reply, even a thank-you.
+# A *_note line wins over the job description, so LENGTH_NOTE relaxes both: no label, natural length.
+# The `length_note` input = on | off, blank = on; off sends the task as it was (no note).
+LENGTH_NOTE_MODES = ("on", "off")
+LENGTH_NOTE_DEFAULT = "on"
+LENGTH_NOTE = ("Answer the way a knowledgeable colleague would, at the length the question needs. Never "
+               "start with a label such as 'Short answer:', 'Answer:', 'TL;DR' or 'Summary:': just "
+               "begin with the answer in a natural sentence. The 'one or two sentences' and 'keep it "
+               "short' guidance only means no padding: a simple or casual message gets a brief, friendly "
+               "reply, and a question about how something works, why something failed or what a "
+               "mapping does gets a complete answer with the steps, values and reasons it needs, in "
+               "short paragraphs or bullets.")
+
+
+def length_note_mode(value):
+    """"on" or "off": the `length_note` input, blank = LENGTH_NOTE_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in LENGTH_NOTE_MODES else LENGTH_NOTE_DEFAULT
+
+
+# Asked to look at a recipe, the genie sometimes answered from the conversation so far and asked the
+# person for an example instead of reading anything. CHECK_NOTE makes the look compulsory.
+# The `check_note` input = on | off, blank = on; off sends the task as it was (no note).
+CHECK_NOTE_MODES = ("on", "off")
+CHECK_NOTE_DEFAULT = "on"
+CHECK_NOTE = ("Whenever the question is about a recipe, job, table, mapping or whether something is "
+              "broken, read the real thing with your skills before you answer: find and open the "
+              "recipe, and look at its recent jobs, failures and tables where they matter. Do this "
+              "every time, including in a follow-up and when you answered something similar earlier "
+              "in the thread: never answer from what was said before, it may be out of date or was "
+              "never checked. A general question such as 'is there a bug in the sync recipes?' is not "
+              "answered by asking for an example: inspect the recipes and recent failed jobs yourself, "
+              "say what you found and which ones you looked at, and say so plainly if you found "
+              "nothing wrong. Only ask the person for more when, after looking, the question still "
+              "cannot be answered without it.")
+
+
+def check_note_mode(value):
+    """"on" or "off": the `check_note` input, blank = CHECK_NOTE_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in CHECK_NOTE_MODES else CHECK_NOTE_DEFAULT
+
+
+# Nothing here adds emojis: the genie put marks on its findings when it read the emoji guide in its
+# knowledge base, and left them off when it did not (an answer built from its analyst). EMOJI_NOTE
+# makes the marks apply to every answer. The marks come from the workspace's own emoji list
+# (slack_emojis/emojis.json, 5,062 custom emojis, mostly jokes, logos and parrots): the ones below
+# are the professional ones, picked by name, plus the standard Slack emojis. A custom emoji is
+# checked against that file by test_responder.py, so a renamed or deleted one is caught.
+# (context, emoji name, custom to this workspace?), in the order the genie is shown them.
+EMOJI_GUIDE = (
+    ("a critical bug or risk", "red_circle", False),
+    ("a high severity bug or risk", "large_orange_circle", False),
+    ("a medium severity bug or risk", "large_yellow_circle", False),
+    ("a low severity bug or risk", "large_green_circle", False),
+    ("something confirmed working, a run that succeeded", "white_check_mark", False),
+    ("something broken, a run or step that failed", "x", False),
+    ("a warning, something fragile or likely to break later", "warning", False),
+    ("a bug found in a recipe", "bug1", True),
+    ("no bug found, a recipe that is clean", "bugfree", True),
+    ("the fix, or a change that was made", "fixed", True),
+    ("the root cause", "mag", False),
+    ("the next step for the person to take", "point_right", False),
+    ("a red flag: silent failure, data loss, or something that looks fine but is not", "redflag", True),
+    ("something urgent or still happening", "alert", True),
+    ("a record that was skipped or filtered out", "fast_forward", False),
+    ("something pending or waiting on someone or something", "pending", True),
+    ("something in progress or still running", "in-progress", True),
+    ("something that was checked or reviewed", "checking", True),
+    ("a note or a tip", "noted", True),
+    ("a to-do for the person", "todo", True),
+    ("a credential, access or security point", "lock", False),
+    ("a person needed to help", "raising_hand", False),
+    ("a job run", "job", True),
+    ("a data table", "table", True),
+)
+# Name a system or tool in a heading or on a bullet with its own mark.
+EMOJI_SYSTEMS = (
+    ("Workato", "workato"), ("a Workato recipe", "workato_recipe"), ("Salesforce", "salesforce"),
+    ("NetSuite", "netsuite"), ("Databricks", "databricks"), ("Airflow", "airflow"),
+    ("dbt", "dbt"), ("Jira", "jira"), ("Datadog", "data_dog"), ("Looker", "looker"),
+    ("Okta", "okta"), ("Retool", "retool"), ("GitHub", "github"), ("Slack", "slack"),
+    ("Airtable", "airtable"), ("Google Drive", "google_drive"), ("Coursera", "coursera"),
+)
+EMOJI_NOTE_MODES = ("on", "off")
+EMOJI_NOTE_DEFAULT = "on"
+EMOJI_NOTE = (
+    "Mark findings and states with emojis in every answer, at the standard places and nowhere else. "
+    "If your knowledge base has an emoji guide, follow it first, every time, whichever skill produced "
+    "the content. Otherwise use these, written as :name: (they are all available in this Slack): "
+    + "; ".join("{} = :{}:".format(context, name) for context, name, _custom in EMOJI_GUIDE)
+    + ". Name a system on a heading or bullet with its own mark: "
+    + "; ".join("{} = :{}:".format(system, name) for system, name in EMOJI_SYSTEMS)
+    + ". Put the mark at the start of the line or heading it belongs to, one per item, and keep the "
+    "word beside it (':red_circle: Critical: ...'). Never put one in the middle of a sentence, in a "
+    "table cell, in a code block or as decoration, and never use an emoji that is not listed here.")
+
+
+def emoji_note_mode(value):
+    """"on" or "off": the `emoji_note` input, blank = EMOJI_NOTE_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in EMOJI_NOTE_MODES else EMOJI_NOTE_DEFAULT
 
 
 # A message that is only the keyword posts the hello card but never calls the genie, so no
@@ -1762,7 +1962,7 @@ def knowledge_base_of(row):
 
 
 def task_instructions(row, question, asker=None, kb_note=True, secrets_note=False, format_note=False,
-                      kb_quiet=False, ids_note=False, offers_note=False):
+                      kb_quiet=False, ids_note=False, offers_note=False, length_note=False, check_note=False, emoji_note=False):
     """The task for the master genie, in the shape its job description expects. asker
     ({id, name, email}, from Slack) says who is asking, so a rule in the genie's knowledge
     base about a person can be applied. kb_note=True adds the genie's knowledge base and a note
@@ -1773,7 +1973,10 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
     the task as it was before either existed. kb_quiet=True swaps KB_NOTE for KB_NOTE_QUIET (the
     genie never tells the person about its knowledge base). ids_note=True adds IDS_NOTE (no internal
     Workato ids) unless the row's persona is one of ID_PERSONAS. offers_note=True adds OFFERS_NOTE
-    (no closing offer of something none of its skills can do)."""
+    (no closing offer of something none of its skills can do). length_note=True adds LENGTH_NOTE
+    (no "Short answer:" label, natural length). check_note=True adds CHECK_NOTE (read the recipe
+    or job fresh before answering, even in a follow-up). emoji_note=True adds EMOJI_NOTE (severity and
+    status marks at the standard places)."""
     persona = row.get("persona") or ""
     lines = [
         "<genie_context>",
@@ -1805,6 +2008,12 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
         lines.append("ids_note: " + IDS_NOTE)
     if offers_note:
         lines.append("offers_note: " + OFFERS_NOTE)
+    if length_note:
+        lines.append("length_note: " + LENGTH_NOTE)
+    if check_note:
+        lines.append("check_note: " + CHECK_NOTE)
+    if emoji_note:
+        lines.append("emoji_note: " + EMOJI_NOTE)
     if secrets_note:
         lines.append("secrets_note: " + SECRETS_NOTE)
     lines.append("escalation_note: " + ESCALATE_NOTE)
@@ -1897,7 +2106,10 @@ def ask(input, table, slack, result):
             format_note=bold_mode(input.get("bold")) == "on",
             kb_quiet=kb_mention_mode(input.get("kb_mention")) == "hide",
             ids_note=ids_note_mode(input.get("ids_note")) == "auto",
-            offers_note=offers_note_mode(input.get("offers_note")) == "on"),
+            offers_note=offers_note_mode(input.get("offers_note")) == "on",
+            length_note=length_note_mode(input.get("length_note")) == "on",
+            check_note=check_note_mode(input.get("check_note")) == "on",
+            emoji_note=emoji_note_mode(input.get("emoji_note")) == "on"),
         "projects_json": json.dumps(projects),
         "recipes_json": json.dumps(_json_list(row.get("recipes"))),
         "lookup_tables_json": json.dumps(_json_list(row.get("lookup_tables"))),
@@ -2167,6 +2379,19 @@ def owner_dm_text(asker_id, question, genie_name, link, blocked=False):
     return text + ("\n<{}|Open the thread>".format(link) if link else "")
 
 
+def asked_question(input):
+    """The question quoted to the project owners. The `question` input when it is given; otherwise
+    the message `text` with the genie's keyword cut out, since the reply call always carries both
+    and the recipe does not map `question`."""
+    given = str(input.get("question") or "").strip()
+    if given:
+        return given
+    text, keyword = str(input.get("text") or ""), str(input.get("keyword") or "").strip()
+    match = re.search(r"(?<![A-Za-z0-9_]){}(?![A-Za-z0-9_])".format(re.escape(keyword)),
+                      text, re.IGNORECASE) if keyword else None
+    return question_from(text, match)
+
+
 def reply(input, table, slack, result):
     channel = result["channel"]
     thread_ts = result["reply_thread_ts"]
@@ -2178,7 +2403,7 @@ def reply(input, table, slack, result):
     scrub = make_scrubber(input, result)
     answer = scrub(str(input.get("genie_response") or "")).strip()
     genie_error = scrub(str(input.get("genie_error") or "")).strip()
-    question = scrub(str(input.get("question") or ""))
+    question = scrub(asked_question(input))
     thinking_ts = str(input.get("thinking_ts") or "").strip()
     bold = bold_mode(input.get("bold")) == "on"
 
@@ -2206,7 +2431,7 @@ def reply(input, table, slack, result):
 
     # An answer with several tables goes out as several messages, one table each (Slack allows
     # one table block per message). A failed answer or an empty one is one error card.
-    chunks = split_tables(answer) if answered else [None]
+    chunks = split_tables(answer, input.get("long_tables")) if answered else [None]
 
     def build(look, index, feedback, flat=False):
         if not answered:

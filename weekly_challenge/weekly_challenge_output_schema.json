@@ -1,0 +1,505 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Ok",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "ok",
+    "type": "boolean",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Ok",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "ok",
+      "type": "boolean"
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Error",
+    "name": "error",
+    "type": "string"
+  },
+  {
+    "label": "Warnings",
+    "name": "warnings",
+    "type": "array",
+    "of": "string"
+  },
+  {
+    "control_type": "text",
+    "label": "Skipped",
+    "name": "skipped",
+    "type": "string",
+    "hint": "Non-empty when nothing happened: already posted for this week / no activity has enough recent logs / challenge not found / this week's challenges have ended / test post is full / no open challenge post whose week is over / nobody accepted a goal."
+  },
+  {
+    "control_type": "text",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "hint": "post (the Monday run) | recap (the end-of-week run) | click (someone pressed Accept)."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Testing",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "testing",
+    "type": "boolean",
+    "hint": "True for a test post (input `testing` = yes) or a press on one: nothing was written to the data table.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Testing",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "testing",
+      "type": "boolean",
+      "hint": "True for a test post (input `testing` = yes) or a press on one: nothing was written to the data table."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Preview",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "preview",
+    "type": "boolean",
+    "hint": "[post] True when nothing was posted (skip_post = yes, or no Slack token / channel): the messages are in preview_json.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Preview",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "preview",
+      "type": "boolean",
+      "hint": "[post] True when nothing was posted (skip_post = yes, or no Slack token / channel): the messages are in preview_json."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Week",
+    "name": "week",
+    "type": "string",
+    "hint": "The Monday of the week the goals are for, YYYY-MM-DD."
+  },
+  {
+    "control_type": "number",
+    "label": "Level",
+    "parse_output": "integer_conversion",
+    "name": "level",
+    "type": "integer",
+    "hint": "[post] The level input: the smallest goal any challenge may be set at. Each challenge's own size in levels is in challenges[].level.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Channel",
+    "name": "channel",
+    "type": "string"
+  },
+  {
+    "control_type": "text",
+    "label": "Post ID",
+    "name": "post_id",
+    "type": "string",
+    "hint": "The id of the post (also the id of its row and what its buttons carry). Empty for a test post."
+  },
+  {
+    "control_type": "text",
+    "label": "Message ts",
+    "name": "message_ts",
+    "type": "string",
+    "hint": "[post] ts of the channel message. [recap] ts of the results post."
+  },
+  {
+    "label": "Reply ts",
+    "name": "reply_ts",
+    "type": "array",
+    "hint": "[post] ts of each reply in its thread, in order. A reply that did not go is left out and reported in warnings.",
+    "of": "string"
+  },
+  {
+    "label": "Challenges",
+    "name": "challenges",
+    "type": "array",
+    "hint": "[post] The goals, busiest activity first -- and the figures behind each, so a level can be judged before it is posted.",
+    "of": "object",
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Activity",
+        "name": "activity",
+        "type": "string",
+        "hint": "pushup, plank, step, yoga ... or a game's: iadd_plays, iadd_score ..."
+      },
+      {
+        "control_type": "text",
+        "label": "Text",
+        "name": "text",
+        "type": "string",
+        "hint": "The goal as the team reads it: 100 pushups, 10 min of plank. With personal on, the category instead (Pushups, Plank): no figure is posted."
+      },
+      {
+        "control_type": "number",
+        "label": "Target",
+        "parse_output": "integer_conversion",
+        "name": "target",
+        "type": "integer",
+        "hint": "The goal in the unit the table stores: reps, minutes, seconds of plank, steps. With personal on this is the team reference, which is not shown anywhere.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "People",
+        "parse_output": "integer_conversion",
+        "name": "people",
+        "type": "integer",
+        "hint": "People who logged this activity in the last 4 finished weeks (a game: who finished a game in the last 28 days).",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Typical week",
+        "parse_output": "integer_conversion",
+        "name": "typical_week",
+        "type": "integer",
+        "hint": "What a typical active person logs in a week of it (a game: games a week for _plays, the typical best score for _score).",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Best week",
+        "parse_output": "integer_conversion",
+        "name": "best_week",
+        "type": "integer",
+        "hint": "The biggest week anyone has had (a game: the top pace, or the top score). No challenge reaches it.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "checkbox",
+        "label": "Capped",
+        "render_input": "boolean_conversion",
+        "parse_output": "boolean_conversion",
+        "name": "capped",
+        "type": "boolean",
+        "hint": "True when this level asked for more than 90% of the best week and was held there.",
+        "toggle_hint": "Select from option list",
+        "toggle_field": {
+          "label": "Capped",
+          "control_type": "text",
+          "toggle_hint": "Use custom value",
+          "name": "capped",
+          "type": "boolean",
+          "hint": "True when this level asked for more than 90% of the best week and was held there."
+        }
+      },
+      {
+        "control_type": "number",
+        "label": "Loose rows",
+        "parse_output": "integer_conversion",
+        "name": "loose_rows",
+        "type": "integer",
+        "hint": "Rows whose total and heatmap_dates differ in length, so only their last 4 weeks were used.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Ladder",
+        "name": "ladder",
+        "type": "string",
+        "hint": "The goal at levels 1 to 5, for choosing a level."
+      },
+      {
+        "control_type": "number",
+        "label": "Limit",
+        "parse_output": "integer_conversion",
+        "name": "limit",
+        "type": "integer",
+        "hint": "The most a goal for this category may ever ask in a week, in the same unit as target (a workout's is 6 hours, a plank's 1 hour). However far someone climbs, no target, size on offer or level goes past it.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Level",
+        "parse_output": "integer_conversion",
+        "name": "level",
+        "type": "integer",
+        "hint": "How big this goal is in levels: the highest level whose figure does not pass it. For reading only: with adaptive on a goal moves along round figures between the level input's and level 3's, not by whole levels.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Last target",
+        "parse_output": "integer_conversion",
+        "name": "last_target",
+        "type": "integer",
+        "hint": "Last week's goal for this challenge, in the same unit as target. 0 when it was not set last week (or adaptive is off).",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Last taken",
+        "parse_output": "integer_conversion",
+        "name": "last_taken",
+        "type": "integer",
+        "hint": "People who took this challenge on last week.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Last cleared",
+        "parse_output": "integer_conversion",
+        "name": "last_cleared",
+        "type": "integer",
+        "hint": "Of those, how many did at least the goal that was posted (whatever size they picked for themselves). These two figures decide how far the goal goes: 3 in 4 or more takes two steps up, a third or fewer takes one step back, and anything else, or fewer than 2 takers, the plain one step up.",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Move",
+        "name": "move",
+        "type": "string",
+        "hint": "How the goal moved since last week: up | down | same. Empty when there is no goal from last week to compare with."
+      },
+      {
+        "control_type": "text",
+        "label": "Level ups",
+        "name": "level_ups",
+        "type": "string",
+        "hint": "The bigger goals on offer to whoever accepts it, as its Stretch and Summit buttons will show them. Empty when no bigger goal fits under the best week anyone has had."
+      },
+      {
+        "control_type": "text",
+        "label": "Why",
+        "name": "why",
+        "type": "string",
+        "hint": "One line on why the goal is what it is this week: how last week went, and whether it stepped up, eased, or stayed because it is already at the top or bottom of its range."
+      }
+    ]
+  },
+  {
+    "label": "Left out",
+    "name": "left_out",
+    "type": "array",
+    "hint": "[post] Activities that have rows but got no goal, and why.",
+    "of": "object",
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Activity",
+        "name": "activity",
+        "type": "string"
+      },
+      {
+        "control_type": "text",
+        "label": "Reason",
+        "name": "reason",
+        "type": "string"
+      }
+    ]
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Personal",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "personal",
+    "type": "boolean",
+    "hint": "[post] True when the post shows categories and each person's target is worked out for them (input `personal`). Then challenges[].text is the category and challenges[].target the team reference, which is not shown.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Personal",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "personal",
+      "type": "boolean",
+      "hint": "[post] True when the post shows categories and each person's target is worked out for them (input `personal`). Then challenges[].text is the category and challenges[].target the team reference, which is not shown."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Adapted from",
+    "name": "adapted_from",
+    "type": "string",
+    "hint": "[post] The Monday of the earlier post this week's goals were set from. Empty when none was found (the run says why in warnings), or when adaptive is off."
+  },
+  {
+    "control_type": "number",
+    "label": "Closed previous",
+    "parse_output": "integer_conversion",
+    "name": "closed_previous",
+    "type": "integer",
+    "hint": "[post] Earlier posts whose buttons were taken off (or, on a forced repost, whose messages were deleted). [recap] 1 when the week was closed.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Rows read",
+    "parse_output": "integer_conversion",
+    "name": "rows_read",
+    "type": "integer",
+    "hint": "[post] Activity rows read.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Rows loose",
+    "parse_output": "integer_conversion",
+    "name": "rows_loose",
+    "type": "integer",
+    "hint": "[post] Rows behind the goals whose total and heatmap_dates differ in length (written before the two were kept in step).",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Rows written",
+    "parse_output": "integer_conversion",
+    "name": "rows_written",
+    "type": "integer",
+    "hint": "Rows written to the data table. Always 0 in test mode.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "hint": "[press] Who pressed."
+  },
+  {
+    "control_type": "text",
+    "label": "User name",
+    "name": "user_name",
+    "type": "string",
+    "hint": "[press] Their name, as shown on the post."
+  },
+  {
+    "control_type": "text",
+    "label": "Activity",
+    "name": "activity",
+    "type": "string",
+    "hint": "[press] The challenge whose button was pressed: an activity (pushup) or a game's (iadd_plays, iadd_score)."
+  },
+  {
+    "control_type": "number",
+    "label": "Accepted",
+    "parse_output": "integer_conversion",
+    "name": "accepted",
+    "type": "integer",
+    "hint": "[press] People who have now accepted that goal.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Already",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "already",
+    "type": "boolean",
+    "hint": "[press] True when this person had already accepted it: nothing was added.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Already",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "already",
+      "type": "boolean",
+      "hint": "[press] True when this person had already accepted it: nothing was added."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Tracking",
+    "name": "tracking",
+    "type": "string",
+    "hint": "[press] What happened to the goal on the person's row of the activity, where spotter finds it: tracked | pending (they have never logged the activity, so their first log picks it up) | blocked (the column holds something that is not ours; left alone) | unwritten | unreadable | none."
+  },
+  {
+    "label": "Recap",
+    "name": "recap",
+    "type": "array",
+    "hint": "[recap] Each goal somebody took on: how many accepted and how many cleared it.",
+    "of": "object",
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Activity",
+        "name": "activity",
+        "type": "string"
+      },
+      {
+        "control_type": "text",
+        "label": "Text",
+        "name": "text",
+        "type": "string",
+        "hint": "The goal as the team read it: 100 pushups."
+      },
+      {
+        "control_type": "number",
+        "label": "Accepted",
+        "parse_output": "integer_conversion",
+        "name": "accepted",
+        "type": "integer",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "number",
+        "label": "Cleared",
+        "parse_output": "integer_conversion",
+        "name": "cleared",
+        "type": "integer",
+        "render_input": "integer_conversion"
+      },
+      {
+        "control_type": "text",
+        "label": "Names",
+        "name": "names",
+        "type": "string",
+        "hint": "First names of those who cleared it. Anyone who has opted out is counted, never named."
+      }
+    ]
+  },
+  {
+    "control_type": "number",
+    "label": "Progress shown",
+    "parse_output": "integer_conversion",
+    "name": "progress_shown",
+    "type": "integer",
+    "hint": "Click on Show my progress: how many of the presser's weekly goals were shown to them.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Picked",
+    "name": "picked",
+    "type": "string",
+    "hint": "Click on a Steady / Stretch / Summit button: the goal the person set for themselves, as the team reads it (150 pushups). Empty otherwise."
+  },
+  {
+    "control_type": "number",
+    "label": "Picked goal",
+    "parse_output": "integer_conversion",
+    "name": "picked_goal",
+    "type": "integer",
+    "hint": "The same goal in the unit the table stores (reps, minutes, seconds of plank, steps). 0 when nobody picked a size.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Post style",
+    "parse_output": "integer_conversion",
+    "name": "post_style",
+    "type": "integer",
+    "hint": "Monday run: the post_style used (1-3).",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Preview json",
+    "name": "preview_json",
+    "type": "string",
+    "hint": "With skip_post = yes: a JSON list of the messages ({where, text, blocks}), channel message first. Paste a \"blocks\" list into Slack's Block Kit Builder to look at it."
+  }
+]

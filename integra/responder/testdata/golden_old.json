@@ -39,7 +39,7 @@
     {
      "expand": true,
      "text": {
-      "text": "Hi! Ask me anything about *Proj*.\nFor example: `SNAP why did quote Q-123 not sync to NetSuite?`",
+      "text": "Hi! Ask me anything about *Proj*.",
       "type": "mrkdwn"
      },
      "type": "section"

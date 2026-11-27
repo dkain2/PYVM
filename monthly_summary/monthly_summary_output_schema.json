@@ -1,0 +1,319 @@
+[
+  {
+    "control_type": "checkbox",
+    "label": "Succeeded",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "ok",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Succeeded",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "ok",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Error / warnings",
+    "name": "error",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Subject",
+    "name": "subject",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Preview text",
+    "name": "preheader",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Email HTML",
+    "name": "html",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "number",
+    "label": "HTML size (bytes)",
+    "parse_output": "integer_conversion",
+    "name": "html_bytes",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Recipients (comma separated)",
+    "name": "recipients",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "number",
+    "label": "Recipient count",
+    "parse_output": "integer_conversion",
+    "name": "recipient_count",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "label": "Recipients",
+    "name": "recipient_list",
+    "type": "array",
+    "optional": true,
+    "of": "object",
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Slack ID",
+        "name": "slack_id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Name",
+        "name": "name",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Email",
+        "name": "email",
+        "type": "string",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "label": "Active but no address",
+    "name": "missing_emails",
+    "type": "array",
+    "optional": true,
+    "of": "object",
+    "properties": [
+      {
+        "control_type": "text",
+        "label": "Slack ID",
+        "name": "slack_id",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Name",
+        "name": "name",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "control_type": "text",
+        "label": "Reason",
+        "name": "reason",
+        "type": "string",
+        "optional": true
+      }
+    ]
+  },
+  {
+    "control_type": "text",
+    "label": "Month (YYYY-MM)",
+    "name": "month",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Period",
+    "name": "period",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Month finished",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "month_finished",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Month finished",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "month_finished",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "number",
+    "label": "People active",
+    "parse_output": "integer_conversion",
+    "name": "people_active",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Check-ins",
+    "parse_output": "integer_conversion",
+    "name": "checkins",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Activities logged",
+    "parse_output": "integer_conversion",
+    "name": "activities",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "First-time loggers",
+    "parse_output": "integer_conversion",
+    "name": "new_people",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Month in brief",
+    "name": "summary",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Brief written by AI",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "summary_by_ai",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Brief written by AI",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "summary_by_ai",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Volume counted since",
+    "name": "volume_since",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Totals saved for next month",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "snapshot_saved",
+    "type": "boolean",
+    "optional": true,
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Totals saved for next month",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "snapshot_saved",
+      "type": "boolean",
+      "optional": true
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Recipients came from",
+    "name": "recipients_source",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "text",
+    "label": "Sections, in order",
+    "name": "sections",
+    "type": "string",
+    "optional": true
+  },
+  {
+    "control_type": "number",
+    "label": "Channel members found",
+    "parse_output": "integer_conversion",
+    "name": "members_listed",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Slack profile lookups made",
+    "parse_output": "integer_conversion",
+    "name": "slack_lookups",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Profiles saved this run",
+    "parse_output": "integer_conversion",
+    "name": "profiles_saved",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "People who took on a weekly challenge",
+    "parse_output": "integer_conversion",
+    "name": "challengers",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Weekly challenges taken on",
+    "parse_output": "integer_conversion",
+    "name": "challenges_taken",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Weekly challenges cleared",
+    "parse_output": "integer_conversion",
+    "name": "challenges_cleared",
+    "type": "integer",
+    "optional": true,
+    "render_input": "integer_conversion"
+  }
+]

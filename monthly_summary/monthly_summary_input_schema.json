@@ -1,0 +1,355 @@
+[
+  {
+    "control_type": "password",
+    "label": "Workato API token",
+    "name": "workato_dev_api",
+    "type": "string",
+    "optional": false
+  },
+  {
+    "control_type": "password",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "xoxb-... needs users:read and users:read.email, to look up each recipient's address. Blank builds the email with no recipients."
+  },
+  {
+    "control_type": "password",
+    "label": "Azure OpenAI key",
+    "name": "azure_api_key",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. Writes the 'month in brief' paragraph. Blank, or a reply that fails its checks, uses a plain template instead."
+  },
+  {
+    "control_type": "text",
+    "label": "Azure OpenAI URL",
+    "name": "azure_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. Leave blank for the default gpt-4o deployment."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel name",
+    "name": "channel_name",
+    "type": "string",
+    "optional": true,
+    "hint": "Shown in the email, without the #. Default plank-you-very-much."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel link",
+    "name": "channel_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. The link behind the Join button, e.g. https://coursera.enterprise.slack.com/archives/C0123ABCD"
+  },
+  {
+    "control_type": "text",
+    "label": "Channel ID",
+    "name": "channel_id",
+    "type": "string",
+    "optional": true,
+    "hint": "The channel's Slack ID, which starts with C (C0123ABCD) -- not its name. Open the channel, then About, and copy the ID at the bottom. The bot token needs channels:read (groups:read for a private channel), and a private channel must have the bot in it. Used to list the members to write to."
+  },
+  {
+    "control_type": "text",
+    "label": "Send to",
+    "name": "recipients_from",
+    "type": "string",
+    "optional": true,
+    "hint": "members = everyone in the channel (the default when channel_id is set; if they cannot be listed there are NO recipients and ok is false); ever = everyone who has ever logged; active = only people who logged this month (the default without channel_id)."
+  },
+  {
+    "control_type": "text",
+    "label": "Section order",
+    "name": "section_order",
+    "type": "string",
+    "optional": true,
+    "hint": "Comma separated, in the order they should appear. Names: brief, tiles, trend, checkins, together, milestones, move, strength, mind, habits (or activities for all four), highlights, calendar, boards, challengers, records, games, join. A section you leave out is left out of the email. Blank = brief, tiles, trend, checkins, together, milestones, activities, highlights, calendar, boards, challengers, records, games, join."
+  },
+  {
+    "control_type": "text",
+    "label": "Month",
+    "name": "month",
+    "type": "string",
+    "optional": true,
+    "hint": "Blank = this month so far. 'previous' = last month, complete (use this for a recipe scheduled on the 1st). Or YYYY-MM."
+  },
+  {
+    "control_type": "text",
+    "label": "Subject icon",
+    "name": "subject_icon",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. An emoji put at the front of the subject. Blank = 💪. 'none' = no icon, the subject as it was. Paste the emoji itself: a Slack :shortcode: shows as text in email."
+  },
+  {
+    "control_type": "text",
+    "label": "Hero banner URL",
+    "name": "hero_image_url",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional. Must be a PUBLIC https image. A Slack file URL shows as a broken image in email and is ignored."
+  },
+  {
+    "control_type": "text",
+    "label": "Section banner URLs (JSON)",
+    "name": "section_image_urls",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional JSON object of PUBLIC https images, keyed by section: checkins, move, strength, mind, habits, highlights, calendar, together, milestones, boards, challengers, records, games. e.g. {\"move\": \"https://.../move.png\"}. A section with no image uses its coloured band."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Name people",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_names",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Off removes every name from highlights, badges and boards and keeps the counts.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Name people",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_names",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Off removes every name from highlights, badges and boards and keeps the counts."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show the podium",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_leaderboard",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. The all-time top three for steps, pushups and plank, plus any activities you add below.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show the podium",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_leaderboard",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. The all-time top three for steps, pushups and plank, plus any activities you add below."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "More podium activities",
+    "name": "board_activities",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional, comma separated, e.g. workout, read, yoga. Each gets a podium in 'On the boards', after steps, pushups and plank and in the order you list them. A person needs 5 logged days in an activity to be placed. Sleep, fasting and hydration are never ranked."
+  },
+  {
+    "control_type": "number",
+    "label": "Podiums: minimum people",
+    "parse_output": "integer_conversion",
+    "name": "board_min_people",
+    "type": "integer",
+    "optional": true,
+    "hint": "Default 5. Any other activity gets a podium by itself once this many people logged it this month. Lower it for more podiums without naming them.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show badges earned",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_badges",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default off. When on, a 'Badges earned' list appears under the highlights: the badges people earned this month, by showing up. Left off until people are familiar with badges.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show badges earned",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_badges",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default off. When on, a 'Badges earned' list appears under the highlights: the badges people earned this month, by showing up. Left off until people are familiar with badges."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Show profile photos",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "show_photos",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. A small Slack profile photo beside each name in 'On the boards', 'Channel records to beat' and 'Brain games'; initials for anyone without a photo of their own. Needs the Slack bot token, and 'show names' on. Off = names only, as before.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Show profile photos",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "show_photos",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. A small Slack profile photo beside each name in 'On the boards', 'Channel records to beat' and 'Brain games'; initials for anyone without a photo of their own. Needs the Slack bot token, and 'show names' on. Off = names only, as before."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Use saved Slack profiles",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "use_saved_profiles",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Each person's Slack name, email and photo is kept in a data table row (row_type plank_you_very_much_user), and Slack is asked only about people with no row yet. To refresh somebody (new photo, new address) delete their row; the next run asks Slack again. Off = ask Slack about everyone, every run, and save nothing. A dry run reads the rows but never writes them.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Use saved Slack profiles",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "use_saved_profiles",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Each person's Slack name, email and photo is kept in a data table row (row_type plank_you_very_much_user), and Slack is asked only about people with no row yet. To refresh somebody (new photo, new address) delete their row; the next run asks Slack again. Off = ask Slack about everyone, every run, and save nothing. A dry run reads the rows but never writes them."
+    }
+  },
+  {
+    "control_type": "number",
+    "label": "Records: minimum people",
+    "parse_output": "integer_conversion",
+    "name": "records_min_people",
+    "type": "integer",
+    "optional": true,
+    "hint": "Default 4. An activity's record appears under 'Channel records to beat' once this many people have ever logged it.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Sections: minimum people",
+    "parse_output": "integer_conversion",
+    "name": "section_min_people",
+    "type": "integer",
+    "optional": true,
+    "hint": "Default 2. An activity logged this month is listed in its section once this many people have ever logged it. 1 lists everything logged this month. One nobody logged this month is never listed.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Always list these activities",
+    "name": "always_show_activities",
+    "type": "string",
+    "optional": true,
+    "hint": "Default swim. Comma separated, e.g. swim, cycle. Listed in their section even with fewer people than the minimum, when logged this month. 'none' for no exceptions."
+  },
+  {
+    "control_type": "text",
+    "label": "More milestone activities",
+    "name": "milestone_activities",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional, comma separated, e.g. workout, meditate. Added to the milestones section after steps, pushups and plank, which are always shown. Sleep and fasting have no milestone."
+  },
+  {
+    "control_type": "number",
+    "label": "Trend chart: months",
+    "parse_output": "integer_conversion",
+    "name": "trend_months",
+    "type": "integer",
+    "optional": true,
+    "hint": "Default 12, which is also the most: the chart is counted from each person's logged days, and about a year of those is kept. Months before the channel began are not shown.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Dry run (testing)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "dry_run",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default off. On: you get the email, subject and recipients exactly as normal, but nothing is stored in the data table. Use it for test sends; turn it off for the real month-end run.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Dry run (testing)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "dry_run",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default off. On: you get the email, subject and recipients exactly as normal, but nothing is stored in the data table. Use it for test sends; turn it off for the real month-end run."
+    }
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Save totals for next month",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "save_snapshot",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Default on. Saves today's channel totals in a row of this step's own (row_type email_summary_snapshot), so next month's email can say exactly what was added. Turn off for a test run you do not want remembered.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Save totals for next month",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "save_snapshot",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Default on. Saves today's channel totals in a row of this step's own (row_type email_summary_snapshot), so next month's email can say exactly what was added. Turn off for a test run you do not want remembered."
+    }
+  },
+  {
+    "control_type": "text",
+    "label": "Allowed email domains",
+    "name": "allowed_email_domains",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional, comma separated, e.g. coursera.org. Anyone outside them is left off the recipients and listed in missing_emails."
+  },
+  {
+    "control_type": "number",
+    "label": "Timezone offset (seconds)",
+    "parse_output": "integer_conversion",
+    "name": "tz_offset",
+    "type": "integer",
+    "optional": true,
+    "hint": "Seconds east of UTC, to decide what today is. Default -25200 (as spotter).",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Today (testing)",
+    "name": "today",
+    "type": "string",
+    "optional": true,
+    "hint": "Optional YYYY-MM-DD, to build the email as of another day."
+  },
+  {
+    "control_type": "checkbox",
+    "label": "Skip email lookup (testing)",
+    "render_input": "boolean_conversion",
+    "parse_output": "boolean_conversion",
+    "name": "skip_email_lookup",
+    "type": "boolean",
+    "optional": true,
+    "hint": "Builds the email without calling Slack for addresses.",
+    "toggle_hint": "Select from option list",
+    "toggle_field": {
+      "label": "Skip email lookup (testing)",
+      "control_type": "text",
+      "toggle_hint": "Use custom value",
+      "name": "skip_email_lookup",
+      "type": "boolean",
+      "optional": true,
+      "hint": "Builds the email without calling Slack for addresses."
+    }
+  }
+]

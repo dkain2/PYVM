@@ -229,8 +229,12 @@ for mode, job in (("none", builder.JOB_GENIE), ("all", builder.JOB_PLAN)):
     starter = Starter()
     builder.Context.start_integra(starter, {"forge_state": json.dumps({"skill_mode": mode})}, True)
     check("first-ask mode '{}' starts at {}".format(mode, job), starter.state["job"] == job)
+class NoSharedStarter(Starter):
+    input = {"analyst_skill_handle": "skl-1", "analyst_skill_always": "off"}
+
+
 for mode, shared in (("none", "shared_skills: []"), ("all", "skl-1")):
-    starter = Starter()
+    starter = NoSharedStarter()
     builder.Context.next_integra_job(starter, {"genie_name": "G", "persona": "support"},
                                      {"job": builder.JOB_GENIE, "plan": [], "skill_mode": mode,
                                       "folder_id": 7}, "1.1")
@@ -249,7 +253,69 @@ check("analyst_skill_always=on: shared skill attached even with 'No skills' pick
       "skl-1" in starter.result["forge_task_instructions"])
 check("analyst_skill_always blank/off: the input switch default",
       [builder.analyst_skill_always_mode(v) for v in ("on", " OFF ", "", None, "x")] ==
-      ["on", "off", "off", "off", "off"])
+      ["on", "off", "on", "on", "on"])
+
+# ---------------------------------------------------------------------------
+# data_table_skills: "No skills" still gets a scoped plan for the project's data tables
+# ---------------------------------------------------------------------------
+check("data_table_skills blank/off: the input switch default",
+      [builder.data_table_skills_mode(v) for v in ("on", " OFF ", "", None, "x")] ==
+      ["on", "off", "on", "on", "on"])
+
+for row_extra, mode, job, scoped in (
+    ({"data_tables": json.dumps([{"id": 1, "name": "Config"}])}, "none", builder.JOB_PLAN, True),
+    ({}, "none", builder.JOB_GENIE, False),                          # no data tables: unchanged
+    ({"data_tables": json.dumps([{"id": 1, "name": "Config"}])}, "all", builder.JOB_PLAN, False),
+):
+    starter = Starter()
+    row = dict({"forge_state": json.dumps({"skill_mode": mode})}, **row_extra)
+    builder.Context.start_integra(starter, row, True)
+    check("data_table_skills: mode '{}', data_tables={} starts at {}, data_tables_only={}".format(
+        mode, bool(row_extra.get("data_tables")), job, scoped),
+        starter.state["job"] == job and bool(starter.state.get("data_tables_only")) == scoped)
+
+
+class OffStarter(Starter):
+    input = {"analyst_skill_handle": "skl-1", "data_table_skills": "off"}
+
+
+starter = OffStarter()
+builder.Context.start_integra(starter, {"forge_state": json.dumps({"skill_mode": "none"}),
+                                        "data_tables": json.dumps([{"id": 1, "name": "Config"}])}, True)
+check("data_table_skills=off: 'No skills' skips the plan job even with data tables present",
+      starter.state["job"] == builder.JOB_GENIE and not starter.state.get("data_tables_only"))
+
+check("integra_task emits data_tables_only when the state has it",
+      "data_tables_only: true" in builder.integra_task(
+          ROW, "draft:1.2", dict(STATE, job=builder.JOB_PLAN, data_tables_only=True)))
+check("integra_task omits data_tables_only by default",
+      "data_tables_only" not in builder.integra_task(ROW, "draft:1.2", dict(STATE, job=builder.JOB_PLAN)))
+
+
+class FakeSlack(object):
+    def update(self, *a, **k): pass
+
+
+class PlanStub(Stub):
+    def __init__(self, row):
+        Stub.__init__(self, row, {"key": "draft:1.2", "message_ts": "9.9", "channel": "C1"})
+        self.input = {"forge_status": "success", "forge_project_knowledge": "Config table holds sync settings.",
+                     "forge_plan_json": json.dumps([{"name": "Search Config", "connector": "workato_db_table"}])}
+        self.result, self.parts, self.slack = {}, {}, FakeSlack()
+    def save_part(self, name, meta, fields): self.parts[name] = fields
+    def part(self, name): return self.parts.get(name, {})
+    def integra_failed(self, row, state, error): raise AssertionError("should not fail: " + error)
+    def next_integra_job(self, row, state, card_ts): pass
+
+
+plan_row = dict(ROW, forge_state=json.dumps({"job": builder.JOB_PLAN, "skill_mode": "none",
+                                             "data_tables_only": True}))
+stub = PlanStub(plan_row)
+builder.handle_integra_result(stub)
+saved_state = stub.saved.get("forge_state")
+check("data_tables_only plan: no picker pause, goes straight to building",
+      saved_state is not None and saved_state.get("job") == builder.JOB_SKILL
+      and not saved_state.get("choosing") and len(saved_state.get("plan") or []) == 1)
 
 # ---------------------------------------------------------------------------
 # Confirm summary as a table; the old summary is untouched

@@ -138,10 +138,18 @@ OPTIONAL INPUTS FOR THE LOOK (add them to the function recipe's input schema; bl
                                       Slack refusing a look falls back to the next plainer one and
                                       says why in warnings. Persona carousel: refused -> dropdown.
     "No skills" is offered on the details step and again when the skills are listed to pick from.
-    analyst_skill_always   on | off, blank = off   on: the shared analyst skill is attached to
+    analyst_skill_always   on | off, blank = on   on: the shared analyst skill is attached to
                                       every genie even when "No skills" was picked (that then
                                       means no project-specific lookup skills, not literally none).
-                                      off: the old behaviour.
+                                      off: the old behaviour (no skill at all for "No skills").
+    data_table_skills   on | off, blank = on (the default)   on: a genie built with "No skills"
+                                      still gets a read-only lookup skill for every table in
+                                      `data_tables` -- Integra's plan job is otherwise skipped
+                                      entirely for "No skills" (see start_integra), which left a
+                                      genie no way to read its own data tables but to ask the
+                                      shared analyst skill, which depends on a tool that is not
+                                      always available (see integra.md). off: the old behaviour,
+                                      "No skills" skips the plan job completely.
 
 Input and output schemas: genie_console_input_schema.json /
 genie_console_output_schema.json
@@ -423,9 +431,20 @@ MANAGE_LIFECYCLE = LIFECYCLE_DEFAULT == "on"
 # The `analyst_skill_always` input (on | off, blank = ANALYST_SKILL_ALWAYS_DEFAULT): on attaches the
 # shared analyst skill to every genie Integra builds even when the person picked "No skills" on the
 # details step -- "No skills" then means no project-specific lookup skills, not literally none. Off
-# is the old behaviour ("No skills" means none, the shared skill included).
+# is the old behaviour ("No skills" means none, the shared skill included). Blank is on: a genie with
+# no skill at all can't read a recipe or a job, so passing analyst_skill_handle is enough.
 ANALYST_SKILL_ALWAYS_MODES = ("on", "off")
-ANALYST_SKILL_ALWAYS_DEFAULT = "off"
+ANALYST_SKILL_ALWAYS_DEFAULT = "on"
+# The `data_table_skills` input (on | off, blank = DATA_TABLE_SKILLS_DEFAULT): "No skills" on the
+# details step skips Integra's plan job entirely (see start_integra), so a genie built that way has
+# no skill of its own for any of the project's data tables -- it can only ask the shared analyst
+# skill, which depends on a tool that is not always available (see integra.md). on (the default)
+# still runs a plan job in that case, scoped to data tables only (plan_scope: data_tables_only,
+# no recipes read, no project-specific skills), and builds every skill it plans with no picker, the
+# same way the analyst skill is attached automatically. off is the old behaviour: "No skills" means
+# no plan job at all, data tables included.
+DATA_TABLE_SKILLS_MODES = ("on", "off")
+DATA_TABLE_SKILLS_DEFAULT = "on"
 MANAGE_VIEWER = ""
 # Not buttons: the daily sync recipe asks for the genies to visit, then once per genie.
 ACTION_KB_SYNC_LIST = "kb_sync_list"    # -> sync_keys: [{record_key}], the genies that have a knowledge base
@@ -2422,6 +2441,8 @@ def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes=
         job_lines = ["job: plan", "max_skills: {}".format(MAX_SKILLS),
                      "plan_scope: every object and system the recipes read or write, not only "
                      "the ones the purpose names"]
+        if state.get("data_tables_only"):
+            job_lines.append("data_tables_only: true")
         if naming:
             job_lines.append("skill_naming: " + SKILL_NAMING_NOTE)
         if fields:
@@ -3121,6 +3142,12 @@ def analyst_skill_always_mode(value):
     return value if value in ANALYST_SKILL_ALWAYS_MODES else ANALYST_SKILL_ALWAYS_DEFAULT
 
 
+def data_table_skills_mode(value):
+    """"on" or "off": the `data_table_skills` input, blank = DATA_TABLE_SKILLS_DEFAULT."""
+    value = str(value or "").strip().lower()
+    return value if value in DATA_TABLE_SKILLS_MODES else DATA_TABLE_SKILLS_DEFAULT
+
+
 def kb_add_refusal(ctx, row):
     """Why a knowledge base can't be added to this genie now, "" when it can."""
     if not MANAGE_KB_ADD:
@@ -3645,7 +3672,10 @@ def handle_integra_result(ctx):
                                     "about": _text(spec.get("description") or "", 75)}
                                    for spec in plan],
                           "next": 0, "job": JOB_SKILL})
-            if connections_mode(ctx.input.get("connections")) == "auto":
+            if not state.get("data_tables_only") and connections_mode(ctx.input.get("connections")) == "auto":
+                # A data_tables_only plan is only workato_db_table skills, which need no
+                # connection (see integra.md): skip resolving the project's own, so "No skills"
+                # with data_table_skills on never pauses for a connections pick.
                 ask = ctx.resolve_connections(row, state)
                 if ask:
                     # The recipes use several connections for one app: ask once, before anything is
@@ -3656,7 +3686,7 @@ def handle_integra_result(ctx):
                         len(plan), "" if len(plan) == 1 else "s"))
                     ctx.post("Which connections?", connections_blocks(ctx.key, ask))
                     return "build"
-            if state.get("add_to") or skill_mode(state) == SKILLS_PICK:
+            if not state.get("data_tables_only") and (state.get("add_to") or skill_mode(state) == SKILLS_PICK):
                 # Stop here and let the person choose: nothing more is handed to the recipe's
                 # loop (call_forge stays false) until the pick comes back as a click.
                 state["choosing"] = True
@@ -4259,8 +4289,15 @@ class Context(object):
                 state[kept] = previous[kept]
         if (skill_mode(state) == SKILLS_NONE and not state.get("add_to")
                 and state["job"] == JOB_PLAN):
-            # No skills asked for on the details step: nothing to plan, go to the genie.
-            state.update({"job": JOB_GENIE, "plan": [], "next": 0})
+            if data_table_skills_mode(self.input.get("data_table_skills")) == "on" \
+                    and _load_list(row.get("data_tables")):
+                # "No skills" skips project-specific lookups, but a genie still needs a way to
+                # read its own data tables (see DATA_TABLE_SKILLS_DEFAULT): plan, scoped to data
+                # tables only, and build whatever comes back with no picker.
+                state["data_tables_only"] = True
+            else:
+                # No skills asked for on the details step: nothing to plan, go to the genie.
+                state.update({"job": JOB_GENIE, "plan": [], "next": 0})
         state["folder_id"] = state.get("folder_id") or self.genie_folder(row)
         shared = bool(str(self.input.get("forge_folder_id") or "").strip()) \
             and folder_mode(self.input.get("folder_mode")) == "shared"

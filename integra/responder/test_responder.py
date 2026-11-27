@@ -179,6 +179,54 @@ class SplitTables(unittest.TestCase):
             self.assertEqual(last[-1]["type"], "context_actions")
 
 
+def _big_table(rows):
+    return "| A | B |\n|---|---|\n" + "\n".join("| r{} | v |".format(i) for i in range(rows))
+
+
+class LongTables(unittest.TestCase):
+    """A table with more data rows than fit in one Slack table block (NATIVE_TABLE_ROWS - 1 = 99)
+    continues across more messages by default instead of being cut short in one (see
+    _split_long_table_lines / flush_table)."""
+
+    def test_at_the_cap_is_still_one_piece(self):
+        pieces = r.split_tables(_big_table(r.NATIVE_TABLE_ROWS - 1))
+        self.assertEqual(len(pieces), 1)
+        self.assertEqual(table_count(pieces[0]), 1)
+
+    def test_over_the_cap_continues_as_a_second_piece(self):
+        pieces = r.split_tables(_big_table(150))
+        self.assertEqual(len(pieces), 2)
+        self.assertEqual([table_count(p) for p in pieces], [1, 1])
+        self.assertTrue(pieces[0].startswith("| A | B |"))
+        self.assertTrue(pieces[1].startswith("_Continued, rows 100–150 of 150_:"))
+        self.assertIn("| r98 | v |", pieces[0])
+        self.assertNotIn("| r98 | v |", pieces[1])
+        self.assertIn("| r149 | v |", pieces[1])
+
+    def test_nothing_lost_across_the_pages(self):
+        pieces = r.split_tables(_big_table(250))
+        self.assertEqual(len(pieces), 3)
+        seen = sum(p.count("| r") for p in pieces)
+        self.assertEqual(seen, 250)
+
+    def test_no_cut_short_note_once_each_page_fits(self):
+        for page in r.split_tables(_big_table(250)):
+            card = r.answer_attachments("S", "", page)
+            self.assertNotIn("cut short", json.dumps(card[0]["blocks"]))
+
+    def test_cut_mode_keeps_the_old_single_cut_table(self):
+        pieces = r.split_tables(_big_table(150), "cut")
+        self.assertEqual(len(pieces), 1)
+        card = r.answer_attachments("S", "", pieces[0])
+        self.assertEqual(len(table_block(card)["rows"]), r.NATIVE_TABLE_ROWS)
+        self.assertIn("cut short", json.dumps(card[0]["blocks"]))
+        self.assertIn("99 of 150", json.dumps(card[0]["blocks"]))
+
+    def test_short_table_is_unaffected_by_either_mode(self):
+        for mode in (None, "continue", "cut"):
+            self.assertEqual(r.split_tables(NARROW_TABLE, mode), [NARROW_TABLE])
+
+
 class Matching(unittest.TestCase):
     def test_keyword_whole_word(self):
         rows = [{"invoke_keyword": "SNAP"}]
@@ -296,6 +344,14 @@ class SeveralTables(unittest.TestCase):
     def test_one_table_is_still_one_message(self):
         slack, _ = self.run_reply(answer="Intro\n\n" + WIDE_TABLE)
         self.assertEqual(len(slack.sent), 1)
+
+    def test_a_long_single_table_continues_across_messages(self):
+        slack, result = self.run_reply(answer=_big_table(150))
+        self.assertEqual([m for m, _p in slack.sent], ["chat.update", "chat.postMessage"])
+        for n in (0, 1):
+            self.assertEqual(types(self.blocks(slack, n)).count("table"), 1)
+        self.assertNotIn("cut short", json.dumps([self.blocks(slack, 0), self.blocks(slack, 1)]))
+        self.assertTrue(result["posted"])
 
     def test_rejected_buttons_are_dropped_on_the_last_message_only(self):
         slack, result = self.run_reply({"context_actions"})
@@ -599,6 +655,27 @@ class OwnerOnePerThread(unittest.TestCase):
         self.assertEqual(len(slack.dms), 1)
         self.assertFalse(result["owner_already_notified"])
         self.assertEqual([f["record_key"] for f in self.pings(table)], ["ping:C1:1.0"])
+
+    def test_marker_with_brackets_in_the_hint_is_removed_and_brings_the_owner(self):
+        hint = "[Mega] - EDS to SFDC Partnership Sync - SCH"
+        for ending in ("]]", "]]]"):          # a hint that itself ends in "]"
+            text = "Cannot see it.\n\n[[NEEDS_HUMAN: " + hint + ending
+            found = r.NEEDS_HUMAN.search(text)
+            self.assertEqual(found.group(1), hint if ending == "]]" else hint + "]")
+            table = FakeTable([self.GENIE])
+            slack, result = self.run_reply(table, answer=text)
+            self.assertNotIn("NEEDS_HUMAN", json.dumps(slack.last))
+            self.assertEqual(result["escalation_reason"], "marker")
+            self.assertEqual(len(slack.said), 1)
+
+    def test_question_is_taken_from_the_message_text_when_not_mapped(self):
+        table = FakeTable([self.GENIE])
+        slack, _ = self.run_reply(table, question="", text="SNAP: why did quote Q-1 fail?")
+        said = slack.said[0]["text"]
+        self.assertIn("why did quote Q-1 fail?", said)
+        self.assertNotIn("SNAP:", said)
+        self.assertEqual(r.asked_question({"question": " given ", "text": "SNAP x"}), "given")
+        self.assertEqual(r.asked_question({"text": "hello", "keyword": ""}), "hello")
 
     def test_second_one_in_the_same_thread_does_not(self):
         table = FakeTable([self.GENIE, {"record_key": "ping:C1:1.0"}])
@@ -1491,7 +1568,8 @@ class AskStepSecrets(unittest.TestCase):
 
     def test_off_is_the_task_as_before(self):
         off = self.run_ask("SNAP why AKIAIOSFODNN7EXAMPLE?", redact="off", bold="off", kb_mention="say",
-                            ids_note="off", offers_note="off")
+                            ids_note="off", offers_note="off", length_note="off",
+                           check_note="off", emoji_note="off")
         self.assertNotIn("secrets_note", off["task_instructions"])
         self.assertNotIn("format_note", off["task_instructions"])
         self.assertIn("AKIAIOSFODNN7EXAMPLE", off["question"])
@@ -1606,6 +1684,108 @@ class InternalIdsByPersona(unittest.TestCase):
         self.assertNotIn("ids_note", off["task_instructions"])
         base.GENIE = dict(AskStepSecrets.GENIE, persona="developer")
         self.assertNotIn("ids_note", base.run_ask("SNAP why?")["task_instructions"])
+
+
+class NaturalLength(unittest.TestCase):
+    """No bold "Short answer:" label, and a full answer when the question needs one."""
+
+    def task(self, **kw):
+        return r.task_instructions(dict(KnowledgeBaseNote.ROW, forge_state="{}"), "why?", **kw)
+
+    def test_note_is_added_when_on(self):
+        self.assertIn("length_note: " + r.LENGTH_NOTE, self.task(length_note=True))
+        self.assertLess(self.task(length_note=True).index("length_note:"),
+                        self.task(length_note=True).index("</genie_context>"))
+
+    def test_off_and_default_are_the_old_task(self):
+        self.assertNotIn("length_note", self.task())
+        self.assertEqual(self.task(), self.task(length_note=False))
+
+    def test_note_names_the_label_and_the_override(self):
+        for phrase in ("Short answer:", "keep it short", "complete answer"):
+            self.assertIn(phrase, r.LENGTH_NOTE)
+
+    def test_input_and_ask(self):
+        self.assertEqual([r.length_note_mode(v) for v in ("off", " OFF ", "on", "", None, "x")],
+                         ["off", "off", "on", "on", "on", "on"])
+        base = AskStepSecrets()
+        on, off = base.run_ask("SNAP why?"), base.run_ask("SNAP why?", length_note="off")
+        self.assertIn("length_note: " + r.LENGTH_NOTE, on["task_instructions"])
+        self.assertNotIn("length_note", off["task_instructions"])
+
+
+class CheckBeforeAnswering(unittest.TestCase):
+    """A question about a recipe is answered from a fresh read, never from the thread so far."""
+
+    def task(self, **kw):
+        return r.task_instructions(dict(KnowledgeBaseNote.ROW, forge_state="{}"), "why?", **kw)
+
+    def test_note_is_added_when_on(self):
+        self.assertIn("check_note: " + r.CHECK_NOTE, self.task(check_note=True))
+        self.assertLess(self.task(check_note=True).index("check_note:"),
+                        self.task(check_note=True).index("</genie_context>"))
+
+    def test_off_and_default_are_the_old_task(self):
+        self.assertNotIn("check_note", self.task())
+        self.assertEqual(self.task(), self.task(check_note=False))
+
+    def test_note_names_what_to_do(self):
+        for phrase in ("follow-up", "read the real thing", "not answered by asking for an example",
+                       "recent failed jobs"):
+            self.assertIn(phrase, r.CHECK_NOTE)
+
+    def test_input_and_ask(self):
+        self.assertEqual([r.check_note_mode(v) for v in ("off", " OFF ", "on", "", None, "x")],
+                         ["off", "off", "on", "on", "on", "on"])
+        base = AskStepSecrets()
+        on, off = base.run_ask("SNAP why?"), base.run_ask("SNAP why?", check_note="off")
+        self.assertIn("check_note: " + r.CHECK_NOTE, on["task_instructions"])
+        self.assertNotIn("check_note", off["task_instructions"])
+
+
+class EmojiMarks(unittest.TestCase):
+    """Severity and status marks at the standard places, in every answer."""
+
+    def task(self, **kw):
+        return r.task_instructions(dict(KnowledgeBaseNote.ROW, forge_state="{}"), "why?", **kw)
+
+    def test_note_is_added_when_on(self):
+        self.assertIn("emoji_note: " + r.EMOJI_NOTE, self.task(emoji_note=True))
+        self.assertLess(self.task(emoji_note=True).index("emoji_note:"),
+                        self.task(emoji_note=True).index("</genie_context>"))
+
+    def test_off_and_default_are_the_old_task(self):
+        self.assertNotIn("emoji_note", self.task())
+        self.assertEqual(self.task(), self.task(emoji_note=False))
+
+    def test_note_has_every_mark_and_the_guide(self):
+        for _context, name, _custom in r.EMOJI_GUIDE:
+            self.assertIn(":{}:".format(name), r.EMOJI_NOTE)
+        for _system, name in r.EMOJI_SYSTEMS:
+            self.assertIn(":{}:".format(name), r.EMOJI_NOTE)
+        self.assertIn("emoji guide", r.EMOJI_NOTE)
+
+    def test_custom_emojis_exist_in_the_workspace_list(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "slack_emojis", "emojis.json")
+        if not os.path.exists(path):
+            self.skipTest("slack_emojis/emojis.json not found")
+        with open(path) as handle:
+            workspace = json.load(handle)["emoji"]
+        wanted = [n for _c, n, custom in r.EMOJI_GUIDE if custom] + [n for _s, n in r.EMOJI_SYSTEMS]
+        standard = {"slack"}      # also a custom one, but a standard-looking name: both are fine
+        missing = [n for n in wanted if n not in workspace and n not in standard]
+        # a system's logo may be a standard emoji too (github, google_drive); only report names
+        # that are in neither: the standard ones are listed here.
+        known_standard = {"github", "google_drive"}
+        self.assertEqual([n for n in missing if n not in known_standard], [])
+
+    def test_input_and_ask(self):
+        self.assertEqual([r.emoji_note_mode(v) for v in ("off", " OFF ", "on", "", None, "x")],
+                         ["off", "off", "on", "on", "on", "on"])
+        base = AskStepSecrets()
+        on, off = base.run_ask("SNAP why?"), base.run_ask("SNAP why?", emoji_note="off")
+        self.assertIn("emoji_note: " + r.EMOJI_NOTE, on["task_instructions"])
+        self.assertNotIn("emoji_note", off["task_instructions"])
 
 
 class NoOffersYouCannotKeep(unittest.TestCase):

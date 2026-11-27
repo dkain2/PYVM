@@ -1,0 +1,260 @@
+[
+  {
+    "control_type": "text",
+    "label": "Workato api token",
+    "name": "workato_api_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Workato Data Tables API token. Needed to read the activity rows (Monday) and to count a press. Not needed for a press on a TEST post."
+  },
+  {
+    "control_type": "text",
+    "label": "Slack bot token",
+    "name": "slack_bot_token",
+    "type": "string",
+    "optional": true,
+    "hint": "Bot token. Scopes: chat:write (the channel must be one the bot can post in) and users:read. Without it the Monday run can only preview."
+  },
+  {
+    "control_type": "text",
+    "label": "Channel",
+    "name": "channel",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] Channel id to post in. [recap] Channel id whose post is recapped. [press] Channel id the button is in (container.channel_id)."
+  },
+  {
+    "control_type": "number",
+    "label": "Level",
+    "parse_output": "integer_conversion",
+    "name": "level",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] How big the goals are: 1, 2, 3 ... Level 1 (the default) is 70% of a typical week, level 2 a typical week, level 3 130%, level 4 170%, level 5 220%, then 50 points more a level. Every goal stays below 90% of the best week anyone in the channel has had, whatever the level. Run with skip_post = yes to see the goal for each level before posting. With adaptive on (the default) this is the figure a challenge starts from and never goes below: it then steps up from there, week by week, to level 3's figure.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Personal",
+    "name": "personal",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] \"yes\" (the default) posts each category WITHOUT a figure: the buttons carry the category and a hint says each person's target is worked out from their own recent weeks and shown only to them when they press. That is the target in their private note, and it is the goal their entry is kept at and spotter settles against. Someone who has taken the challenge on before also gets bigger sizes to pick (Steady / Stretch / Summit). Someone new to it gets lighter starting points instead (Gentle / Easy / Steady): built from their own weeks when they have any, and from what the active crew logs when they have none, in which case they start on the lightest. A crew spans very different volumes (1 hour a week, 4 hours a week), so one figure fits few of them. \"no\" posts the team figure on every button, the same for everyone, and `adaptive` then moves it from week to week."
+  },
+  {
+    "control_type": "text",
+    "label": "Adaptive",
+    "name": "adaptive",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] \"yes\" (the default) sets each challenge from how last week went instead of from the last 4 weeks alone, which gives the same goal every Monday while the crew's habits stay the same. A challenge goes up a step every week (a step is the next round figure, about 10%): two steps when 3 in 4 or more of the people who took it on did the posted goal, back one when a third or fewer did, and one step when it was in between or fewer than 2 people took it on. It moves between the figure the `level` input gives and the one level 3 gives (130% of a typical week), so once it is at the top it can repeat; a higher `level` input still sets a higher goal. \"no\" sets every challenge at `level`, as before. Needs `channel` (that is where last week's post is found, and the run says so in warnings if it is not); with testing or skip_post it only reads, so a preview shows the goals the real run would set."
+  },
+  {
+    "control_type": "text",
+    "label": "Testing",
+    "name": "testing",
+    "type": "string",
+    "optional": true,
+    "hint": "\"yes\" to post a TEST set: real goals, a real post in `channel`, working buttons -- but nothing is written to the data table (no post row, no acceptance rows, nothing on anyone's activity row, last week's post is left alone, a repeat run is not blocked). A press on a test post counts in that message only and is not tracked. The click recipe needs nothing mapped for it: a test post is recognised by its buttons. With mode = recap it posts the recap, marked as a test, without closing the week or writing anything."
+  },
+  {
+    "control_type": "text",
+    "label": "Skip post",
+    "name": "skip_post",
+    "type": "string",
+    "optional": true,
+    "hint": "\"yes\" to work out the goals (or, with mode = recap, the results) and return the messages in preview_json, posting nothing and writing nothing. Use it to look at the numbers and the layout first."
+  },
+  {
+    "control_type": "text",
+    "label": "Force",
+    "name": "force",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] \"yes\" to post again for a week that already has a post. The old messages are deleted and the new post starts with no acceptances."
+  },
+  {
+    "control_type": "text",
+    "label": "Mode",
+    "name": "mode",
+    "type": "string",
+    "optional": true,
+    "hint": "post (the default) is the Monday run: set the goals and post them. recap is the end-of-week run, made on Monday before the new set is posted: tell the channel who cleared each goal, take the buttons off the week's messages and write down how each person's goal ended. Map it on the recap step only."
+  },
+  {
+    "control_type": "text",
+    "label": "Week",
+    "name": "week",
+    "type": "string",
+    "optional": true,
+    "hint": "[recap] YYYY-MM-DD, the Monday of the week to recap. Blank = the open post whose week is over (or ends today). Needed only to recap a post a later Monday has already closed."
+  },
+  {
+    "control_type": "number",
+    "label": "Top count",
+    "parse_output": "integer_conversion",
+    "name": "top_count",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] post_style 1 and 2 only: how many goals sit in the channel message itself; the rest go in replies in its thread. Default 5. With only a few more goals than this they all stay in the channel message. A grid post (post_style 3) is sized in rows of buttons instead: see `buttons_per_row` and `button_rows`, and this input is not used for it.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Buttons per row",
+    "parse_output": "integer_conversion",
+    "name": "buttons_per_row",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] post_style 3 only: buttons in each row of the grid, 1-5. Default 5, the most Slack shows in a row (it folds any more behind a \"+N more\"). 2 gives rows of two. Slack sizes a button by its label, so fewer to a row does not make them bigger. Saved with the post, so later redraws keep it.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Button rows",
+    "parse_output": "integer_conversion",
+    "name": "button_rows",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] post_style 3 only: rows of buttons in the channel message, 1-5. Default 4. The channel message holds `buttons_per_row` x `button_rows` challenges (5 x 4 = 20 by default, 2 x 4 = 8); any more go in replies in its thread, and a thread of only one or two is folded back in as a short last row.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Max challenges",
+    "parse_output": "integer_conversion",
+    "name": "max_challenges",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] Most goals in all, busiest activities first. Default 20.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Max games",
+    "parse_output": "integer_conversion",
+    "name": "max_games",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] Most games to set challenges for, busiest first. Each game gets two: play it N times, and reach a score of N (iMath's are about the Easy game). 0 = no game challenges. Default 8, which is all of them.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "number",
+    "label": "Min people",
+    "parse_output": "integer_conversion",
+    "name": "min_people",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] People who must have logged an activity in the last 4 weeks before it gets a goal. Default 2.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Only",
+    "name": "only",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] Comma separated activities and games to set challenges for, and no others: pushup, plank, step, yoga, iadd, imemory ... A game name stands for both of its challenges (iadd_plays or iadd_score names just one). Spotter keywords (ipushup, isteps, iplanked) work too."
+  },
+  {
+    "control_type": "text",
+    "label": "Skip",
+    "name": "skip",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] Comma separated activities and games to leave out (a game name drops both of its challenges)."
+  },
+  {
+    "control_type": "number",
+    "label": "Post style",
+    "parse_output": "integer_conversion",
+    "name": "post_style",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] How each challenge is drawn, 1-3. 1 = text, button and a small status line under it (default). 2 = status folded into the same block, button beside it (about half the height). 3 = a grid of buttons (`buttons_per_row` to a row, `button_rows` rows in the channel message) labelled with the goal, or with the category on a personal post, plus a short list of only the challenges somebody has accepted. Saved with the post, so later redraws keep it.",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Intro text",
+    "name": "intro_text",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] Replaces the one-line explanation under the title. Slack mrkdwn is fine. Blank = the built-in line (it changes a little from week to week)."
+  },
+  {
+    "control_type": "text",
+    "label": "Banner URL",
+    "name": "banner_url",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] A public https:// link to an image, shown at the very top of the channel message (a wide banner, about 1280x300 works well). Saved with the post, so later redraws keep it. [recap] The same, for the results post: map a different image on the recap step. Blank = no banner. A link that is not https:// is ignored with a warning."
+  },
+  {
+    "control_type": "text",
+    "label": "Close previous",
+    "name": "close_previous",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] \"no\" to leave last week's messages as they are. By default their buttons are taken off and their final counts stay."
+  },
+  {
+    "control_type": "number",
+    "label": "Tz offset",
+    "parse_output": "integer_conversion",
+    "name": "tz_offset",
+    "type": "integer",
+    "optional": true,
+    "hint": "[Monday] Seconds east of UTC that decide what today's date is, and so which week this is. Default -25200 (the channel's original zone, as spotter.py).",
+    "render_input": "integer_conversion"
+  },
+  {
+    "control_type": "text",
+    "label": "Today",
+    "name": "today",
+    "type": "string",
+    "optional": true,
+    "hint": "YYYY-MM-DD to run as if it were that day: the Monday run picks that day's week, the recap judges the week against that day. A testing aid."
+  },
+  {
+    "control_type": "text",
+    "label": "Local data file",
+    "name": "local_data_file",
+    "type": "string",
+    "optional": true,
+    "hint": "[Monday] Path to a JSON list of table rows (column names as keys) to read instead of the table. A testing aid for looking at the goals offline."
+  },
+  {
+    "control_type": "text",
+    "label": "Action value",
+    "name": "action_value",
+    "type": "string",
+    "optional": true,
+    "hint": "[press] The pressed button's value (actions[0].value): wc|<post id>|<activity>|accept on a real post, wct|... on a test post; wcg|... and wcgt|... for the Steady / Stretch / Summit buttons in the private note after accepting. Its presence is what makes this call a press instead of the Monday run. Leave it empty on the Monday recipe."
+  },
+  {
+    "control_type": "text",
+    "label": "User ID",
+    "name": "user_id",
+    "type": "string",
+    "optional": true,
+    "hint": "[press] Slack id of whoever pressed (user.id)."
+  },
+  {
+    "control_type": "text",
+    "label": "Source ts",
+    "name": "source_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[press] ts of the message that holds the button (container.message_ts). It is the message that is redrawn. If it is missing on a real post, the ts saved with the post is used."
+  },
+  {
+    "control_type": "text",
+    "label": "Action ts",
+    "name": "action_ts",
+    "type": "string",
+    "optional": true,
+    "hint": "[press] Slack's own click time (actions[0].action_ts). It orders the names on a goal: first to press, first listed."
+  }
+]
