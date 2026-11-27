@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+from unittest.mock import patch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("builder", os.path.join(HERE, "builder.py"))
@@ -144,13 +145,14 @@ class AddStub(Stub):
     def __init__(self, row, inputs):
         Stub.__init__(self, row, {"key": "draft:add1", "message_ts": "9.9", "channel": "C1"})
         self.input, self.result, self.failed = inputs, {}, []
-    def integra_failed(self, row, state, error):
+    def retry_integra(self, row, state, error):
         self.failed.append(error)
         return "build"
 
 
 def run_add(inputs):
-    stub = AddStub(dict(ROW, forge_state=json.dumps({"job": builder.JOB_PLAN, "add_to": "x:C1", "existing": ["A"]})), inputs)
+    stub = AddStub(dict(ROW, status=builder.STATUS_BUILDING,
+                        forge_state=json.dumps({"job": builder.JOB_PLAN, "add_to": "x:C1", "existing": ["A"]})), inputs)
     builder.handle_integra_result(stub)
     return stub
 
@@ -163,10 +165,10 @@ stub = run_add(dict(ok, fail_detail="off"))
 check("fail_detail off: exactly the old message", not stub.failed and stub.said[0].endswith("already have."))
 broken = dict(ok, forge_plan_json='[{"name": "Get invoice from NetSuite", "returns": [{"name": "tranId"')
 stub = run_add(broken)
-check("add skills, a plan that can't be read: it fails with Try again, not 'nothing to add'",
-      len(stub.failed) == 1 and "couldn't be read" in stub.failed[0] and not stub.said)
+check("add skills, a plan that can't be read: it is retried and the error is shown",
+      len(stub.failed) == 1 and "unreadable plan" in stub.failed[0] and not stub.said)
 stub = run_add(dict(broken, fail_detail="off"))
-check("fail_detail off: an unreadable plan is the old message", not stub.failed and "found no skill" in stub.said[0])
+check("fail_detail off: an unreadable plan still retries", len(stub.failed) == 1 and not stub.said)
 
 # ---------------------------------------------------------------------------
 # Projects step: the dropdown only searches its own page, and says so
@@ -304,18 +306,106 @@ class PlanStub(Stub):
         self.result, self.parts, self.slack = {}, {}, FakeSlack()
     def save_part(self, name, meta, fields): self.parts[name] = fields
     def part(self, name): return self.parts.get(name, {})
-    def integra_failed(self, row, state, error): raise AssertionError("should not fail: " + error)
+    def retry_integra(self, row, state, error): raise AssertionError("should not fail: " + error)
     def next_integra_job(self, row, state, card_ts): pass
 
 
-plan_row = dict(ROW, forge_state=json.dumps({"job": builder.JOB_PLAN, "skill_mode": "none",
-                                             "data_tables_only": True}))
+plan_row = dict(ROW, status=builder.STATUS_BUILDING,
+                forge_state=json.dumps({"job": builder.JOB_PLAN, "skill_mode": "none", "data_tables_only": True}))
 stub = PlanStub(plan_row)
 builder.handle_integra_result(stub)
 saved_state = stub.saved.get("forge_state")
 check("data_tables_only plan: no picker pause, goes straight to building",
       saved_state is not None and saved_state.get("job") == builder.JOB_SKILL
       and not saved_state.get("choosing") and len(saved_state.get("plan") or []) == 1)
+
+
+def check_integra_retries():
+    key = "draft:1.2"
+    outline = {"job": builder.JOB_GENIE, "plan": [], "folder_id": "test-folder",
+               "card_ts": "1.9", "card_channel": "C_BUILD", "card_thread_ts": "1.2"}
+    draft = dict(ROW, status=builder.STATUS_BUILDING, setup_thread_ts="1.2", channel="C_DESTINATION")
+    rows = {key: dict(draft, forge_state=json.dumps(outline))}
+    slack_calls = []
+    reject_updates = False
+
+    def find(table, record_key):
+        row = rows.get(record_key)
+        return (dict(row) if row else None), None
+
+    def save(table, row, fields):
+        rows[fields["record_key"]] = json.loads(json.dumps(fields))
+        return True
+
+    def slack_request(url, headers, payload=None, method="GET"):
+        name = url.rsplit("/", 1)[-1]
+        slack_calls.append((name, payload))
+        if name == "chat.update" and reject_updates:
+            return {"ok": False, "error": "message_not_found"}, None
+        return {"ok": True, "ts": "1.99"}, None
+
+    def run(action=builder.ACTION_INTEGRA_RESULT, **fields):
+        return builder.main(dict({"action": action, "action_value": key, "user_id": "U123",
+                                  "channel": "C_WRONG", "thread_ts": "1.5", "message_ts": "1.6"}, **fields))
+
+    with patch.object(builder.Table, "find", find), patch.object(builder.Table, "save", save), \
+            patch.object(builder, "_request", slack_request):
+        scheduled = []
+        for attempt in range(1, 11):
+            out = run(forge_status="failed", forge_error="Workato returned HTTP 503",
+                      forge_genie_id="gin-existing" if attempt == 1 else "")
+            if out["call_forge"]:
+                scheduled.append(builder.integra_state(rows[key]).get("retry_count"))
+            check("retry {} returns the same job and updates the saved card with the actual error".format(attempt),
+                  out["call_forge"] and out["forge_job"] == builder.JOB_GENIE and "HTTP 503" in out["blocks_json"]
+                  and slack_calls[-1][1]["ts"] == "1.9" and slack_calls[-1][1]["channel"] == "C_BUILD", out)
+        next_job = run(builder.ACTION_INTEGRA_NEXT)
+        check("forge_next reads the pending retry without using another attempt",
+              scheduled == list(range(1, 11)) and next_job["call_forge"]
+              and "resume_genie_id: gin-existing" in next_job["forge_task_instructions"]
+              and builder.integra_state(rows[key])["retry_count"] == 10)
+
+        reject_updates = True
+        out = run(forge_status="failed", forge_summary="The API client is missing Genies Create access.")
+        method, posted = slack_calls[-1]
+        check("after 10 retries a rejected card edit posts the reason and retry button in the original thread",
+              not out["call_forge"] and rows[key]["status"] == builder.STATUS_BUILD_FAILED
+              and "Genies Create access" in out["field_error"] and "10 automatic retries" in out["blocks_json"]
+              and builder.ACTION_INTEGRA_RETRY in out["blocks_json"] and builder.LOADING_EMOJI not in out["blocks_json"]
+              and method == "chat.postMessage" and posted["thread_ts"] == "1.2" and posted["channel"] == "C_BUILD", out)
+        check("late results for a failed build do not restart the loop", not run(forge_genie_id="gin-late")["call_forge"])
+
+        reject_updates = False
+        out = run(builder.ACTION_INTEGRA_RETRY, channel="C_BUILD", thread_ts="1.2")
+        check("manual retry renews the budget and carries the previous genie ID forward",
+              out["call_forge"] and "resume_genie_id: gin-existing" in out["forge_task_instructions"]
+              and not builder.integra_state(rows[key]).get("retry_count"), out)
+        repeat = run(builder.ACTION_INTEGRA_RETRY)
+        check("a second Try again click while building does not start another run", not repeat["call_forge"])
+        out = run(forge_status="success", forge_genie_id="gin-existing")
+        check("a successful retry goes to Confirm and clears retry state",
+              out["ok"] and out["step"] == "confirm" and not out["call_forge"]
+              and rows[key]["id"] == "gin-existing" and "retry_count" not in builder.integra_state(rows[key]), out)
+
+        rows[key] = dict(draft, forge_state=dict(outline, job=builder.JOB_PLAN))
+        out = run()
+        check("an empty result retries planning and points to the job log for the missing error",
+              out["call_forge"] and out["forge_job"] == builder.JOB_PLAN
+              and "returned no result or error" in out["blocks_json"], out)
+
+        rows[key] = dict(draft, forge_state=dict(outline, job=builder.JOB_SKILL, next=0,
+                                                plan=[{"name": "Lookup"}], retry_count=10))
+        part_key = builder.integra_part_key(key, "s0")
+        rows[part_key] = {"record_key": part_key, "forge_state": json.dumps({"spec": {"name": "Lookup"}})}
+        out = run(forge_error="Connector authorization failed")
+        state = builder.integra_state(rows[key])
+        check("a skill that exhausts its retries shows the error and lets the build continue",
+              out["ok"] and out["call_forge"] and out["forge_job"] == builder.JOB_GENIE
+              and state["plan"][0]["state"] == "failed" and "Connector authorization failed" in out["blocks_json"]
+              and "retry_count" not in state, out)
+
+
+check_integra_retries()
 
 # ---------------------------------------------------------------------------
 # Confirm summary as a table; the old summary is untouched
@@ -545,9 +635,10 @@ check("with a knowledge base: no Add knowledge base, Add documents instead",
       and builder.ACTION_DOCS in action_ids(builder.manage_blocks("SNAP:C1", with_kb, [])))
 builder.MANAGE_KB_ADD = False
 off_card = builder.manage_blocks("SNAP:C1", GENIE, [])
-check("manage_kb off: the card is the old one (no new button)",
-      builder.ACTION_KB_ADD not in action_ids(off_card)
-      and action_ids(off_card) == [builder.ACTION_DESC, builder.ACTION_SKILLS_ADD], action_ids(off_card))
+check("manage_kb off: the card still offers the other manage actions",
+      action_ids(off_card) == [builder.ACTION_DESC, builder.ACTION_CHANNELS,
+                               builder.ACTION_PROJECTS_ADD, builder.ACTION_SKILLS_ADD],
+      action_ids(off_card))
 builder.MANAGE_KB_ADD = True
 check("manage_kb input: on / off, blank = on", [builder.manage_kb_mode(v) for v in ("off", " OFF ", "on", "", None, "x")]
       == ["off", "off", "on", "on", "on", "on"])
@@ -828,6 +919,178 @@ finally:
     builder.Table.find, builder.Table.search, builder.resolve_columns = _find, _search, _cols
     builder.MANAGE_KB_ADD = True
 
+
+def check_channel_sharing():
+    primary = dict(GENIE, record_type=builder.RECORD_TYPE)
+    rows = [primary]
+    slack_calls = []
+    slack_channels = [{"id": "C1", "name": "original"}, {"id": "C2", "name": "second"},
+                      {"id": "C3", "name": "archived", "is_archived": True}]
+
+    def find(table, key):
+        return next((dict(row) for row in rows if row.get("record_key") == key), None), None
+
+    def search(table, where, limit):
+        filters = {key: test for clause in where["$and"] for key, test in clause.items()}
+        return [dict(row) for row in rows if all(row.get(key) in test.get("$in", [test.get("$eq")])
+                                               for key, test in filters.items())][:limit], None
+
+    def save(table, row, fields):
+        rows.append(dict(fields))
+        return True
+
+    def slack_request(url, headers, payload=None, method="GET"):
+        slack_calls.append((url, payload))
+        if "users.conversations?" in url:
+            return {"ok": True, "channels": list(slack_channels)}, None
+        return {"ok": True, "ts": "2.3"}, None
+
+    def click(action, destination="", user="U1"):
+        payload = {"actions": [{"action_id": action, "value": "SNAP:C1"}], "user": {"id": user},
+                   "channel": {"id": "C1"}, "message": {"ts": "2.3", "thread_ts": "1.2"},
+                   "state": {"values": {"gc_channel_picker": {"gc_channel_pick": {
+                       "selected_option": {"value": destination} if destination else None}}}}}
+        return builder.main({"payload_json": payload})
+
+    with patch.object(builder.Table, "find", find), patch.object(builder.Table, "search", search), \
+            patch.object(builder.Table, "save", save), patch.object(builder, "_request", slack_request):
+        out = click(builder.ACTION_CHANNELS)
+        check("channel picker: a private message to the manager lists only eligible destinations",
+              out["ok"] and "/users.conversations?user=U1" in slack_calls[0][0]
+              and slack_calls[-1][0].endswith("/chat.postEphemeral") and slack_calls[-1][1]["user"] == "U1"
+              and '#second' in out["blocks_json"] and '#original' not in out["blocks_json"]
+              and '#archived' not in out["blocks_json"], out["error"])
+
+        out = click(builder.ACTION_CHANNELS_SAVE, "C2", user="U9")
+        check("channel picker: only the original genie's managers may add channels",
+              not out["ok"] and len(rows) == 1, out["error"])
+        out = click(builder.ACTION_CHANNELS_SAVE, "C9")
+        check("channel picker: a destination outside the current Slack list is refused",
+              out["ok"] and "no longer available" in out["blocks_json"] and len(rows) == 1)
+
+        rows.append(dict(primary, id="gin-other", channel="C2", record_key="SNAP:C2", status="paused"))
+        out = click(builder.ACTION_CHANNELS_SAVE, "C2")
+        check("channel picker: a paused genie reserves its keyword in the destination",
+              out["ok"] and "already used by another genie" in out["blocks_json"] and len(rows) == 2)
+        rows.pop()
+
+        for _ in range(2):
+            out = click(builder.ACTION_CHANNELS_SAVE, "C2")
+        links = [row for row in rows if row["record_type"] == builder.GENIE_CHANNEL_TYPE]
+        check("channel picker: adding twice saves one link to the existing handle", out["ok"]
+              and "already linked" in out["blocks_json"] and len(links) == 1
+              and links[0]["id"] == primary["id"] and primary["channel"] == "C1", rows)
+        out = click(builder.ACTION_CHANNELS)
+        check("channel picker: an already linked channel is excluded", '#second' not in out["blocks_json"])
+
+        out = builder.main({"action": "start", "channel": "C2", "user_id": "U1", "message_ts": "4.5"})
+        check("genieconfig in the destination offers Manage with the original row key",
+              out["ok"] and out["step"] == "choose" and '"value": "SNAP:C1"' in out["blocks_json"], out)
+
+        rows.append(dict(primary, record_key="draft:5.6", status=builder.STATUS_BUILT,
+                         channel="C2", id="gin-draft"))
+        out = builder.main({"action": builder.ACTION_CONFIRM, "action_value": "draft:5.6",
+                            "channel": "C2", "message_ts": "5.7", "user_id": "U1"})
+        check("confirm: a linked genie reserves its keyword against newly built genies",
+              not out["ok"] and "was taken" in out["error"], out)
+
+
+check_channel_sharing()
+
+
+def check_manage_projects():
+    key = "SNAP:C1"
+    first = {"id": "1", "folder_id": 101, "name": "Orders", "owner": {"name": "Order owner", "mention": "<@U2>"}}
+    second = {"id": 2, "folder_id": 102, "name": "Invoices"}
+    shared = {"id": 11, "type": "recipe", "name": "Shared lookup"}
+    assets = {101: [shared, {"id": 12, "type": "recipe", "name": "Read orders"}],
+              102: [shared, {"id": 21, "type": "data_table", "name": "Invoice rows"}]}
+    skills = json.dumps([{"handle": "skl-shared", "name": "Shared lookup"}])
+    states = {key: dict(GENIE, status=builder.STATUS_PAUSED, workato_projects=json.dumps([first]),
+                        skills=skills, forge_state=json.dumps({"job": "done", "kb": KB_ID}))}
+    saved = []
+    folder_error = None
+
+    def find(table, record_key):
+        row = states.get(record_key)
+        return (dict(row) if row else None), None
+
+    def save(table, row, fields):
+        saved.append(fields["record_key"])
+        states[fields["record_key"]] = dict(fields)
+        return True
+
+    def read_assets(token, folder_id):
+        if folder_id == folder_error:
+            return [], "HTTP 403"
+        return assets[folder_id], None
+
+    def click(action, options=(), user="U1"):
+        payload = {"actions": [{"action_id": action, "value": key}], "user": {"id": user},
+                   "channel": {"id": "C2"}, "message": {"ts": "2.3", "thread_ts": "1.2"},
+                   "state": {"values": {"gc_projects": {"gc_projects_select": {
+                       "selected_options": [{"value": project_id} for project_id in options]}}}}}
+        return builder.main({"payload_json": payload, "dry_run": "true", "workato_api_token": "fixture"})
+
+    def options(out):
+        blocks = json.loads(out["blocks_json"])
+        return [choice["value"] for block in blocks if block["type"] == "input"
+                for choice in block["element"]["options"]]
+
+    catalogue = [dict(first, id=1), second]
+    with patch.object(builder.Table, "find", find), patch.object(builder.Table, "save", save), \
+            patch.object(builder.Table, "search", return_value=([], None)), \
+            patch.object(builder, "list_projects", return_value=(catalogue, None)), \
+            patch.object(builder, "folder_assets", read_assets), patch.object(
+                builder.Context, "project_owner", return_value={"name": "Invoice owner", "mention": "<@U3>"}):
+        out = click(builder.ACTION_MANAGE)
+        check("Manage lists the projects and shows both project actions", out["ok"] and "Orders" in out["blocks_json"]
+              and {builder.ACTION_PROJECTS_ADD, builder.ACTION_PROJECTS_REMOVE} <= set(action_ids(json.loads(out["blocks_json"]))))
+        out = click(builder.ACTION_PROJECTS_ADD)
+        check("Add projects excludes projects already on the genie even when IDs were saved as strings",
+              out["ok"] and options(out) == ["2"] and not saved)
+        out = click(builder.ACTION_PROJECTS_ADD_APPLY, ["2"], user="U9")
+        check("only existing managers can change projects", not out["ok"] and not saved)
+
+        out = click(builder.ACTION_PROJECTS_ADD_APPLY, ["2"])
+        row = states[key]
+        check("adding a project refreshes the combined assets and owners on the existing paused genie",
+              out["ok"] and out["recipe_count"] == 2 and out["data_table_count"] == 1
+              and len(row["project_owner"]) == 2 and builder.manager_ids(row) == ["U1", "U2", "U3"]
+              and row["skills"] == skills and row["id"] == GENIE["id"] and row["status"] == builder.STATUS_PAUSED
+              and builder.integra_state(row)["kb"] == KB_ID and builder.integra_state(row)["projects_updated"], out)
+        click(builder.ACTION_PROJECTS_ADD_APPLY, ["2"])
+        check("a repeated Add projects click does not write the same project again", saved.count(key) == 1)
+        out = click(builder.ACTION_PROJECTS_REMOVE)
+        check("Remove projects only offers projects on the genie", out["ok"] and options(out) == ["1", "2"])
+
+        folder_error = 102
+        out = click(builder.ACTION_PROJECTS_REMOVE_APPLY, ["1"])
+        check("an asset refresh failure preserves the full original scope", not out["ok"]
+              and "Invoices: HTTP 403" in out["error"]
+              and states[key] == row and saved.count(key) == 1, out)
+        folder_error = None
+        out = click(builder.ACTION_PROJECTS_REMOVE_APPLY, ["1"], user="U2")
+        row = states[key]
+        check("removing a project drops its unique assets and owner, and keeps shared assets",
+              out["ok"] and [p["id"] for p in row["workato_projects"]] == [2]
+              and [r["id"] for r in row["recipes"]] == [11] and builder.manager_ids(row) == ["U1", "U3"], out)
+        out = click(builder.ACTION_PROJECTS_REMOVE_APPLY, ["2"])
+        check("the last project can be removed and the genie still offers Add projects",
+              out["ok"] and all(states[key][column] == [] for column in
+                                ("workato_projects", "recipes", "lookup_tables", "data_tables", "project_owner"))
+              and builder.ACTION_PROJECTS_ADD in action_ids(json.loads(out["blocks_json"])), out)
+
+
+check_manage_projects()
+
+project_options = [{"id": i, "name": "Project {}".format(i)} for i in range(1, 102)]
+project_page_two = builder.manage_project_blocks("SNAP:C1", project_options, 1, adding=True)
+check("the Manage project picker paginates by stable project ID",
+      [p["value"] for block in project_page_two if block["type"] == "input"
+       for p in block["element"]["options"]] == ["101"]
+      and {builder.ACTION_PROJECTS_ADD, builder.ACTION_PROJECTS_ADD_APPLY} <= set(action_ids(project_page_two)))
+
 # ---------------------------------------------------------------------------
 # Simple skill names (skill_naming) and Pause / Resume / Delete (lifecycle)
 # ---------------------------------------------------------------------------
@@ -898,6 +1161,26 @@ check("paused genie: the card says so", "paused" in json.dumps(builder.manage_bl
 delete_btn = [e for b in builder.manage_blocks("SNAP:C1", LIVE, []) if b["type"] == "actions" for e in b["elements"]
               if e.get("action_id") == builder.ACTION_DELETE][0]
 check("Delete is a red button", delete_btn.get("style") == "danger")
+
+full_genie = dict(LIVE, forge_state={"kb": KB_ID}, workato_projects=[{"id": 1, "name": "Orders"}],
+                  skills=[{"handle": "skl-1", "name": "Look up orders"}])
+full_manage = builder.manage_blocks("SNAP:C1", full_genie, [{"file_name": "Orders guide"}])
+action_rows = [block["elements"] for block in full_manage if block["type"] == "actions"]
+check("Manage groups all available controls into rows of at most three buttons",
+      [[element["action_id"] for element in row] for row in action_rows] == [
+          [builder.ACTION_RESYNC, builder.ACTION_DOCS, builder.ACTION_DESC],
+          [builder.ACTION_CHANNELS, builder.ACTION_PROJECTS_ADD, builder.ACTION_PROJECTS_REMOVE],
+          [builder.ACTION_SKILLS_ADD, builder.ACTION_SKILLS_REMOVE],
+          [builder.ACTION_PAUSE, builder.ACTION_DELETE],
+      ])
+alternate_manage = builder.manage_blocks("SNAP:C1", dict(LIVE, status=builder.STATUS_PAUSED), [])
+manage_buttons = [element for block in full_manage + alternate_manage if block["type"] == "actions"
+                  for element in block["elements"]]
+check("Manage buttons include emoji and keep the action label accessible",
+      all(element["text"]["emoji"] and element["value"] == "SNAP:C1"
+          and re.fullmatch(r":[a-z0-9_-]+: " + re.escape(element["accessibility_label"]), element["text"]["text"])
+          for element in manage_buttons))
+
 check("lifecycle input: on / off, blank = on", [builder.lifecycle_mode(v) for v in ("off", " OFF ", "on", "", None, "x")]
       == ["off", "off", "on", "on", "on", "on"])
 check("the new actions are registered, key-free, have a loading text",

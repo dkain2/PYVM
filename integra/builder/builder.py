@@ -53,9 +53,9 @@ THE STEPS (each one is a Slack message in the setup thread)
                  projects, finds the objects they sync (quote, order, invoice)
                  and their IDs, builds read-only lookup skills and creates the
                  genie with them (forge_genie_job_description.md).
-                 A skill that can't be built gets a red cross and the build
-                 carries on with the next; a failure Integra can't get past (no
-                 plan, no genie) shows Try again.
+                 A failed job gets 10 automatic retries. After those, a failed
+                 skill gets a red cross and the next skill runs. A plan or
+                 genie creation failure shows the error and Try again.
     6. confirm   summary incl. the new genie, its skills and its knowledge
                  base -> Confirm / Cancel
                  Confirm attaches the knowledge base, starts the skill recipes
@@ -73,6 +73,10 @@ MANAGING SKILLS LATER (the manage card)
                     finish_add puts the new skills on the genie's own row and starts them.
     Remove skills   a dropdown of the genie's skills; the ticked ones are detached with
                     Workato's remove_skills API and their recipes stopped.
+    Add to channel  choose another Slack channel shared by the manager and the app. A
+                    genie_channel row links that channel to the existing Workato handle.
+    Add or remove projects  refresh the projects, assets and owners used in Slack questions.
+                    Manage attached lookup skills with Add skills and Remove skills.
     Add knowledge base   (only on a genie with none; input manage_kb = on | off, blank = on, off
                     hides the button). The same form as the setup's kb step, all fields required:
                     name, what it holds, when to use it, and documents when kb_doc_detail came with
@@ -162,6 +166,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from copy import deepcopy
 from datetime import datetime, timezone
 
 # --------------------------------------------------------------------------
@@ -266,6 +271,7 @@ OWNER_EMAIL_DOMAIN = "coursera.org"   # a project's owner: first recipe version 
 OWNER_MAX_VERSIONS = 30          # one request per version walked, so this bounds the work
 
 RECORD_TYPE = "channel_genie"
+GENIE_CHANNEL_TYPE = "genie_channel"
 DRAFT_PREFIX = "draft:"
 CANCELLED_PREFIX = "cancelled:"
 
@@ -389,6 +395,12 @@ ACTION_DESC = "gc_console_desc"                 # open the edit-description form
 ACTION_DESC_SAVE = "gc_console_desc_save"       # check the new text, ask to confirm
 ACTION_DESC_APPLY = "gc_console_desc_apply"     # confirmed: write it
 ACTION_MANAGE_DONE = "gc_console_manage_done"   # back to the manage card
+ACTION_CHANNELS = "gc_console_channels"
+ACTION_CHANNELS_SAVE = "gc_console_channels_save"
+ACTION_PROJECTS_ADD = "gc_console_projects_add"
+ACTION_PROJECTS_ADD_APPLY = "gc_console_projects_add_apply"
+ACTION_PROJECTS_REMOVE = "gc_console_projects_remove"
+ACTION_PROJECTS_REMOVE_APPLY = "gc_console_projects_remove_apply"
 ACTION_DOCS = "gc_console_docs"                 # open the add-documents picker (the Click recipe
                                                 # fetches the Drive file list for this click too)
 ACTION_DOCS_SAVE = "gc_console_docs_save"       # register the picked documents and sync
@@ -413,7 +425,9 @@ ACTION_CONNECTIONS_PICK = "gc_console_connections_pick"
 MANAGE_ACTIONS = (ACTION_PAUSE, ACTION_RESUME, ACTION_DELETE, ACTION_DELETE_APPLY, ACTION_MANAGE, ACTION_RESYNC, ACTION_DESC, ACTION_DESC_SAVE,
                   ACTION_DESC_APPLY, ACTION_MANAGE_DONE, ACTION_DOCS, ACTION_DOCS_SAVE,
                   ACTION_SKILLS_ADD, ACTION_SKILLS_REMOVE, ACTION_SKILLS_REMOVE_APPLY,
-                  ACTION_KB_ADD, ACTION_KB_ADD_SAVE)
+                  ACTION_KB_ADD, ACTION_KB_ADD_SAVE, ACTION_CHANNELS, ACTION_CHANNELS_SAVE,
+                  ACTION_PROJECTS_ADD, ACTION_PROJECTS_ADD_APPLY,
+                  ACTION_PROJECTS_REMOVE, ACTION_PROJECTS_REMOVE_APPLY)
 # The `manage_kb` input (on | off, blank = MANAGE_KB_DEFAULT) turns the manage card's "Add knowledge
 # base" button on or off. Off is the card as it was: no button, and a click on an old one is refused.
 # main() sets MANAGE_KB_ADD from it at the start of every call.
@@ -469,6 +483,7 @@ KB_ATTACH_OK = ("success", "succeeded", "ok", "true")   # kb_attach_status value
 # create_genie. The function recipe loops while call_forge is true.
 JOB_PLAN, JOB_SKILL, JOB_GENIE, JOB_DONE = "plan", "build_skill", "create_genie", "done"
 MAX_SKILLS = 20      # most skills one plan may hold (Integra is told this as max_skills)
+INTEGRA_MAX_RETRIES = 10  # retries after the initial attempt, per Integra job
 SKILLS_ALL, SKILLS_PICK, SKILLS_NONE = "all", "pick", "none"   # details step: every planned skill / let me choose / none
 STATUS_ADD_DONE = "add_done"     # an "add skills" run that finished (its clone row; not a live genie)
 # A second run of the same Submit (a recipe retry) is ignored while the build
@@ -487,7 +502,6 @@ LOADING_TEXT = {
     ACTION_DETAILS: "Checking name and keyword…",
     ACTION_KB_CREATE: "Creating the knowledge base…",
     ACTION_KB_SKIP: "Skipping the knowledge base…",
-    ACTION_INTEGRA_RETRY: "Asking Integra to try again…",
     ACTION_CONFIRM: "Switching it on…",
     ACTION_CANCEL: "Cancelling…",
     ACTION_NEW: "Starting a new genie…",
@@ -497,6 +511,9 @@ LOADING_TEXT = {
     ACTION_DESC_SAVE: "Checking the new description…",
     ACTION_DESC_APPLY: "Saving the new description…",
     ACTION_MANAGE_DONE: "Opening…",
+    ACTION_PROJECTS_ADD: "Loading projects…",
+    ACTION_PROJECTS_ADD_APPLY: "Refreshing project assets and owners…",
+    ACTION_PROJECTS_REMOVE_APPLY: "Refreshing the remaining projects…",
     ACTION_DOCS: "Loading the documents…",
     ACTION_DOCS_SAVE: "Adding the documents…",
     ACTION_KB_ADD: "Opening…",
@@ -908,16 +925,36 @@ class Slack(object):
             code, " (the Slack app needs the users:read.email scope)"
             if code == "missing_scope" else "")
 
-    def whisper(self, channel, user_id, thread_ts, text):
+    def whisper(self, channel, user_id, thread_ts, text, blocks=None):
         """A message only `user_id` can see (chat.postEphemeral). False when Slack won't send one
         (the app isn't in the channel, say): the caller then posts it in the thread instead."""
+        if blocks is not None:
+            self.last_blocks = blocks
         if self.dry_run:
             return True
-        payload = {"channel": channel, "user": user_id, "text": text, "blocks": done_blocks(text)}
+        payload = {"channel": channel, "user": user_id, "text": text,
+                   "blocks": expanded(blocks) if blocks is not None else done_blocks(text)}
         if thread_ts:
             payload["thread_ts"] = thread_ts
         body, _code = self._try("chat.postEphemeral", payload)
         return bool(body)
+
+    def shared_channels(self, user_id, cursor):
+        """One page of channels shared by the app and this Slack user."""
+        params = {"user": user_id, "types": "public_channel,private_channel",
+                  "exclude_archived": "true", "limit": SLACK_OPTIONS_MAX}
+        if cursor:
+            params["cursor"] = cursor
+        body, error = _request(SLACK_API + "users.conversations?" +
+                               urllib.parse.urlencode(params), self.headers)
+        if error or not body or not body.get("ok"):
+            problem = error or (body or {}).get("error") or "empty response"
+            if problem == "missing_scope":
+                problem = "the app needs channels:read for public channels and groups:read for private channels"
+            raise StepError("Couldn't list Slack channels: {}.".format(problem))
+        channels = {c["id"]: c.get("name") or c["id"] for c in body.get("channels", [])
+                    if c.get("id") and not c.get("is_archived")}
+        return channels, (body.get("response_metadata") or {}).get("next_cursor") or ""
 
     def bot_user_id(self):
         body, _code = self._try("auth.test", {})
@@ -1030,6 +1067,10 @@ def project_page(projects, page):
     page = min(max(0, page), pages - 1)
     start = page * SLACK_OPTIONS_MAX
     return projects[start:start + SLACK_OPTIONS_MAX], page, pages
+
+
+def project_choice_id(project):
+    return str(project.get("id") or "folder:{}".format(project.get("folder_id") or ""))
 
 
 def projects_blocks(key, projects, page=0, selected=(), error=""):
@@ -1223,13 +1264,14 @@ def kb_blocks(key, values, error="", docs=()):
     ]
 
 
-def integra_progress(state):
+def integra_progress(state, stopped=False):
     """One line per Integra job, ticked off as the loop goes."""
     job, plan = state.get("job"), wanted(state)
+    marker = ":x:" if stopped else LOADING_EMOJI
     lines = [(":white_check_mark: Read the project: {} skill{} to build".format(
                  len(plan), "" if len(plan) == 1 else "s") if plan and job != JOB_PLAN
               else ":white_check_mark: No skills to build" if job != JOB_PLAN
-              else "{} Reading the project and planning skills".format(LOADING_EMOJI))]
+              else "{} Reading the project and planning skills".format(marker))]
     for index, skill in enumerate(state.get("plan") or []):
         if skill.get("state") == "skipped":
             continue
@@ -1239,11 +1281,11 @@ def integra_progress(state):
         elif skill.get("state") == "failed":
             lines.append(":x: {} (not built: {})".format(name, _text(skill.get("reason") or "", 80)))
         elif job == JOB_SKILL and index == state.get("next", 0):
-            lines.append("{} Building {}".format(LOADING_EMOJI, name))
+            lines.append("{} Building {}".format(marker, name))
         else:
             lines.append(":white_small_square: " + name)
     if plan or job in (JOB_GENIE, JOB_DONE):
-        lines.append({JOB_GENIE: "{} Creating the genie and attaching the skills".format(LOADING_EMOJI),
+        lines.append({JOB_GENIE: "{} Creating the genie and attaching the skills".format(marker),
                       JOB_DONE: ":white_check_mark: Genie created"}.get(
                           job, ":white_small_square: Create the genie and attach the skills"))
     return "\n".join(lines)
@@ -1481,6 +1523,10 @@ def building_blocks(row, state=None, detail=False):
          "*Integra is building {}*".format(row.get("genie_name"))}},
         _progress("build"),
         *progress,
+        *([{"type": "section", "text": {"type": "plain_text", "text":
+           "Automatic retry {}/{}\nLast error: {}".format(
+               state["retry_count"], INTEGRA_MAX_RETRIES, state["retry_error"])}}]
+          if state.get("retry_error") else []),
         *connections_line(state),
         {"type": "context", "elements": [{"type": "mrkdwn", "text":
          ":coffee: This takes a few minutes. Please carry on with your work: "
@@ -1539,8 +1585,8 @@ def build_failed_blocks(key, row, error, progress=""):
         {"type": "section", "text": {"type": "mrkdwn", "text":
          ":warning: *Integra couldn't finish building {}*".format(row.get("genie_name"))}},
         _progress("build"),
-        {"type": "section", "expand": True, "text": {"type": "mrkdwn", "text":
-         "```{}```".format(_text(error or "Integra returned no genie.", 1500))}},
+        {"type": "section", "expand": True, "text": {"type": "plain_text", "text":
+         _text(error or "Integra returned no genie.", 1500)}},
         *([{"type": "section", "expand": True, "text": {"type": "mrkdwn", "text": progress}}]
           if progress else []),
         {"type": "context", "elements": [{"type": "mrkdwn", "text":
@@ -1815,9 +1861,9 @@ def delete_confirm_blocks(key, row):
     return [
         {"type": "section", "text": {"type": "mrkdwn", "text":
          ":warning: *Delete {}?*\nIts row is removed from the console table, so it stops answering in "
-         "<#{}> and is taken off this list for good. The genie and its skills in Workato are not "
+         "all its Slack channels and is removed from their Manage lists. The genie and its skills in Workato are not "
          "touched. If you only want it quiet for a while, use *Pause genie* instead.".format(
-             genie_link(row), row.get("channel"))}},
+             genie_link(row))}},
         {"type": "actions", "elements": [
             {"type": "button", "action_id": ACTION_DELETE_APPLY, "value": key, "style": "danger",
              "text": {"type": "plain_text", "text": "Yes, delete it"}},
@@ -1919,6 +1965,14 @@ def doc_state(doc):
 def manage_blocks(key, row, docs, note=""):
     """The manage card: what the genie is, what its knowledge base holds and when it was last
     synced, with the things a person can do."""
+    def button(action, label, emoji, style=None):
+        element = {"type": "button", "action_id": action, "value": key,
+                   "text": {"type": "plain_text", "text": ":{}: {}".format(emoji, label), "emoji": True},
+                   "accessibility_label": label}
+        if style:
+            element["style"] = style
+        return element
+
     kb = integra_state(row).get("kb") or {}
     synced = [d["synced_at"] for d in docs if d.get("synced_at")]
     failed = [d for d in docs if d.get("status") == "failed"]
@@ -1935,44 +1989,97 @@ def manage_blocks(key, row, docs, note=""):
     else:
         kb_line = "_none_"
     purpose = _text(" ".join(str(row.get("genie_purpose") or "").split()), 500)
-    buttons = []
+    projects = _load_list(row.get("workato_projects"))
+    content_actions = []
     if kb.get("id") and docs:
-        buttons.append({"type": "button", "action_id": ACTION_RESYNC, "value": key, "style": "primary",
-                        "text": {"type": "plain_text", "text": "Resync knowledge base"}})
+        content_actions.append(button(ACTION_RESYNC, "Resync knowledge base", "restart", "primary"))
     if kb.get("id"):
-        buttons.append({"type": "button", "action_id": ACTION_DOCS, "value": key,
-                        "text": {"type": "plain_text", "text": "Add documents"}})
+        content_actions.append(button(ACTION_DOCS, "Add documents", "document"))
     elif MANAGE_KB_ADD:
-        buttons.append({"type": "button", "action_id": ACTION_KB_ADD, "value": key,
-                        "text": {"type": "plain_text", "text": "Add knowledge base"}})
-    buttons.append({"type": "button", "action_id": ACTION_DESC, "value": key,
-                    "text": {"type": "plain_text", "text": "Edit description"}})
+        content_actions.append(button(ACTION_KB_ADD, "Add knowledge base", "library"))
+    content_actions.append(button(ACTION_DESC, "Edit description", "apple_pencil"))
+
+    scope_actions = []
+    if row.get("status") in (STATUS_ACTIVE, STATUS_PAUSED) and row.get("id"):
+        scope_actions.extend([button(ACTION_CHANNELS, "Add to channel", "slack"),
+                              button(ACTION_PROJECTS_ADD, "Add projects", "workato")])
+        if projects:
+            scope_actions.append(button(ACTION_PROJECTS_REMOVE, "Remove projects", "delete"))
+
     skills = _load_list(row.get("skills"))
-    buttons.append({"type": "button", "action_id": ACTION_SKILLS_ADD, "value": key,
-                    "text": {"type": "plain_text", "text": "Add skills"}})
+    skill_actions = [button(ACTION_SKILLS_ADD, "Add skills", "ai-sparkle")]
     if skills:
-        buttons.append({"type": "button", "action_id": ACTION_SKILLS_REMOVE, "value": key,
-                        "text": {"type": "plain_text", "text": "Remove skills"}})
+        skill_actions.append(button(ACTION_SKILLS_REMOVE, "Remove skills", "high-gear"))
+
+    lifecycle_actions = []
     paused = row.get("status") == STATUS_PAUSED
     if MANAGE_LIFECYCLE and is_creator(row, MANAGE_VIEWER):
-        # Only for the person who made the genie: pause it (or bring it back) and delete it.
-        buttons.append({"type": "button", "action_id": ACTION_RESUME if paused else ACTION_PAUSE,
-                        "value": key, "text": {"type": "plain_text",
-                                               "text": "Resume genie" if paused else "Pause genie"}})
-        buttons.append({"type": "button", "action_id": ACTION_DELETE, "value": key, "style": "danger",
-                        "text": {"type": "plain_text", "text": "Delete genie"}})
+        lifecycle_actions = [button(ACTION_RESUME, "Resume genie", "green-triangle") if paused else
+                             button(ACTION_PAUSE, "Pause genie", "pause_button"),
+                             button(ACTION_DELETE, "Delete genie", "blob-trash", "danger")]
     blocks = [
         {"type": "section", "text": {"type": "mrkdwn", "text":
-         "*Manage {}*  ·  keyword `{}`  ·  <#{}>{}".format(
+         "*Manage {}*  ·  keyword `{}`  ·  primary channel <#{}>{}".format(
              genie_link(row), row.get("invoke_keyword"), row.get("channel"),
              "  ·  :double_vertical_bar: *paused*" if paused else "")}},
         {"type": "section", "text": {"type": "mrkdwn", "text":
-         "*Description*\n{}\n*Skills ({})*\n{}\n*Knowledge base*\n{}".format(
-             purpose or "_none_", len(skills), _names(skills, 8), kb_line)}},
+         "*Description*\n{}\n*Projects ({})*\n{}\n*Skills ({})*\n{}\n*Knowledge base*\n{}".format(
+             purpose or "_none_", len(projects), project_links(projects), len(skills), _names(skills, 8), kb_line)}},
     ]
     if note:
         blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": note}]})
-    blocks.append({"type": "actions", "elements": buttons})
+    # Slack collapses long rows behind a "+ more" button. Give each group its own row.
+    blocks.extend({"type": "actions", "elements": actions}
+                  for actions in (content_actions, scope_actions, skill_actions, lifecycle_actions) if actions)
+    return blocks
+
+
+def manage_project_blocks(key, projects, page, adding, error=""):
+    shown, page, pages = project_page(projects, page)
+    open_action = ACTION_PROJECTS_ADD if adding else ACTION_PROJECTS_REMOVE
+    apply_action = ACTION_PROJECTS_ADD_APPLY if adding else ACTION_PROJECTS_REMOVE_APPLY
+    verb = "Add" if adding else "Remove"
+    blocks = done_blocks("*{} Workato projects*".format(verb)) + _error(error)
+    blocks.append({"type": "input", "block_id": "gc_projects", "optional": True,
+                   "label": {"type": "plain_text", "text": "Projects"},
+                   "element": {"type": "multi_static_select", "action_id": "gc_projects_select",
+                               "placeholder": {"type": "plain_text", "text": "Pick projects"},
+                               "options": [_option(p.get("name") or project_choice_id(p), project_choice_id(p))
+                                           for p in shown]}})
+    if pages > 1:
+        blocks.extend(done_blocks("Page {} of {}. Apply your selections before changing pages.".format(page + 1, pages)))
+        for target, label in ((page - 1, "Previous projects"), (page + 1, "Next projects")):
+            if 0 <= target < pages:
+                blocks.append({"type": "actions", "elements": [
+                    _submit(open_action, "{}|{}".format(key, target), label)]})
+    blocks.append({"type": "actions", "elements": [
+        _submit(apply_action, "{}|{}".format(key, page), verb + " selected projects"),
+        {"type": "button", "action_id": ACTION_MANAGE_DONE, "value": key,
+         "text": {"type": "plain_text", "text": "Back"}}]})
+    return blocks
+
+
+def channel_picker_blocks(key, channels, cursor, next_cursor):
+    if channels:
+        text = "Choose another channel for this genie."
+    elif next_cursor:
+        text = "No eligible channels on this page."
+    else:
+        text = "No eligible channels here. Invite the Slack app to a channel you belong to, then reopen the picker."
+    blocks = done_blocks(text)
+    if channels:
+        options = [_option("#" + name, channel) for channel, name in
+                   sorted(channels.items(), key=lambda item: (item[1].casefold(), item[0]))]
+        blocks.append({"type": "actions", "block_id": "gc_channel_picker", "elements": [
+            {"type": "static_select", "action_id": "gc_channel_pick", "options": options,
+             "placeholder": {"type": "plain_text", "text": "Select a channel"}},
+            _submit(ACTION_CHANNELS_SAVE, key + "|" + cursor, "Add channel"),
+        ]})
+    if cursor:
+        blocks.append({"type": "actions", "elements": [_submit(ACTION_CHANNELS, key, "First page")]})
+    if next_cursor:
+        blocks.append({"type": "actions", "elements": [
+            _submit(ACTION_CHANNELS, key + "|" + next_cursor, "More channels")]})
     return blocks
 
 
@@ -2473,6 +2580,10 @@ def integra_task(row, key, state, shared_skills=(), spec=None, attach=(), notes=
     else:
         kb = state.get("kb") or {}
         job_lines = ["job: create_genie",
+                     "build_marker: <!-- genie-console:build {} -->".format(key),
+                     *(["resume_genie_id: " + state["resume_genie_id"]]
+                       if state.get("resume_genie_id") else []),
+                     *(["retry_create: true"] if state.get("retry_create") else []),
                      "skills_to_attach: " + compact(list(attach)),
                      # The knowledge base made on the kb step: Integra writes when to use it
                      # into the genie's instructions.
@@ -2518,6 +2629,11 @@ def integra_state(row):
     except (TypeError, ValueError):
         state = {}
     return state if isinstance(state, dict) else {}
+
+
+def clear_integra_retry(state):
+    for key in ("retry_count", "retry_error", "retry_create", "resume_genie_id"):
+        state.pop(key, None)
 
 
 def skill_mode(state):
@@ -2609,6 +2725,29 @@ def _integra_skills(raw):
 # Step handlers. Each returns the step the setup is now on.
 # --------------------------------------------------------------------------
 
+def channel_genies(table, channel, include_paused, keyword=""):
+    """Find the genies registered here and follow links to their original rows."""
+    statuses = [STATUS_ACTIVE, STATUS_PAUSED] if include_paused else [STATUS_ACTIVE]
+    filters = [{"record_type": {"$in": [RECORD_TYPE, GENIE_CHANNEL_TYPE]}},
+               {"channel": {"$eq": channel}}, {"status": {"$in": statuses}}]
+    if keyword:
+        filters.append({"invoke_keyword": {"$eq": keyword}})
+    rows, error = table.search({"$and": filters}, 200)
+    if error:
+        return [], error
+    genies = [row for row in rows if row.get("record_type") != GENIE_CHANNEL_TYPE]
+    links = {(row["id"], row.get("invoke_keyword")) for row in rows
+             if row.get("record_type") == GENIE_CHANNEL_TYPE and row.get("id")}
+    if links:
+        parents, error = table.search({"$and": [{"record_type": {"$eq": RECORD_TYPE}},
+                                                {"status": {"$in": statuses}},
+                                                {"id": {"$in": sorted({handle for handle, _ in links})}}]}, 200)
+        local_keys = {row.get("record_key") for row in genies}
+        genies.extend(row for row in parents if (row.get("id"), row.get("invoke_keyword")) in links
+                      and row.get("record_key") not in local_keys)
+    return sorted(genies, key=lambda row: row.get("status") != STATUS_ACTIVE), error
+
+
 def handle_start(ctx):
     root = ctx.click["thread_ts"] or ctx.click["message_ts"]
     if not root or not ctx.click["channel"]:
@@ -2625,15 +2764,7 @@ def handle_start(ctx):
     })
     ctx.key = key
     # A paused genie is listed too: it still owns its keyword here, and Resume is on its card.
-    # (Two plain queries rather than an $or: the same filters the rest of this file already uses.)
-    genies = []
-    for status in ((STATUS_ACTIVE, STATUS_PAUSED) if MANAGE_LIFECYCLE else (STATUS_ACTIVE,)):
-        found, error = ctx.table.search({"$and": [{"record_type": {"$eq": RECORD_TYPE}},
-                                                  {"status": {"$eq": status}},
-                                                  {"channel": {"$eq": ctx.click["channel"]}}]}, 20)
-        genies += found
-        if error:
-            break
+    genies, error = channel_genies(ctx.table, ctx.click["channel"], MANAGE_LIFECYCLE)
     if error:
         ctx.warnings.append(error)
     if genies:
@@ -2749,6 +2880,37 @@ def handle_projects_page(ctx):
     return "projects"
 
 
+def project_fields(ctx, projects, strict=False):
+    """Read project assets and owners. Manage edits require a complete asset refresh before saving."""
+    chosen = [dict(project) for project in projects]
+    assets = []
+    for project in chosen:
+        folder = project.get("folder_id")
+        found, error = folder_assets(ctx.workato_token, folder) if folder else ([], "Missing folder ID.")
+        if error:
+            if strict:
+                raise StepError("Could not load assets for {}: {}".format(project.get("name") or "a project", error))
+            ctx.warnings.append(error)
+        assets.extend(found)
+        owner = (project.get("owner") if strict else None) or ctx.project_owner(project, found)
+        if owner:
+            project["owner"] = owner
+        else:
+            project.pop("owner", None)        # don't keep one from an earlier Submit
+    grouped = group_assets(assets)
+    ctx.asset_types = ["{}: {}".format(k, v) for k, v in sorted(grouped["types"].items())]
+
+    fields = {"workato_projects": chosen,
+              # who owns each project, kept in a column of its own (no emails: name + Slack mention)
+              "project_owner": fit_column(
+                  [dict(project=p.get("name"), **p["owner"]) for p in chosen if p.get("owner")],
+                  "project_owner", ctx.warnings)}
+    for column in ("recipes", "lookup_tables", "data_tables", "other_assets"):
+        fields[column] = fit_column(grouped[column], column, ctx.warnings)
+    ctx.counts = {c: len(fields[c]) for c in ("recipes", "lookup_tables", "data_tables")}
+    return fields
+
+
 def handle_projects(ctx):
     row = ctx.load(ctx.click["key"])
     projects = ctx.projects()
@@ -2759,29 +2921,7 @@ def handle_projects(ctx):
                                      "Pick at least one project."))
         return "projects"
 
-    assets = []
-    for project in chosen:
-        found, error = folder_assets(ctx.workato_token, project["folder_id"])
-        if error:
-            ctx.warnings.append(error)
-        assets.extend(found)
-        owner = ctx.project_owner(project, found)
-        if owner:
-            project["owner"] = owner
-        else:
-            project.pop("owner", None)        # don't keep one from an earlier Submit
-    grouped = group_assets(assets)
-    ctx.asset_types = ["{}: {}".format(k, v) for k, v in sorted(grouped["types"].items())]
-
-    fields = {"workato_projects": chosen, "status": STATUS_PROJECTS,
-              # who owns each project, kept in a column of its own (no emails: name + Slack mention)
-              "project_owner": fit_column(
-                  [dict(project=p.get("name"), **p["owner"]) for p in chosen if p.get("owner")],
-                  "project_owner", ctx.warnings)}
-    for column in ("recipes", "lookup_tables", "data_tables", "other_assets"):
-        fields[column] = fit_column(grouped[column], column, ctx.warnings)
-    ctx.save(row, fields)
-    ctx.counts = {c: len(fields[c]) for c in ("recipes", "lookup_tables", "data_tables")}
+    ctx.save(row, dict(project_fields(ctx, chosen), status=STATUS_PROJECTS))
 
     ctx.post("Name it and pick a channel",
              details_blocks(ctx.key, {"channel": row.get("channel")}))
@@ -2809,7 +2949,7 @@ LIVE_STATUSES = (STATUS_ACTIVE, STATUS_DETAILS, STATUS_KB, STATUS_KB_ATTACHING, 
                  STATUS_BUILT, STATUS_BUILD_FAILED)     # a genie that exists or is being built
 
 
-def duplicate_errors(ctx, row, name, keyword):
+def duplicate_errors(ctx, row, name, keyword, channel):
     """Why this name or keyword can't be used: another genie already has it, in any channel.
     Cancelled and unfinished (not yet named) setups don't count, nor does this setup itself."""
     rows, error = ctx.table.search({"record_type": {"$eq": RECORD_TYPE}}, 500)
@@ -2826,6 +2966,12 @@ def duplicate_errors(ctx, row, name, keyword):
         if not keyword_error and str(other.get("invoke_keyword") or "").strip().upper() == keyword:
             keyword_error = ("`{}` is already the keyword of *{}* in {}. Pick another keyword."
                              .format(keyword, other.get("genie_name") or "another genie", where))
+    if not keyword_error:
+        genies, error = channel_genies(ctx.table, channel, include_paused=True, keyword=keyword)
+        if error:
+            ctx.warnings.append(error)
+        if genies:
+            keyword_error = "`{}` is already used by a genie in <#{}>. Pick another keyword.".format(keyword, channel)
     return [e for e in (name_error, keyword_error) if e]
 
 
@@ -2852,7 +2998,7 @@ def handle_details(ctx):
     if not channel:
         errors.append("Pick a channel.")
     if not errors:
-        errors.extend(duplicate_errors(ctx, row, name, keyword))
+        errors.extend(duplicate_errors(ctx, row, name, keyword, channel))
     if errors:
         message = " ".join(errors)
         ctx.rerender(message, details_blocks(ctx.key, entered, message))
@@ -3037,6 +3183,135 @@ def handle_choose_manage(ctx):
     ctx.show("Manage " + str(row.get("genie_name")),
              manage_blocks(ctx.key, row, ctx.kb_doc_rows(row)))
     return "manage"
+
+
+def handle_manage_projects(ctx):
+    row = ctx.load(ctx.click["key"])
+    ctx.require_manager(row)
+    if row.get("status") not in (STATUS_ACTIVE, STATUS_PAUSED) or not row.get("id"):
+        return show_manage(ctx, row, ":warning: Confirm the genie before changing its projects.")
+
+    action = ctx.click["action_id"]
+    adding = action in (ACTION_PROJECTS_ADD, ACTION_PROJECTS_ADD_APPLY)
+    applying = action in (ACTION_PROJECTS_ADD_APPLY, ACTION_PROJECTS_REMOVE_APPLY)
+    current = _load_list(row.get("workato_projects"))
+    current_ids = {project_choice_id(project) for project in current}
+    candidates = ([project for project in ctx.projects() if project_choice_id(project) not in current_ids]
+                  if adding else current)
+    if not candidates:
+        note = "All available projects are already on this genie." if adding else "This genie has no projects."
+        return show_manage(ctx, row, note)
+
+    select = _state(ctx.click["state"], "gc_projects", "gc_projects_select")
+    picked = {str(option["value"]) for option in select.get("selected_options") or [] if option.get("value")}
+    if not applying or not picked:
+        ctx.show("Add projects" if adding else "Remove projects", manage_project_blocks(
+            ctx.key, candidates, ctx.click["page"], adding, "Pick at least one project." if applying else ""))
+        return "manage"
+
+    changed = [project for project in candidates if project_choice_id(project) in picked]
+    if not changed:
+        return show_manage(ctx, row, "Those selections have already been applied or are no longer available.")
+    chosen = current + changed if adding else [project for project in current if project_choice_id(project) not in picked]
+    fields = project_fields(ctx, chosen, strict=True)
+    if len(to_column(fields["workato_projects"])) > COLUMN_LIMIT:
+        raise StepError("The project list exceeds the genie console's storage limit. Pick fewer projects.")
+
+    # Asset reads take time. Save against the latest row and detect a competing project edit.
+    latest = ctx.load(ctx.key)
+    ctx.require_manager(latest)
+    if (_load_list(latest.get("workato_projects")) != current or
+            latest.get("status") not in (STATUS_ACTIVE, STATUS_PAUSED)):
+        return show_manage(ctx, latest, ":warning: The genie changed while loading assets. Review its projects and try again.")
+    fields["forge_state"] = dict(integra_state(latest), projects_updated=True)
+    ctx.save(latest, fields)
+    verb = "Added" if adding else "Removed"
+    label = "project" if len(changed) == 1 else "projects"
+    try:
+        ctx.audit(latest, "{} {}: {}".format(verb, label, _text(_names(changed, 6), 400)))
+    except StepError as exc:
+        ctx.warnings.append(str(exc))
+    note = ":white_check_mark: {} {} {}. {} recipes · {} lookup tables · {} data tables.".format(
+        verb, len(changed), label, ctx.counts["recipes"], ctx.counts["lookup_tables"], ctx.counts["data_tables"])
+    if adding:
+        note += (" Resume the genie before using *Add skills*." if latest.get("status") == STATUS_PAUSED else
+                 " Use *Add skills* to build lookups for the updated projects.")
+    elif _load_list(latest.get("skills")):
+        note += " Use *Remove skills* to review attached lookups for the removed projects."
+    return show_manage(ctx, latest, note)
+
+
+def show_channel_picker(ctx, row, note=""):
+    cursor = ctx.click["arg"]
+    channels, next_cursor = ctx.slack.shared_channels(ctx.click["user_id"], cursor)
+    channels.pop(row.get("channel"), None)
+    if channels:
+        links, error = ctx.table.search({"$and": [
+            {"record_type": {"$eq": GENIE_CHANNEL_TYPE}}, {"id": {"$eq": row["id"]}},
+            {"invoke_keyword": {"$eq": row.get("invoke_keyword")}},
+            {"channel": {"$in": sorted(channels)}}]}, 200)
+        if error:
+            raise StepError(error)
+        for link in links:
+            channels.pop(link.get("channel"), None)
+    blocks = _error(note) + channel_picker_blocks(ctx.key, channels, cursor, next_cursor)
+    return channel_message(ctx, "Add genie to a channel", blocks)
+
+
+def channel_message(ctx, text, blocks):
+    # The app can be in private channels. Keep their names visible only to this manager.
+    if not ctx.slack.whisper(ctx.click["channel"], ctx.click["user_id"], ctx.click["thread_ts"],
+                             text, blocks):
+        raise StepError("Slack couldn't show the channel picker or confirmation. Try again from Manage.")
+    return "manage"
+
+
+def shareable_genie(ctx):
+    row = ctx.load(ctx.click["key"])
+    ctx.require_manager(row)
+    if (row.get("status") not in (STATUS_ACTIVE, STATUS_PAUSED)
+            or not row.get("id") or not row.get("invoke_keyword")):
+        raise StepError("Only a live or paused genie can be added to another channel.")
+    return row
+
+
+def handle_channels(ctx):
+    return show_channel_picker(ctx, shareable_genie(ctx))
+
+
+def handle_channels_save(ctx):
+    row = shareable_genie(ctx)
+    picked = _state(ctx.click["state"], "gc_channel_picker", "gc_channel_pick").get("selected_option") or {}
+    channel = picked.get("value")
+    if not channel:
+        return show_channel_picker(ctx, row, "Select a channel first.")
+    channels, _ = ctx.slack.shared_channels(ctx.click["user_id"], ctx.click["arg"])
+    if channel not in channels:
+        message = "The channel is no longer available. Reopen Add to channel to choose again."
+        return channel_message(ctx, message, done_blocks(message))
+    keyword = row.get("invoke_keyword")
+    genies, error = channel_genies(ctx.table, channel, include_paused=True, keyword=keyword)
+    if error:
+        raise StepError(error)
+    if channel == row.get("channel") or any(genie.get("id") == row["id"] for genie in genies):
+        message = "This genie is already linked to <#{}>.".format(channel)
+        return channel_message(ctx, message, done_blocks(message))
+    if genies:
+        message = "`{}` is already used by another genie in <#{}>.".format(keyword, channel)
+        return channel_message(ctx, message, done_blocks(message))
+    # The link stays active while the original genie's status controls answering.
+    ctx.save(None, {"record_type": GENIE_CHANNEL_TYPE,
+                    "record_key": "genie_channel:{}:{}".format(row["id"], channel),
+                    "id": row["id"], "channel": channel, "status": STATUS_ACTIVE,
+                    "invoke_keyword": keyword, "created_at": now_iso()})
+    try:
+        ctx.audit(row, "genie linked to channel " + channel)
+    except StepError as exc:
+        ctx.warnings.append(str(exc))
+    message = ":white_check_mark: Added to <#{}>. {}".format(
+        channel, "Resume the genie to use it there." if row.get("status") == STATUS_PAUSED else
+        "Type `{}` there to use it.".format(keyword))
+    return channel_message(ctx, message, done_blocks(message))
 
 
 def handle_resync(ctx):
@@ -3395,7 +3670,10 @@ def finish_add(ctx, row, state, built):
         raise StepError("The genie these skills were for is no longer in the table.")
     outline = integra_state(genie)
     outline.pop("adding", None)
-    ctx.save(genie, {"skills": _load_list(genie.get("skills")) + built, "forge_state": outline})
+    existing = _load_list(genie.get("skills"))
+    existing_handles = {skill.get("handle") for skill in existing}
+    ctx.save(genie, {"skills": existing + [s for s in built if s.get("handle") not in existing_handles],
+                     "forge_state": outline})
     started, failed = ctx.start_recipes(built)
     ctx.save(row, {"status": STATUS_ADD_DONE, "skills": built, "forge_state": state})
     ctx.audit(genie, "skills added: {}".format(", ".join(_text(s.get("name"), 40) for s in built)))
@@ -3422,6 +3700,8 @@ def handle_skills_add(ctx):
     row = ctx.load(ctx.click["key"])
     ctx.require_manager(row)
     outline = integra_state(row)
+    if outline.get("projects_updated") and not _load_list(row.get("workato_projects")):
+        return show_manage(ctx, row, ":warning: Add a project before asking Integra to build lookup skills.")
     # One run at a time. Asked of the run's own row, not of a timestamp kept here: a run that
     # finished, found nothing, failed or was cancelled no longer counts, whatever it left behind.
     run = ctx.load(outline.get("adding"), required=False) if outline.get("adding") else None
@@ -3528,8 +3808,8 @@ def handle_pause(ctx):
         return show_manage(ctx, row, ":warning: Only a live genie can be paused.")
     ctx.save(row, {"status": STATUS_PAUSED})
     ctx.audit(row, "genie paused")
-    return show_manage(ctx, row, ":double_vertical_bar: Paused. {} won't answer in <#{}> until you "
-                                 "click *Resume genie*.".format(row.get("genie_name"), row.get("channel")))
+    return show_manage(ctx, row, ":double_vertical_bar: Paused in all its Slack channels. "
+                                 "Click *Resume genie* to turn it back on.")
 
 
 def handle_resume(ctx):
@@ -3541,8 +3821,8 @@ def handle_resume(ctx):
         return show_manage(ctx, row, ":warning: Only a paused genie can be resumed.")
     ctx.save(row, {"status": STATUS_ACTIVE})
     ctx.audit(row, "genie resumed")
-    return show_manage(ctx, row, ":white_check_mark: Resumed. Type `{}` in <#{}> to ask it something."
-                       .format(row.get("invoke_keyword"), row.get("channel")))
+    return show_manage(ctx, row, ":white_check_mark: Resumed. Type `{}` in any of its Slack channels."
+                       .format(row.get("invoke_keyword")))
 
 
 def handle_delete(ctx):
@@ -3569,8 +3849,8 @@ def handle_delete_apply(ctx):
     ctx.audit(row, "genie row deleted from the table (genie {} left in Workato)".format(
         row.get("id") or "-"))
     ctx.delete_row(row)
-    ctx.done(":wastebasket: *{}* is deleted. It no longer answers in <#{}>. Its genie and skills "
-             "are still in Workato until you remove them there.".format(name, row.get("channel")))
+    ctx.done(":wastebasket: *{}* is deleted from all its Slack channels. Its genie and skills "
+             "are still in Workato until you remove them there.".format(name))
     return "cancelled"
 
 
@@ -3594,6 +3874,9 @@ def handle_kb_skip(ctx):
 def handle_integra_retry(ctx):
     """Try again: resume at the job that failed; nothing done so far is redone."""
     row = ctx.load(ctx.click["key"])
+    if row.get("status") != STATUS_BUILD_FAILED:
+        if row.get("status") != STATUS_BUILDING or already_running(ctx, row, (STATUS_BUILDING,)):
+            return "build"
     ctx.start_integra(row, fresh=False)
     ctx.done(":arrows_counterclockwise: Asked Integra to carry on from where it stopped.")
     return "build"
@@ -3605,7 +3888,8 @@ def handle_integra_next(ctx):
     loop only uses outputs from steps above it in the same round."""
     row = ctx.load(ctx.click["key"])
     state = integra_state(row)
-    if state.get("job") in (None, "", JOB_DONE) or row.get("status") != STATUS_BUILDING:
+    if (state.get("job") not in (JOB_PLAN, JOB_SKILL, JOB_GENIE) or row.get("status") != STATUS_BUILDING
+            or state.get("choosing") or state.get("connecting")):
         ctx.warnings.append("nothing for Integra to do (status {}, job {})".format(
             row.get("status"), state.get("job")))
         return "build"
@@ -3622,46 +3906,50 @@ def handle_integra_result(ctx):
     setup row keeps only the outline. A refused table write ends the loop with
     Try again, from what was saved before, instead of leaving the card hanging."""
     row = ctx.load(ctx.click["key"])
-    state = integra_state(row)
-    # The building card: saved with the progress, so the recipe needn't map it.
-    ctx.click["message_ts"] = ctx.click["message_ts"] or state.get("card_ts", "")
+    state = deepcopy(integra_state(row))
     job = state.get("job") or JOB_PLAN
+    if (row.get("status") != STATUS_BUILDING or job == JOB_DONE
+            or state.get("choosing") or state.get("connecting")):
+        ctx.warnings.append("ignored an Integra result for a build that is no longer waiting for it")
+        return "build"
+    state["job"] = job
+    # Callbacks can carry the original click's timestamp. Use the current building card.
+    ctx.click["message_ts"] = state.get("card_ts") or ctx.click["message_ts"]
+    ctx.click["channel"] = state.get("card_channel") or ctx.click["channel"]
+    root = str(row.get("setup_thread_ts") or "")
+    ctx.click["thread_ts"] = state.get("card_thread_ts") or (
+        root if re.fullmatch(r"\d+\.\d+", root) else ctx.click.get("thread_ts", ""))
     error = str(ctx.input.get("forge_error") or "").strip()
-    if str(ctx.input.get("forge_status") or "").strip().lower() == "failed" and not error:
-        error = "Integra reported status failed without saying why."
+    summary = " ".join(str(ctx.input.get("forge_summary") or "").split())
+    status = str(ctx.input.get("forge_status") or "").strip().lower()
+    genie_id = str(ctx.input.get("forge_genie_id") or "").strip()
     ctx.result["forge_job"] = job
     detail = fail_detail_mode(ctx.input.get("fail_detail")) == "on"
 
     answered = any(str(ctx.input.get(name) or "").strip() for name in (
-        "forge_status", "forge_error", "forge_genie_id", "forge_skills_json", "forge_plan_json"))
-    if not answered and job != JOB_SKILL:
-        # The Assign-task step itself failed or timed out (the recipe's monitor
-        # around it caught the error and logged it). Without a plan or a genie
-        # there is nothing to carry on with: stop, keep the progress, and offer
-        # Try again for this same job. (A skill that gets no answer is handled
-        # below: it fails alone.)
-        return ctx.integra_failed(row, state, "Integra didn't answer: the Assign task step failed "
-                                "or timed out. The error is in this run's job log in Workato.")
+        "forge_status", "forge_error", "forge_genie_id", "forge_skills_json", "forge_plan_json", "forge_summary"))
+    if not answered:
+        error = "Assign task to Integra returned no result or error. Check the Workato job log for the timeout or failure."
+    elif status == "failed" and not error:
+        error = summary or "Integra reported a failure without returning an error message."
 
     try:
         if job == JOB_PLAN:
-            plan = _integra_plan(ctx.input.get("forge_plan_json"))
-            if state.get("add_to") and not error and not plan:
-                raw_plan = ctx.input.get("forge_plan_json")
-                if detail and plan_unreadable(raw_plan):
-                    # A plan came back but nothing could be read from it: not "nothing to add".
-                    shown = raw_plan if isinstance(raw_plan, str) else json.dumps(raw_plan)
-                    return ctx.integra_failed(row, state, "Integra sent a plan that couldn't be read "
-                                              "(broken or cut off). It starts: " + _text(
-                                                  " ".join(shown.split()), 150))
-                said = " ".join(str(ctx.input.get("forge_summary") or "").split())
+            raw_plan = ctx.input.get("forge_plan_json")
+            plan = _integra_plan(raw_plan)
+            if error or plan_unreadable(raw_plan):
+                reason = "Integra returned an unreadable plan."
+                return ctx.retry_integra(row, state, error or (reason + " " + summary).strip())
+            if state.get("add_to") and not plan:
+                clear_integra_retry(state)
                 state["job"] = JOB_DONE
                 ctx.save(row, {"status": STATUS_ADD_DONE, "forge_state": state})
                 ctx.done(":information_source: Integra found no skill that this genie doesn't "
-                         "already have." + (" It said: " + _text(said, 300) if detail and said else ""))
+                         "already have." + (" It said: " + _text(summary, 300) if detail and summary else ""))
                 return "build"
-            if error or not plan:
-                return ctx.integra_failed(row, state, error or "Integra's plan had no skills in it.")
+            if not plan:
+                return ctx.retry_integra(row, state, ("Integra returned no skills in the plan. " + summary).strip())
+            clear_integra_retry(state)
             notes = cap_lines(ctx.input.get("forge_project_knowledge"), NOTES_MAX)
             ctx.save_part("notes", {"status": "notes"}, {"text": notes})
             for index, spec in enumerate(plan):
@@ -3709,20 +3997,19 @@ def handle_integra_result(ctx):
             if skill:
                 skill["handle"] = skill.get("handle") or skill.get("skill_handle")
                 skill.setdefault("description", spec.get("description", ""))
-            # One skill that can't be built never stops the build: it is marked failed
-            # (a red cross on the card) and the next one is tried.
-            if not answered:
-                failure = "no answer from Integra (task failed or timed out; see the job log)"
-            elif error:
+            if error:
                 failure = error
             elif not skill:
-                failure = no_skill_reason(ctx.input) if detail else "no skill returned"
+                failure = no_skill_reason(ctx.input)
             elif draft_skills([skill]):
-                failure = "saved only as a draft"
+                failure = ("The skill was saved only as a draft. " + summary).strip()
             else:
                 failure = ""
+            if failure and state.get("retry_count", 0) < INTEGRA_MAX_RETRIES:
+                return ctx.retry_integra(row, state, failure)
+            clear_integra_retry(state)
             if failure:
-                reason = _text(failure, FAIL_DETAIL_CHARS if detail else 200)
+                reason = _text("After {} automatic retries: {}".format(INTEGRA_MAX_RETRIES, failure), FAIL_DETAIL_CHARS)
                 entry.update({"state": "failed", "reason": reason})
                 outcome, status = {"spec": spec, "error": reason}, "failed"
             else:
@@ -3738,9 +4025,15 @@ def handle_integra_result(ctx):
                 state["job"] = JOB_GENIE
 
         else:                                        # create_genie
-            genie_id = str(ctx.input.get("forge_genie_id") or "").strip()
+            resume_id = state.get("resume_genie_id")
+            if resume_id and genie_id.startswith("gin-") and genie_id != resume_id:
+                error = error or "Integra returned a different genie ID while resuming {}.".format(resume_id)
             if error or not genie_id.startswith("gin-"):
-                return ctx.integra_failed(row, state, error or "Integra did not return a genie ID (gin-...).")
+                if genie_id.startswith("gin-") and not state.get("add_to"):
+                    state.setdefault("resume_genie_id", genie_id)
+                reason = ("Integra did not return a genie ID (gin-...). " + summary).strip()
+                return ctx.retry_integra(row, state, error or reason)
+            clear_integra_retry(state)
             state["job"] = JOB_DONE
             skills = built_skills(state)
             if state.get("add_to"):
@@ -3753,7 +4046,13 @@ def handle_integra_result(ctx):
         if job != JOB_GENIE:
             ctx.save(row, {"forge_state": state})
     except StepError as exc:
-        return ctx.integra_failed(row, integra_state(row), str(exc))
+        saved = deepcopy(integra_state(row))
+        if row.get("status") != STATUS_BUILDING or (saved.get("job") or JOB_PLAN) != job:
+            raise
+        saved["job"] = job
+        if job == JOB_GENIE and not saved.get("add_to") and genie_id.startswith("gin-"):
+            saved.setdefault("resume_genie_id", genie_id)
+        return ctx.retry_integra(row, saved, str(exc))
 
     if job == JOB_GENIE:
         # The notification text carries the mention too: it is what the push shows.
@@ -3800,6 +4099,11 @@ def handle_confirm(ctx):
     row = ctx.load(ctx.click["key"])
     final_key = "{}:{}".format(row.get("invoke_keyword"), row.get("channel"))
     taken = ctx.load(final_key, required=False)
+    if not taken:
+        taken, error = channel_genies(ctx.table, row.get("channel"), include_paused=True,
+                                      keyword=row.get("invoke_keyword"))
+        if error:
+            raise StepError(error)
     if taken:
         raise StepError("`{}` was taken in <#{}> while you were setting up. Type "
                         "recipeconfig to start again with another keyword."
@@ -3883,6 +4187,12 @@ HANDLERS = {
     ACTION_DELETE_APPLY: handle_delete_apply,
     ACTION_MANAGE: handle_choose_manage,
     ACTION_MANAGE_DONE: handle_choose_manage,
+    ACTION_PROJECTS_ADD: handle_manage_projects,
+    ACTION_PROJECTS_ADD_APPLY: handle_manage_projects,
+    ACTION_PROJECTS_REMOVE: handle_manage_projects,
+    ACTION_PROJECTS_REMOVE_APPLY: handle_manage_projects,
+    ACTION_CHANNELS: handle_channels,
+    ACTION_CHANNELS_SAVE: handle_channels_save,
     ACTION_RESYNC: handle_resync,
     ACTION_DESC: handle_desc,
     ACTION_DESC_SAVE: handle_desc_save,
@@ -4281,9 +4591,13 @@ class Context(object):
                             "forge_state, where Integra's progress is kept. Add it, then "
                             "click the button again.")
         previous = integra_state(row)
-        state = {} if fresh else previous
+        state = {} if fresh else dict(previous)
         if not state.get("job") or state.get("job") == JOB_DONE:
             state = {"job": JOB_PLAN}
+        state.pop("retry_count", None)
+        state.pop("retry_error", None)
+        if not fresh and state["job"] == JOB_GENIE and not state.get("add_to"):
+            state["retry_create"] = True
         for kept in ("kb", "skill_mode", "add_to", "existing"):
             if previous.get(kept):      # set before Integra starts; a fresh start keeps them
                 state[kept] = previous[kept]
@@ -4318,6 +4632,8 @@ class Context(object):
         self.post("Integra is building {}".format(row.get("genie_name")),
                   building_blocks(row, state, detail=fail_detail_mode(self.input.get("fail_detail")) == "on"))
         state["card_ts"] = self.result["posted_ts"]     # forge_next / forge_result find it here
+        state["card_channel"] = self.click["channel"]
+        state["card_thread_ts"] = self.click["thread_ts"] or self.click["message_ts"]
         self.save(row, {"forge_state": state})
         self.next_integra_job(row, state, self.result["posted_ts"])
 
@@ -4353,12 +4669,46 @@ class Context(object):
                                                  fields=skill_fields_mode(self.input.get("skill_fields")) == "all"),
         })
 
+    def retry_integra(self, row, state, error):
+        """Keep the current job and return it to the recipe's existing repeat loop."""
+        retry_count = state.get("retry_count", 0)
+        if retry_count >= INTEGRA_MAX_RETRIES:
+            return self.integra_failed(row, state, "After {} automatic retries. Last error: {}".format(
+                retry_count, error))
+        error = _text(" ".join(str(error).split()), 800)
+        state.update(retry_count=retry_count + 1, retry_error=error)
+        if state.get("job") == JOB_GENIE and not state.get("add_to"):
+            state["retry_create"] = True
+        try:
+            self.save(row, {"status": STATUS_BUILDING, "forge_state": state})
+            self.next_integra_job(row, state, self.click["message_ts"])
+        except StepError as exc:
+            return self.integra_failed(row, state, "{}\nCould not prepare the retry: {}".format(error, exc))
+        self.result["field_error"] = error
+        text = "Automatic retry {}/{} for {}".format(state["retry_count"], INTEGRA_MAX_RETRIES,
+                                                     row.get("genie_name"))
+        blocks = building_blocks(row, state, detail=fail_detail_mode(self.input.get("fail_detail")) == "on")
+        if not self.slack.update(self.click["channel"], self.click["message_ts"], text, blocks):
+            self.slack.post(self.click["channel"], self.click["thread_ts"], text, blocks)
+        return "build"
+
     def integra_failed(self, row, state, error):
-        """Stop the loop, keep the progress, and offer Try again (which resumes)."""
-        self.save(row, {"status": STATUS_BUILD_FAILED, "forge_state": state})
-        self.rerender(error, build_failed_blocks(self.key, row, error, integra_progress(state)))
-        self.notify_creator(row, "Integra couldn't finish building *{}*. The reason and a "
-                            "*Try again* button are just above.".format(row.get("genie_name")))
+        """Stop the loop and show the failure even if the original card can't be edited."""
+        self.result["call_forge"] = False
+        try:
+            self.save(row, {"status": STATUS_BUILD_FAILED, "forge_state": state})
+        except StepError as exc:
+            error += "\nCould not save the failed build state: {}".format(exc)
+        self.result["field_error"] = error
+        title = "Integra couldn't finish building {}.".format(row.get("genie_name"))
+        blocks = build_failed_blocks(self.key, row, error, integra_progress(state, stopped=True))
+        self.result["updated_message"] = self.slack.update(self.click["channel"], self.click["message_ts"], title, blocks)
+        if self.result["updated_message"]:
+            self.notify_creator(row, "{} {}".format(title, _link("", _text(error, 400))))
+        else:
+            blocks = done_blocks(_mention(row) + title) + blocks
+            self.result["posted_ts"] = self.slack.post(self.click["channel"], self.click["thread_ts"],
+                                                       _mention(row) + title, blocks)
         return "build"
 
     def genie_folder(self, row):

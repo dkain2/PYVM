@@ -326,6 +326,7 @@ HEADER_LIMIT = 150               # Slack: a header's text is at most 150 charact
 HEADER_RE = re.compile(r"^\s*#{1,2}[ \t]+(.+?)[ \t]*#*[ \t]*(?:\n|$)")
 
 GENIE_TYPE = "channel_genie"
+GENIE_CHANNEL_TYPE = "genie_channel"
 CONVERSATION_TYPE = "genie_conversation"
 OWNER_PING_TYPE = "owner_ping"     # one row per thread whose owners were already brought in
 OWNER_PING_MODES = ("once", "always")
@@ -2149,16 +2150,19 @@ def kb_mention_mode(value):
     return value if value in KB_MENTION_MODES else KB_MENTION_DEFAULT
 
 
-def knowledge_base_of(row):
-    """{name, about, use_when} of the knowledge base kept on the genie's row (the builder puts it
-    in forge_state.kb when it is made, at setup or later from Manage), or {} when there is none."""
+def genie_state(row):
     state = row.get("forge_state")
     if not isinstance(state, dict):
         try:
             state = json.loads(state or "{}")
         except (TypeError, ValueError):
             state = {}
-    kb = state.get("kb") if isinstance(state, dict) else None
+    return state if isinstance(state, dict) else {}
+
+
+def knowledge_base_of(row):
+    """{name, about, use_when} of the knowledge base kept on the genie's row, or {}."""
+    kb = genie_state(row).get("kb")
     if not isinstance(kb, dict) or not kb.get("id"):
         return {}
     return {key: _one_line(kb.get(key), 500) for key in ("name", "about", "use_when")}
@@ -2224,6 +2228,10 @@ def task_instructions(row, question, asker=None, kb_note=True, secrets_note=Fals
     if secrets_note:
         lines.append("secrets_note: " + SECRETS_NOTE)
     lines.append("escalation_note: " + ESCALATE_NOTE)
+    if genie_state(row).get("projects_updated"):
+        lines.append("project_scope_note: The project and asset lists below are the current Workato scope, "
+                     "including empty lists. Use that scope for lookups and analyst tasks. Treat older "
+                     "project references in your instructions or this conversation as out of date.")
     for column in ("workato_projects", "recipes", "lookup_tables", "data_tables"):
         label = "projects" if column == "workato_projects" else column
         lines.append("{}: {}".format(label, json.dumps(_json_list(row.get(column)),
@@ -2260,6 +2268,35 @@ def mentions_app(slack, text):
     return bool(mentions and "<@{}>".format(slack.bot_user_id()) in mentions)
 
 
+def channel_registry(table, channel, keyword=""):
+    filters = [{"record_type": {"$in": [GENIE_TYPE, GENIE_CHANNEL_TYPE]}},
+               {"channel": {"$eq": channel}}, {"status": {"$in": [STATUS_ACTIVE, STATUS_PAUSED]}}]
+    if keyword:
+        filters.append({"invoke_keyword": {"$eq": keyword.upper()}})
+    return table.query({"$and": filters})
+
+
+def resolve_channel_links(table, registry):
+    """Load the current genie rows for channel links, skipping stale links and ambiguous keywords."""
+    genies = [row for row in registry if row.get("record_type") != GENIE_CHANNEL_TYPE]
+    links = {(row["id"], row.get("invoke_keyword")) for row in registry
+             if row.get("record_type") == GENIE_CHANNEL_TYPE and row.get("id")}
+    if not links:
+        return genies, None
+    parents, error = table.query({"$and": [{"record_type": {"$eq": GENIE_TYPE}},
+                                            {"status": {"$in": [STATUS_ACTIVE, STATUS_PAUSED]}},
+                                            {"id": {"$in": sorted({handle for handle, _ in links})}}]})
+    if error:
+        return genies, error
+    local_keywords = {(row.get("invoke_keyword") or "").upper() for row in genies}
+    by_keyword = {}
+    for parent in parents:
+        keyword = parent.get("invoke_keyword") or ""
+        if (parent.get("id"), keyword) in links and keyword.upper() not in local_keywords:
+            by_keyword.setdefault(keyword.upper(), []).append(parent)
+    return genies + [rows[0] for rows in by_keyword.values() if len(rows) == 1], None
+
+
 def ask(input, table, slack, result):
     text = str(input.get("text") or "")
     channel = result["channel"]
@@ -2270,17 +2307,20 @@ def ask(input, table, slack, result):
         return
 
     filters = [{"record_type": {"$eq": GENIE_TYPE}}, {"channel": {"$eq": channel}}]
-    registry, error = table.query({"$and": filters + [
-        {"status": {"$in": [STATUS_ACTIVE, STATUS_PAUSED]}}]})
+    registry, error = channel_registry(table, channel)
     if error:
         raise RuntimeError("could not read the channel's genie registry: " + error)
-    rows = [row for row in registry if row.get("status") == STATUS_ACTIVE]
-    paused = [row for row in registry if row.get("status") == STATUS_PAUSED]
-    if len(registry) == 200 and paused:
+    genies, error = resolve_channel_links(table, registry)
+    if error:
+        record_issue(result, "could not read the linked genies: " + error)
+    rows = [row for row in genies if row.get("status") == STATUS_ACTIVE]
+    paused = [row for row in genies if row.get("status") == STATUS_PAUSED]
+    if len(registry) == 200 and (paused or any(r.get("record_type") == GENIE_CHANNEL_TYPE for r in registry)):
         # Keep the existing active-genie lookup intact if paused rows fill the first page.
-        rows, error = table.query({"$and": filters + [{"status": {"$eq": STATUS_ACTIVE}}]})
+        found_active, error = table.query({"$and": filters + [{"status": {"$eq": STATUS_ACTIVE}}]})
         if error:
             raise RuntimeError("could not read the channel's active genies: " + error)
+        rows = found_active + [r for r in rows if r.get("channel") != channel]
     result["genies_in_channel"] = len(rows)
 
     row, match = find_keyword(text, rows)
@@ -2290,7 +2330,7 @@ def ask(input, table, slack, result):
             if error:
                 record_issue(result, "could not read the channel's paused genies: " + error)
             else:
-                paused = found_paused
+                paused = found_paused + [r for r in paused if r.get("channel") != channel]
         row, match = find_keyword(text, paused)
     if row:
         result.update(matched=True, genie_name=row.get("genie_name") or "",
@@ -2366,7 +2406,7 @@ def ask(input, table, slack, result):
         "question": question,
         "empty_question": not question,
         "task_instructions": task_instructions(
-            row, question, asker, kb_note_mode(input.get("kb_note")) == "on",
+            dict(row, channel=channel), question, asker, kb_note_mode(input.get("kb_note")) == "on",
             secrets_note=redact_mode(input.get("redact")) == "on",
             format_note=bold_mode(input.get("bold")) == "on",
             kb_quiet=kb_mention_mode(input.get("kb_mention")) == "hide",
@@ -2407,15 +2447,16 @@ def owner_lookup_mode(value):
 
 
 def genie_row(table, channel, keyword):
-    """(row, error): the genie's row. It is the one confirmed for this keyword and channel
-    (record_key KEYWORD:CHANNEL), or the channel's only active genie when no keyword came
-    through."""
+    """(row, error): the genie for this keyword, or the channel's sole active genie."""
+    rows, error = [], None
     if keyword:
-        where = {"record_key": {"$eq": "{}:{}".format(keyword.upper(), channel)}}
-    else:
-        where = {"$and": [{"record_type": {"$eq": GENIE_TYPE}}, {"status": {"$eq": STATUS_ACTIVE}},
-                          {"channel": {"$eq": channel}}]}
-    rows, error = table.query(where, limit=2)
+        rows, error = table.query({"record_key": {"$eq": "{}:{}".format(keyword.upper(), channel)}}, limit=2)
+    if not rows and not error:
+        rows, error = channel_registry(table, channel, keyword)
+        if not error:
+            rows, error = resolve_channel_links(table, rows)
+    if not keyword:
+        rows = [row for row in rows if row.get("status") == STATUS_ACTIVE]
     if error or len(rows) != 1:
         return None, error or "no single genie row to read project owners from"
     return rows[0], None

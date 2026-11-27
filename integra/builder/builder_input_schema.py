@@ -9,7 +9,7 @@
     "details": {
       "real_name": "action"
     },
-    "hint": "Trigger recipe: start. Click recipe: leave blank (read from payload_json). Inside the Integra REPEAT loop: forge_next (top of the loop) and forge_result (after Assign task to Integra). kb_attach_result: after the recipe attached the knowledge base's documents (with kb_attach_status)."
+    "hint": "Trigger recipe: start. Click recipe: leave blank (read from payload_json). Inside the Integra REPEAT loop: forge_next supplies the task and forge_result processes it on both the success and Handle errors paths. Use the latest forge_result call_forge to continue the loop. kb_attach_result: after the recipe attached the knowledge base's documents (with kb_attach_status)."
   },
   {
     "control_type": "text",
@@ -57,7 +57,7 @@
     "details": {
       "real_name": "slack_bot_token"
     },
-    "hint": "Bot token (xoxb-...) of the Slack app whose button clicks start the click recipe. Scopes: chat:write, users:read, users:read.email."
+    "hint": "Bot token (xoxb-...) of the Slack app whose button clicks start the click recipe. Scopes: chat:write, users:read, users:read.email. Add to channel uses channels:read for public channels and groups:read for private channels. Use the same app that receives questions in the responder recipe."
   },
   {
     "control_type": "text",
@@ -237,7 +237,7 @@
     "details": {
       "real_name": "forge_status"
     },
-    "hint": "forge_result: Integra's status output (success, partial or failed). failed shows Try again."
+    "hint": "forge_result: Integra's status output (success, partial or failed). Failures retry the current job up to 10 times before showing Try again or continuing without a failed skill."
   },
   {
     "control_type": "text",
@@ -285,7 +285,7 @@
     "details": {
       "real_name": "forge_error"
     },
-    "hint": "forge_result: Integra's error output, or the catch block's error message. Shows Try again."
+    "hint": "forge_result: Map Integra's error output on success and the Workato Handle errors block's Error message datapill when Assign task throws. Both paths must call forge_result so the builder can show the actual error and retry."
   },
   {
     "control_type": "text",
